@@ -1,3 +1,5 @@
+import { memo } from 'react';
+
 interface Props {
   values: number[];
   stroke?: string;
@@ -9,7 +11,7 @@ interface Props {
 /**
  * Lightweight SVG sparkline with soft gradient area fill.
  */
-export default function Sparkline({
+const Sparkline = memo(function Sparkline({
   values,
   stroke = '#3b82f6',
   height = 36,
@@ -63,4 +65,6 @@ export default function Sparkline({
       />
     </svg>
   );
-}
+});
+
+export default Sparkline;

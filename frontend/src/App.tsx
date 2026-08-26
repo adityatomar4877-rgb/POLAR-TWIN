@@ -2,7 +2,6 @@ import type { ReactNode } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { StationProvider, useStation } from './context/StationContext';
 import { MainLayout } from './components/layout/MainLayout';
-import Landing from './pages/Landing';
 import { CommandCenter } from './pages/CommandCenter';
 import { EnergySystems } from './pages/EnergySystems';
 import { Environment } from './pages/Environment';
@@ -27,11 +26,12 @@ function App() {
     <StationProvider>
       <BrowserRouter>
         <Routes>
-          {/* Cinematic mission landing — continuous scroll narrative */}
-          <Route path="/" element={<Landing />} />
-
-          {/* Operational workspaces */}
+          {/* Operational workspaces — root directly opens the operations dashboard */}
           <Route element={<MainLayout />}>
+            <Route
+              path="/"
+              element={<Stationed render={(id) => <CommandCenter stationId={id} />} />}
+            />
             <Route
               path="/command"
               element={<Stationed render={(id) => <CommandCenter stationId={id} />} />}
