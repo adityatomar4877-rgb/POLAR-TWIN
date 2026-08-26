@@ -43,20 +43,33 @@ export function useWebSocket(stationId: number | null) {
     let reconnectTimeout: ReturnType<typeof setTimeout> | null = null;
     let disposed = false;
 
+    // Perf: telemetry ticks can arrive every few seconds. Throttling context
+    // updates and refetches to ~10s keeps the UI smooth while staying live.
+    const TICK_THROTTLE_MS = 10000;
+    let lastTickHandled = 0;
+    let lastSyncPushed = 0;
+
+    const handleTelemetryTick = () => {
+      const now = Date.now();
+      if (now - lastTickHandled < TICK_THROTTLE_MS) return;
+      lastTickHandled = now;
+      queryClient.invalidateQueries({ queryKey: ['dashboard', stationId] });
+    };
+
     const handleMessage = (message: WsMessage) => {
       // Shape (a): raw telemetry tick carries numeric station_id directly
       if (typeof message.station_id === 'number' && message.station_id !== stationId) return;
 
       // Telemetry tick (no wrapper key): presence of energy/environment payload
       if (!message.event && (message.energy || message.environment)) {
-        queryClient.invalidateQueries({ queryKey: ['dashboard', stationId] });
         if ((message.new_alerts_triggered ?? 0) > 0) {
           queryClient.invalidateQueries({ queryKey: ['alerts', stationId] });
         }
+        handleTelemetryTick();
         return;
       }
 
-      // Shape (b): command event envelope { event, data }
+      // Shape (b): command event envelope { event, data } — always immediate
       if (message.event === 'COMMAND_COMPLETED') {
         ['equipment', 'dashboard', 'alerts', 'operations-history', 'loads', 'recommendations'].forEach(
           (key) => queryClient.invalidateQueries({ queryKey: [key, stationId] })
@@ -66,7 +79,7 @@ export function useWebSocket(stationId: number | null) {
 
       // Legacy typed envelope fallback
       if (message.type === 'TELEMETRY_UPDATE') {
-        queryClient.invalidateQueries({ queryKey: ['dashboard', stationId] });
+        handleTelemetryTick();
       }
       if (message.type === 'EQUIPMENT_UPDATE' || message.type === 'EQUIPMENT_STATE_CHANGED') {
         ['equipment', 'dashboard'].forEach((key) =>
@@ -101,7 +114,12 @@ export function useWebSocket(stationId: number | null) {
       };
 
       ws.onmessage = (event) => {
-        setLastMessageTime(new Date());
+        const now = Date.now();
+        // Push "last sync" timestamps at most every 5s to limit re-renders
+        if (now - lastSyncPushed > 5000) {
+          lastSyncPushed = now;
+          setLastMessageTime(new Date());
+        }
         try {
           const message: WsMessage = JSON.parse(event.data);
           handleMessage(message);

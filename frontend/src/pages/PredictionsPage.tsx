@@ -9,14 +9,13 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  Legend,
   Cell,
 } from 'recharts';
 import { getEnergyPrediction, getFuelPrediction } from '../api/predictions';
-import type { MLForecastHorizon, EnergyPredictionPoint } from '../api/types';
+import type { MLForecastHorizon } from '../api/types';
 
 export const PredictionsPage = ({ stationId }: { stationId: number }) => {
-  const { data: energy, isLoading: isEnergyLoading } = useQuery({
+  const { data: energy } = useQuery({
     queryKey: ['energy-forecast', stationId],
     queryFn: () => getEnergyPrediction(stationId),
   });
