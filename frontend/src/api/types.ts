@@ -296,16 +296,21 @@ export interface EnergyPredictionPoint {
   confidence: number;
 }
 
+export interface MLForecastHorizon {
+  average_consumption_kw: number;
+}
+
 export interface EnergyForecast {
   station_id: number;
   station_code: string;
   generated_at: string;
-  horizon_hours: number;
   model_name: string;
   is_fallback: boolean;
   current_consumption_kw: number;
-  average_predicted_consumption_kw: number;
-  forecast: EnergyPredictionPoint[];
+  average_predicted_consumption_kw?: number;
+  forecast: Record<string, MLForecastHorizon> | EnergyPredictionPoint[];
+  feature_count?: number;
+  history_records_used?: number;
 }
 
 export interface FuelForecast {

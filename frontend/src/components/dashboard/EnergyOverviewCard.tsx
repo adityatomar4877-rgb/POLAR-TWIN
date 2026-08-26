@@ -1,13 +1,15 @@
 import { useQuery } from '@tanstack/react-query';
 import clsx from 'clsx';
+import { memo } from 'react';
 import { BatteryCharging, Fuel } from 'lucide-react';
 import { getFuelPrediction } from '../../api/predictions';
 import type { EnergyTelemetry } from '../../api/types';
 import { useStation } from '../../context/StationContext';
+import GsapNumber from '../motion/GsapNumber';
 
 const SEGMENT_COLORS = ['#14b8a6', '#3b82f6', '#8b5cf6'];
 
-function Donut({
+const Donut = memo(function Donut({
   segments,
   centerLabel,
   centerSub,
@@ -53,7 +55,7 @@ function Donut({
       </div>
     </div>
   );
-}
+});
 
 export default function EnergyOverviewCard({ energy }: { energy?: EnergyTelemetry }) {
   const { selectedStationId } = useStation();
@@ -76,6 +78,14 @@ export default function EnergyOverviewCard({ energy }: { energy?: EnergyTelemetr
     { label: 'Stored', value: `${stored.toFixed(1)} kW`, color: SEGMENT_COLORS[2] },
   ];
 
+  const diesel = Math.max(energy?.diesel_generation_kw ?? 0, 0);
+  const solar = Math.max(energy?.solar_generation_kw ?? 0, 0);
+  const sourceTotal = generated > 0 ? generated : diesel + solar || 1;
+  const sourceMix = [
+    { label: 'Diesel', value: diesel, color: 'bg-slate-500' },
+    { label: 'Solar PV', value: solar, color: 'bg-amber-400' },
+  ];
+
   return (
     <section className="space-y-4">
       {/* Donut + legend */}
@@ -95,6 +105,23 @@ export default function EnergyOverviewCard({ energy }: { energy?: EnergyTelemetr
                 <span className="ml-auto font-semibold tabular-nums text-slate-800">{l.value}</span>
               </div>
             ))}
+            <div className="space-y-1.5 border-t border-slate-100 pt-2.5">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Generation Mix</p>
+              {sourceMix.map((s) => (
+                <div key={s.label} className="flex items-center gap-2">
+                  <span className="w-12 shrink-0 text-[11px] text-slate-400">{s.label}</span>
+                  <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-slate-100">
+                    <span
+                      className={`block h-full rounded-full ${s.color} transition-all duration-700`}
+                      style={{ width: `${Math.min(100, (s.value / sourceTotal) * 100)}%` }}
+                    />
+                  </span>
+                  <span className="w-14 shrink-0 text-right text-[11px] font-semibold tabular-nums text-slate-600">
+                    {s.value.toFixed(1)} kW
+                  </span>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </div>
@@ -105,7 +132,9 @@ export default function EnergyOverviewCard({ energy }: { energy?: EnergyTelemetr
           <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Battery Status</p>
           <div className="mt-2 flex items-center justify-between">
             <div>
-              <p className="text-xl font-extrabold text-slate-900">{battery.toFixed(1)}%</p>
+              <p className="text-xl font-extrabold text-slate-900">
+                <GsapNumber value={battery} />%
+              </p>
               <p className="text-[11px] text-slate-400">{discharging ? 'Discharging' : 'Charging'}</p>
               <p
                 className={clsx(
@@ -132,7 +161,9 @@ export default function EnergyOverviewCard({ energy }: { energy?: EnergyTelemetr
           <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Fuel Reserve</p>
           <div className="mt-2 flex items-center justify-between">
             <div>
-              <p className="text-xl font-extrabold text-slate-900">{Math.round(fuelPct)}%</p>
+              <p className="text-xl font-extrabold text-slate-900">
+                <GsapNumber value={Math.round(fuelPct)} decimals={0} />%
+              </p>
               <p className="text-[11px] text-slate-400">{fuelDays} Days Remaining</p>
               <div className="mt-1.5 h-1.5 w-20 overflow-hidden rounded-full bg-slate-100">
                 <div

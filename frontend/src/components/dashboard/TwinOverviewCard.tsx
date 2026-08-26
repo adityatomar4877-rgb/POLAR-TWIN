@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import clsx from 'clsx';
+import gsap from 'gsap';
 import {
   Layers,
   Maximize2,
@@ -17,6 +18,7 @@ import { DigitalTwinScene } from '../3d/DigitalTwinScene';
 import { getFuelPrediction } from '../../api/predictions';
 import type { StationDashboardOut } from '../../api/types';
 import { useStation } from '../../context/StationContext';
+import { useGSAPTimeline } from '../../hooks/useGSAPTimeline';
 
 type Health = 'ok' | 'bad';
 
@@ -40,7 +42,7 @@ function TwinLabel({
   connector?: 'below' | 'above' | 'none';
 }) {
   return (
-    <div className={clsx('pointer-events-none absolute z-10 flex flex-col items-center', className)}>
+    <div className={clsx('twin-label pointer-events-none absolute z-10 flex flex-col items-center', className)}>
       {connector === 'above' && <span className="h-8 border-l-2 border-dashed border-slate-400/60" />}
       <div className="flex items-start gap-2.5 rounded-xl border border-slate-200/80 bg-white/90 px-3.5 py-2.5 shadow-lg backdrop-blur-md">
         <span className={clsx('mt-0.5 rounded-md p-1.5', iconClass)}>
@@ -69,6 +71,26 @@ export default function TwinOverviewCard({ dashboard }: { dashboard: StationDash
   const [expanded, setExpanded] = useState(false);
   const [view, setView] = useState<'all' | 'power' | 'habitat'>('all');
 
+  // GSAP: cinematic reveal of the viewport, then staggered floating labels
+  const scopeRef = useGSAPTimeline((scope) => {
+    gsap.from(scope.querySelector('.twin-viewport'), {
+      opacity: 0,
+      scale: 0.97,
+      y: 20,
+      duration: 0.8,
+      ease: 'power3.out',
+    });
+    gsap.from(scope.querySelectorAll('.twin-label'), {
+      opacity: 0,
+      y: 14,
+      duration: 0.55,
+      stagger: 0.08,
+      delay: 0.4,
+      ease: 'power2.out',
+      clearProps: 'transform,opacity',
+    });
+  }, []);
+
   const { data: fuelForecast } = useQuery({
     queryKey: ['fuel-forecast', selectedStationId],
     queryFn: () => getFuelPrediction(selectedStationId),
@@ -89,8 +111,7 @@ export default function TwinOverviewCard({ dashboard }: { dashboard: StationDash
   );
 
   return (
-    <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-      {/* Header */}
+    <section ref={scopeRef} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="text-[15px] font-extrabold uppercase tracking-wide text-slate-900">
@@ -129,7 +150,7 @@ export default function TwinOverviewCard({ dashboard }: { dashboard: StationDash
       {/* Viewport */}
       <div
         className={clsx(
-          'relative mt-4 overflow-hidden rounded-xl border border-slate-200 bg-gradient-to-b from-[#d8e5f2] via-[#e3edf6] to-[#eef4f9] transition-all duration-500',
+          'twin-viewport relative mt-4 overflow-hidden rounded-xl border border-slate-200 bg-gradient-to-b from-[#d8e5f2] via-[#e3edf6] to-[#eef4f9] transition-all duration-500',
           expanded ? 'h-[560px]' : 'h-[400px] lg:h-[440px]'
         )}
       >
@@ -201,6 +222,45 @@ export default function TwinOverviewCard({ dashboard }: { dashboard: StationDash
           Scroll to zoom
         </div>
       </div>
+
+      {/* Live twin telemetry strip */}
+      <div className="mt-4 grid grid-cols-2 divide-slate-100 rounded-xl border border-slate-100 bg-slate-50/60 p-1 sm:grid-cols-5 sm:divide-x">
+        <TwinStat label="Generation" value={`${(energy?.generation_kw ?? 0).toFixed(1)} kW`} dot="bg-teal-500" />
+        <TwinStat label="Consumption" value={`${(energy?.consumption_kw ?? 0).toFixed(1)} kW`} dot="bg-blue-500" />
+        <TwinStat
+          label="Battery"
+          value={`${(energy?.battery_percentage ?? 0).toFixed(0)}%`}
+          dot={(energy?.battery_percentage ?? 0) < 20 ? 'bg-red-500' : 'bg-emerald-500'}
+        />
+        <TwinStat
+          label="Fuel Reserve"
+          value={`${Math.round(energy?.fuel_percentage ?? 82)}%`}
+          dot={(energy?.fuel_percentage ?? 82) < 25 ? 'bg-red-500' : (energy?.fuel_percentage ?? 82) < 50 ? 'bg-amber-500' : 'bg-emerald-500'}
+        />
+        <TwinStat label="Occupancy" value={`${occupancy}%`} dot="bg-violet-500" className="col-span-2 sm:col-span-1" />
+      </div>
     </section>
+  );
+}
+
+function TwinStat({
+  label,
+  value,
+  dot,
+  className,
+}: {
+  label: string;
+  value: string;
+  dot: string;
+  className?: string;
+}) {
+  return (
+    <div className={clsx('flex flex-col items-center justify-center gap-0.5 px-2 py-2', className)}>
+      <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+        <span className={clsx('h-1.5 w-1.5 rounded-full', dot)} />
+        {label}
+      </span>
+      <span className="text-[13px] font-bold tabular-nums text-slate-800">{value}</span>
+    </div>
   );
 }

@@ -6,10 +6,15 @@ import WeatherKpiRow from '../components/dashboard/WeatherKpiRow';
 import TwinOverviewCard from '../components/dashboard/TwinOverviewCard';
 import ActiveAlertsPanel from '../components/dashboard/ActiveAlertsPanel';
 import EnergyOverviewCard from '../components/dashboard/EnergyOverviewCard';
+import EnergyForecastCard from '../components/dashboard/EnergyForecastCard';
 import CopilotInsightsCard from '../components/dashboard/CopilotInsightsCard';
 import PredictiveInsightsRow from '../components/dashboard/PredictiveInsightsRow';
+import EquipmentHealthCard from '../components/dashboard/EquipmentHealthCard';
+import LogisticsCrewCard from '../components/dashboard/LogisticsCrewCard';
+import SimulationStrip from '../components/dashboard/SimulationStrip';
 import RecentAutomationsCard from '../components/dashboard/RecentAutomationsCard';
 import StatusFooter from '../components/dashboard/StatusFooter';
+import { Stagger, StaggerItem } from '../components/motion/primitives';
 import { useStation } from '../context/StationContext';
 
 export const CommandCenter = ({ stationId }: { stationId: number }) => {
@@ -56,29 +61,50 @@ export const CommandCenter = ({ stationId }: { stationId: number }) => {
   const alerts = dashboard?.alerts ?? ctxDashboard?.alerts ?? [];
 
   return (
-    <div className="flex flex-col gap-5">
-      <WeatherKpiRow dashboard={data} />
+    <Stagger className="flex flex-col gap-5">
+      {/* Environment — live telemetry cards */}
+      <StaggerItem>
+        <WeatherKpiRow dashboard={data} />
+      </StaggerItem>
 
-      <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_380px]">
-        {/* Left: twin + intelligence */}
-        <div className="flex min-w-0 flex-col gap-5">
-          <TwinOverviewCard dashboard={data} />
-          <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,340px)_minmax(0,1fr)]">
+      <StaggerItem>
+        <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_380px]">
+          {/* Left: digital twin, energy predictions, equipment, logistics */}
+          <div className="flex min-w-0 flex-col gap-5">
+            <TwinOverviewCard dashboard={data} />
+
+            <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,340px)_minmax(0,1fr)]">
+              <EnergyOverviewCard energy={data.energy} />
+              <EnergyForecastCard forecast={energyForecast} />
+            </div>
+
+            <EquipmentHealthCard equipment={data.equipment ?? []} />
+            <LogisticsCrewCard station={data.station} />
+          </div>
+
+          {/* Right rail: alerts + copilot + automations */}
+          <div className="flex min-w-0 flex-col gap-5">
+            <ActiveAlertsPanel alerts={alerts} />
             <CopilotInsightsCard dashboard={data} recommendations={recommendations} />
-            <PredictiveInsightsRow dashboard={data} fuelForecast={fuelForecast} energyForecast={energyForecast} />
+            <RecentAutomationsCard stationId={stationId} />
           </div>
         </div>
+      </StaggerItem>
 
-        {/* Right: alerts + energy + automations */}
-        <div className="flex min-w-0 flex-col gap-5">
-          <ActiveAlertsPanel alerts={alerts} />
-          <EnergyOverviewCard energy={data.energy} />
-          <RecentAutomationsCard stationId={stationId} />
-        </div>
-      </div>
+      {/* Simulation-driven predictive insights */}
+      <StaggerItem>
+        <PredictiveInsightsRow dashboard={data} fuelForecast={fuelForecast} energyForecast={energyForecast} />
+      </StaggerItem>
 
-      <StatusFooter />
-    </div>
+      {/* What-if simulation quick access */}
+      <StaggerItem>
+        <SimulationStrip stationId={stationId} />
+      </StaggerItem>
+
+      <StaggerItem>
+        <StatusFooter />
+      </StaggerItem>
+    </Stagger>
   );
 };
 
