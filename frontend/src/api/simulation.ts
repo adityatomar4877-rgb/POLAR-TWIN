@@ -1,5 +1,5 @@
 import { apiClient } from './client';
-import type { CustomConditions, ScenarioRequest, ScenarioResponse } from './types';
+import type { CustomConditions, ScenarioRequest, ScenarioResponse, SimulationStatusOut } from './types';
 
 export const runSimulationScenario = async (
   stationId: number | string,
@@ -21,6 +21,11 @@ export const runSimulationScenario = async (
   return data;
 };
 
+export const getSimulationStatus = async (): Promise<SimulationStatusOut> => {
+  const { data } = await apiClient.get<SimulationStatusOut>('/simulation/status');
+  return data;
+};
+
 export const getActiveConditions = async (stationId: number | string) => {
   const { data } = await apiClient.get(`/simulation/active-conditions/${stationId}`);
   return data;
@@ -30,4 +35,3 @@ export const resetSimulation = async () => {
   const { data } = await apiClient.post('/simulation/reset');
   return data;
 };
-

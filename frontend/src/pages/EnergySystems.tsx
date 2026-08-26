@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { getStationDashboard } from '../api/stations';
 import { Zap, Sun, Wind, Battery, Fuel, Activity, ShieldCheck, Play, ArrowDownToLine, ArrowUpFromLine } from 'lucide-react';
 import { CommandPreviewModal } from '../components/operations/CommandPreviewModal';
+import EnergyFlowDiagram from '../components/energy/EnergyFlowDiagram';
 import type { CommandRequest } from '../api/types';
 
 export const EnergySystems = ({ stationId }: { stationId: number }) => {
@@ -16,7 +17,7 @@ export const EnergySystems = ({ stationId }: { stationId: number }) => {
   if (isLoading || !dashboard) {
     return (
       <div className="flex h-full items-center justify-center">
-        <Activity className="w-8 h-8 text-cyan-400 animate-spin" />
+        <Activity className="w-8 h-8 text-cyan-600 animate-spin" />
       </div>
     );
   }
@@ -71,32 +72,34 @@ export const EnergySystems = ({ stationId }: { stationId: number }) => {
     <div className="flex flex-col gap-6 max-w-6xl mx-auto h-full overflow-auto pr-2 custom-scrollbar pb-10">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-widest text-slate-100 flex items-center gap-3">
-            <Zap className="w-6 h-6 text-amber-400" />
+          <h1 className="text-2xl font-bold tracking-widest text-slate-800 flex items-center gap-3">
+            <Zap className="w-6 h-6 text-amber-600" />
             MICROGRID_ENERGY_CENTER
           </h1>
-          <p className="text-slate-400 text-sm mt-1">Real-time power generation, battery energy storage, and fuel telemetry.</p>
+          <p className="text-slate-500 text-sm mt-1">Real-time power generation, battery energy storage, and fuel telemetry.</p>
         </div>
         <div className="flex items-center gap-3">
-          <div className="px-3 py-1.5 bg-slate-900 border border-slate-700 rounded text-xs font-mono">
-            GRID_STATUS: <span className={!isEmergency ? 'text-emerald-400 font-bold' : 'text-red-400 font-bold'}>{gridStatus}</span>
+          <div className="px-3 py-1.5 bg-white border border-slate-200 rounded text-xs font-mono">
+            GRID_STATUS: <span className={!isEmergency ? 'text-emerald-600 font-bold' : 'text-red-600 font-bold'}>{gridStatus}</span>
           </div>
         </div>
       </div>
 
+      {/* Live power flow schematic */}
+      <EnergyFlowDiagram energy={energy} loads={dashboard.loads} />
+
       {isEmergency && (
-        <div className="p-4 bg-red-950/30 border border-red-900/60 rounded-lg flex flex-col md:flex-row items-start md:items-center justify-between gap-4 animate-in fade-in">
+        <div className="p-4 bg-red-50 border border-red-200 rounded-lg flex flex-col md:flex-row items-start md:items-center justify-between gap-4 animate-in fade-in">
           <div>
-            <div className="text-red-400 font-bold font-mono text-sm flex items-center gap-2">
+            <div className="text-red-600 font-bold font-mono text-sm flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-red-500 animate-ping" />
               MICROGRID DEFICIT DETECTED: {Math.abs(netKw).toFixed(1)} kW SHORTAGE
             </div>
-            <div className="text-xs text-red-200/80 mt-1">
+            <div className="text-xs text-red-700 mt-1">
               Station generators are offline or overloaded. Battery bank is discharging to support baseline loads.
             </div>
           </div>
-          <div className="flex gap-2 shrink-0">
-            <button 
+          <div className="flex gap-2 shrink-0">            <button 
               onClick={handleStartBackup}
               className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded font-mono text-xs font-bold transition-all shadow-[0_0_15px_rgba(16,185,129,0.3)] flex items-center gap-1.5"
             >
@@ -114,89 +117,89 @@ export const EnergySystems = ({ stationId }: { stationId: number }) => {
 
       {/* Primary KPI Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="bg-slate-900 border border-slate-800 p-4 rounded-lg flex flex-col justify-between">
-          <div className="flex items-center justify-between text-slate-400 text-xs font-mono">
+        <div className="bg-white border border-slate-200 p-4 rounded-lg flex flex-col justify-between">
+          <div className="flex items-center justify-between text-slate-500 text-xs font-mono">
             <span>TOTAL_GENERATION</span>
-            <Zap className="w-4 h-4 text-emerald-400" />
+            <Zap className="w-4 h-4 text-emerald-600" />
           </div>
-          <div className="text-3xl font-bold text-emerald-400 font-mono my-2">{genKw.toFixed(1)} <span className="text-sm text-slate-500">kW</span></div>
+          <div className="text-3xl font-bold text-emerald-600 font-mono my-2">{genKw.toFixed(1)} <span className="text-sm text-slate-500">kW</span></div>
           <div className="text-xs text-slate-500 font-mono">Diesel: {dieselKw.toFixed(1)} kW | Solar: {solarKw.toFixed(1)} kW</div>
         </div>
 
-        <div className="bg-slate-900 border border-slate-800 p-4 rounded-lg flex flex-col justify-between">
-          <div className="flex items-center justify-between text-slate-400 text-xs font-mono">
+        <div className="bg-white border border-slate-200 p-4 rounded-lg flex flex-col justify-between">
+          <div className="flex items-center justify-between text-slate-500 text-xs font-mono">
             <span>TOTAL_DEMAND</span>
-            <Activity className="w-4 h-4 text-amber-400" />
+            <Activity className="w-4 h-4 text-amber-600" />
           </div>
-          <div className="text-3xl font-bold text-amber-400 font-mono my-2">{consKw.toFixed(1)} <span className="text-sm text-slate-500">kW</span></div>
+          <div className="text-3xl font-bold text-amber-600 font-mono my-2">{consKw.toFixed(1)} <span className="text-sm text-slate-500">kW</span></div>
           <div className="text-xs text-slate-500 font-mono">Life Support + HVAC + Lab</div>
         </div>
 
-        <div className="bg-slate-900 border border-slate-800 p-4 rounded-lg flex flex-col justify-between">
-          <div className="flex items-center justify-between text-slate-400 text-xs font-mono">
+        <div className="bg-white border border-slate-200 p-4 rounded-lg flex flex-col justify-between">
+          <div className="flex items-center justify-between text-slate-500 text-xs font-mono">
             <span>BATTERY_STORAGE</span>
-            <Battery className="w-4 h-4 text-cyan-400" />
+            <Battery className="w-4 h-4 text-cyan-600" />
           </div>
-          <div className="text-3xl font-bold text-cyan-400 font-mono my-2">{batteryPct.toFixed(1)}%</div>
+          <div className="text-3xl font-bold text-cyan-600 font-mono my-2">{batteryPct.toFixed(1)}%</div>
           <div className="text-xs text-slate-500 font-mono">Net Flow: {batteryPower > 0 ? `+${batteryPower.toFixed(1)} kW (Charging)` : `${batteryPower.toFixed(1)} kW (Discharging)`}</div>
         </div>
 
-        <div className="bg-slate-900 border border-slate-800 p-4 rounded-lg flex flex-col justify-between">
-          <div className="flex items-center justify-between text-slate-400 text-xs font-mono">
+        <div className="bg-white border border-slate-200 p-4 rounded-lg flex flex-col justify-between">
+          <div className="flex items-center justify-between text-slate-500 text-xs font-mono">
             <span>FUEL_RESERVES</span>
-            <Fuel className="w-4 h-4 text-purple-400" />
+            <Fuel className="w-4 h-4 text-purple-600" />
           </div>
-          <div className="text-3xl font-bold text-purple-400 font-mono my-2">{fuelPct.toFixed(1)}%</div>
+          <div className="text-3xl font-bold text-purple-600 font-mono my-2">{fuelPct.toFixed(1)}%</div>
           <div className="text-xs text-slate-500 font-mono">Estimated Runway: ~180 Days</div>
         </div>
       </div>
 
       {/* Generation Sources Breakdown */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-slate-900 border border-slate-800 p-5 rounded-lg">
+        <div className="bg-white border border-slate-200 p-5 rounded-lg">
           <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2 text-slate-300 font-bold font-mono">
-              <Sun className="w-4 h-4 text-amber-400" />
+            <div className="flex items-center gap-2 text-slate-600 font-bold font-mono">
+              <Sun className="w-4 h-4 text-amber-600" />
               SOLAR_PV_ARRAY
             </div>
-            <span className="text-xs font-mono text-emerald-400 font-bold">ACTIVE</span>
+            <span className="text-xs font-mono text-emerald-600 font-bold">ACTIVE</span>
           </div>
-          <div className="text-2xl font-bold font-mono text-slate-100">{solarKw.toFixed(1)} kW</div>
-          <p className="text-xs text-slate-400 mt-2">Station photovoltaic panels tracking seasonal solar flux.</p>
+          <div className="text-2xl font-bold font-mono text-slate-800">{solarKw.toFixed(1)} kW</div>
+          <p className="text-xs text-slate-500 mt-2">Station photovoltaic panels tracking seasonal solar flux.</p>
         </div>
 
-        <div className="bg-slate-900 border border-slate-800 p-5 rounded-lg">
+        <div className="bg-white border border-slate-200 p-5 rounded-lg">
           <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2 text-slate-300 font-bold font-mono">
-              <Wind className="w-4 h-4 text-cyan-400" />
+            <div className="flex items-center gap-2 text-slate-600 font-bold font-mono">
+              <Wind className="w-4 h-4 text-cyan-600" />
               WIND_TURBINE_ARRAY
             </div>
-            <span className="text-xs font-mono text-slate-400 font-bold">STANDBY</span>
+            <span className="text-xs font-mono text-slate-500 font-bold">STANDBY</span>
           </div>
-          <div className="text-2xl font-bold font-mono text-slate-100">0.0 kW</div>
-          <p className="text-xs text-slate-400 mt-2">Katabatic polar wind turbines configured for high-wind modes.</p>
+          <div className="text-2xl font-bold font-mono text-slate-800">0.0 kW</div>
+          <p className="text-xs text-slate-500 mt-2">Katabatic polar wind turbines configured for high-wind modes.</p>
         </div>
 
-        <div className="bg-slate-900 border border-slate-800 p-5 rounded-lg">
+        <div className="bg-white border border-slate-200 p-5 rounded-lg">
           <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2 text-slate-300 font-bold font-mono">
-              <Zap className="w-4 h-4 text-emerald-400" />
+            <div className="flex items-center gap-2 text-slate-600 font-bold font-mono">
+              <Zap className="w-4 h-4 text-emerald-600" />
               DIESEL_GENERATORS
             </div>
-            <span className={`text-xs font-mono font-bold ${dieselKw > 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+            <span className={`text-xs font-mono font-bold ${dieselKw > 0 ? 'text-emerald-600' : 'text-red-600'}`}>
               {dieselKw > 0 ? 'SYNCHRONIZED' : 'OFFLINE'}
             </span>
           </div>
-          <div className="text-2xl font-bold font-mono text-slate-100">{dieselKw.toFixed(1)} kW</div>
-          <p className="text-xs text-slate-400 mt-2">Continuous baseline primary microgrid power generation.</p>
+          <div className="text-2xl font-bold font-mono text-slate-800">{dieselKw.toFixed(1)} kW</div>
+          <p className="text-xs text-slate-500 mt-2">Continuous baseline primary microgrid power generation.</p>
         </div>
       </div>
 
       {/* Interactive Operations Quick Controls */}
-      <div className="bg-slate-900 border border-slate-800 p-5 rounded-lg flex flex-col gap-4">
+      <div className="bg-white border border-slate-200 p-5 rounded-lg flex flex-col gap-4">
         <div className="flex items-center justify-between">
-          <h3 className="text-sm font-bold font-mono text-slate-300 flex items-center gap-2">
-            <ShieldCheck className="w-4 h-4 text-cyan-400" />
+          <h3 className="text-sm font-bold font-mono text-slate-600 flex items-center gap-2">
+            <ShieldCheck className="w-4 h-4 text-cyan-600" />
             OPERATOR_LOAD_MANAGEMENT_CONTROLS
           </h3>
           <span className="text-xs font-mono text-slate-500">AUTHORITY: OPERATOR</span>
@@ -205,35 +208,35 @@ export const EnergySystems = ({ stationId }: { stationId: number }) => {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <button 
             onClick={() => handleShedLoad('NON_CRITICAL')}
-            className="p-3 bg-slate-950 hover:bg-slate-800/80 border border-slate-800 hover:border-amber-500/50 rounded flex items-center justify-between transition-all group"
+            className="p-3 bg-slate-50 hover:bg-slate-100/80 border border-slate-200 hover:border-amber-500/50 rounded flex items-center justify-between transition-all group"
           >
             <div className="text-left">
-              <div className="text-xs font-bold font-mono text-slate-200 group-hover:text-amber-400">SHED NON-CRITICAL</div>
+              <div className="text-xs font-bold font-mono text-slate-700 group-hover:text-amber-600">SHED NON-CRITICAL</div>
               <div className="text-[10px] text-slate-500">Sauna, Galley & Workshops (-29 kW)</div>
             </div>
-            <ArrowDownToLine className="w-4 h-4 text-slate-500 group-hover:text-amber-400" />
+            <ArrowDownToLine className="w-4 h-4 text-slate-500 group-hover:text-amber-600" />
           </button>
 
           <button 
             onClick={() => handleShedLoad('HIGH_PRIORITY')}
-            className="p-3 bg-slate-950 hover:bg-slate-800/80 border border-slate-800 hover:border-red-500/50 rounded flex items-center justify-between transition-all group"
+            className="p-3 bg-slate-50 hover:bg-slate-100/80 border border-slate-200 hover:border-red-300 rounded flex items-center justify-between transition-all group"
           >
             <div className="text-left">
-              <div className="text-xs font-bold font-mono text-slate-200 group-hover:text-red-400">SHED LABS & LIDAR</div>
+              <div className="text-xs font-bold font-mono text-slate-700 group-hover:text-red-600">SHED LABS & LIDAR</div>
               <div className="text-[10px] text-slate-500">Science Freezers & Radar (-30 kW)</div>
             </div>
-            <ArrowDownToLine className="w-4 h-4 text-slate-500 group-hover:text-red-400" />
+            <ArrowDownToLine className="w-4 h-4 text-slate-500 group-hover:text-red-600" />
           </button>
 
           <button 
             onClick={() => handleRestoreLoad('ALL')}
-            className="p-3 bg-slate-950 hover:bg-slate-800/80 border border-slate-800 hover:border-emerald-500/50 rounded flex items-center justify-between transition-all group"
+            className="p-3 bg-slate-50 hover:bg-slate-100/80 border border-slate-200 hover:border-emerald-300 rounded flex items-center justify-between transition-all group"
           >
             <div className="text-left">
-              <div className="text-xs font-bold font-mono text-slate-200 group-hover:text-emerald-400">RESTORE ALL LOADS</div>
+              <div className="text-xs font-bold font-mono text-slate-700 group-hover:text-emerald-600">RESTORE ALL LOADS</div>
               <div className="text-[10px] text-slate-500">Re-energize shed sub-circuits</div>
             </div>
-            <ArrowUpFromLine className="w-4 h-4 text-slate-500 group-hover:text-emerald-400" />
+            <ArrowUpFromLine className="w-4 h-4 text-slate-500 group-hover:text-emerald-600" />
           </button>
         </div>
       </div>

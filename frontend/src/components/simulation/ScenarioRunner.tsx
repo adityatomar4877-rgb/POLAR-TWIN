@@ -212,6 +212,8 @@ export const ScenarioRunner = ({ stationId }: { stationId: number }) => {
         queryClient.invalidateQueries({ queryKey: ['equipment', stationId] });
         queryClient.invalidateQueries({ queryKey: ['dashboard', stationId] });
         queryClient.invalidateQueries({ queryKey: ['alerts', stationId] });
+        queryClient.invalidateQueries({ queryKey: ['recommendations', stationId] });
+        queryClient.invalidateQueries({ queryKey: ['simulation-status'] });
         refetchActive();
       }
     },
@@ -226,6 +228,8 @@ export const ScenarioRunner = ({ stationId }: { stationId: number }) => {
       queryClient.invalidateQueries({ queryKey: ['equipment', stationId] });
       queryClient.invalidateQueries({ queryKey: ['dashboard', stationId] });
       queryClient.invalidateQueries({ queryKey: ['alerts', stationId] });
+      queryClient.invalidateQueries({ queryKey: ['recommendations', stationId] });
+      queryClient.invalidateQueries({ queryKey: ['simulation-status'] });
       refetchActive();
     },
   });
@@ -769,8 +773,16 @@ export const ScenarioRunner = ({ stationId }: { stationId: number }) => {
               </div>
             )}
           </div>
+
+          {result.active_until && (
+            <p className="mt-3 font-mono text-[10px] tracking-widest text-violet-400/70">
+              SCENARIO ACTIVE UNTIL {new Date(result.active_until).toLocaleTimeString()} UTC±LOCAL · WATCH THE TWIN REACT LIVE
+            </p>
+          )}
         </div>
       )}
     </div>
   );
 };
+
+export default ScenarioRunner;
