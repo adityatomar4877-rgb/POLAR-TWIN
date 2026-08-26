@@ -1,28 +1,29 @@
 from datetime import datetime
-from typing import List, Optional
+from typing import Dict, List, Optional
 from pydantic import BaseModel, ConfigDict, Field
 
 
-class EnergyPredictionPoint(BaseModel):
-    timestamp: datetime
-    predicted_consumption_kw: float
-    predicted_generation_kw: float
-    predicted_balance_kw: float
-    lower_bound_kw: float
-    upper_bound_kw: float
-    confidence: float = 0.95
+class MLForecastHorizon(BaseModel):
+    """Prediction result for a single time horizon."""
+    average_consumption_kw: float = Field(..., description="Predicted average consumption in kW for this horizon")
 
 
 class EnergyForecastResponse(BaseModel):
+    """
+    Response schema for the Random Forest energy forecast endpoint.
+    Each horizon key ('6h', '12h', '24h') maps to a predicted average demand over that window.
+    """
     station_id: int
     station_code: str
-    generated_at: datetime
-    horizon_hours: int
-    model_name: str
-    is_fallback: bool
-    current_consumption_kw: float
-    average_predicted_consumption_kw: float
-    forecast: List[EnergyPredictionPoint]
+    generated_at: str
+    model_name: str = Field(..., description="Model name (e.g. RandomForestEnergyForecast)")
+    is_fallback: bool = Field(..., description="True only if RF models could not be loaded and a fallback was used")
+    current_consumption_kw: float = Field(..., description="Latest observed consumption reading in kW")
+    forecast: Dict[str, MLForecastHorizon] = Field(
+        ..., description="Forecasts keyed by horizon: '6h', '12h', '24h'"
+    )
+    feature_count: int = Field(..., description="Number of input features used by the model")
+    history_records_used: int = Field(..., description="Number of telemetry records used for feature engineering")
 
 
 class FuelDepletionForecastResponse(BaseModel):
@@ -42,5 +43,7 @@ class FuelDepletionForecastResponse(BaseModel):
 
 class PredictionSummaryOut(BaseModel):
     station_id: int
-    energy_forecast_24h: EnergyForecastResponse
+    energy_forecast: EnergyForecastResponse
+    energy_forecast_24h: Optional[EnergyForecastResponse] = None
     fuel_depletion_forecast: FuelDepletionForecastResponse
+

@@ -679,38 +679,62 @@ export const ScenarioRunner = ({ stationId }: { stationId: number }) => {
 
           {/* Metric Highlights Grid */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 font-mono">
-            <div className="bg-slate-900/90 p-2.5 rounded border border-slate-800">
+            <div className="bg-slate-900/90 p-2.5 rounded border border-slate-800 flex flex-col justify-between">
               <span className="text-[9px] text-slate-500 block">ENERGY DEFICIT</span>
               <span className={`text-base font-bold ${Number(result.impact?.energy_deficit_kw ?? 0) > 0 ? 'text-amber-400' : 'text-emerald-400'}`}>
-                {result.impact?.energy_deficit_kw ?? 0} kW
+                {Number(result.impact?.energy_deficit_kw ?? 0).toFixed(1)} kW
               </span>
             </div>
 
-            <div className="bg-slate-900/90 p-2.5 rounded border border-slate-800">
-              <span className="text-[9px] text-slate-500 block">PROJECTED CONSUMPTION</span>
+            <div className="bg-slate-900/90 p-2.5 rounded border border-slate-800 flex flex-col justify-between">
+              <span className="text-[9px] text-slate-500 block">PROJECTED DEMAND</span>
               <span className="text-base font-bold text-slate-200">
-                {result.impact?.projected_consumption_kw ?? (tempC < -30 ? 145 : 105)} kW
+                {Number(result.impact?.projected_consumption_kw ?? 0).toFixed(1)} kW
               </span>
             </div>
 
-            <div className="bg-slate-900/90 p-2.5 rounded border border-slate-800">
-              <span className="text-[9px] text-slate-500 block">BATTERY DROP</span>
-              <span className={`text-base font-bold ${Number(result.impact?.battery_drop_percent ?? 0) > 20 ? 'text-red-400' : 'text-cyan-400'}`}>
-                -{result.impact?.battery_drop_percent ?? 0}%
+            <div className="bg-slate-900/90 p-2.5 rounded border border-slate-800 flex flex-col justify-between">
+              <span className="text-[9px] text-slate-500 block">BATTERY DELTA</span>
+              <span className={`text-base font-bold ${Number(result.impact?.battery_drop_percent ?? 0) > 20 ? 'text-red-400' : Number(result.impact?.battery_drop_percent ?? 0) > 0 ? 'text-amber-400' : 'text-emerald-400'}`}>
+                {Number(result.impact?.battery_drop_percent ?? 0) > 0 ? `-${Number(result.impact?.battery_drop_percent).toFixed(1)}%` : '0.0%'}
               </span>
             </div>
 
-            <div className="bg-slate-900/90 p-2.5 rounded border border-slate-800">
+            <div className="bg-slate-900/90 p-2.5 rounded border border-slate-800 flex flex-col justify-between">
               <span className="text-[9px] text-slate-500 block">GRID RISK INDEX</span>
-              <span className={`text-base font-bold ${
+              <span className={`text-sm font-bold tracking-wide ${
                 String(result.impact?.grid_stability_risk).includes('CRITICAL') || String(result.impact?.grid_stability_risk).includes('HIGH')
                   ? 'text-red-400'
+                  : String(result.impact?.grid_stability_risk).includes('ELEVATED')
+                  ? 'text-amber-400'
                   : 'text-emerald-400'
               }`}>
                 {String(result.impact?.grid_stability_risk ?? 'NOMINAL')}
               </span>
             </div>
           </div>
+
+          {/* Secondary Telemetry Breakdown */}
+          {result.impact?.projected_generation_kw !== undefined && (
+            <div className="grid grid-cols-3 gap-2 font-mono text-[11px] bg-slate-900/50 p-2 rounded border border-slate-800/60 text-slate-400">
+              <div>
+                <span className="text-[9px] text-slate-500 block">PROJ. GENERATION</span>
+                <span className="font-bold text-slate-200">{Number(result.impact.projected_generation_kw).toFixed(1)} kW</span>
+              </div>
+              <div>
+                <span className="text-[9px] text-slate-500 block">FINAL BATTERY SoC</span>
+                <span className={`font-bold ${Number(result.impact.projected_final_battery_percent ?? 100) < 30 ? 'text-red-400' : 'text-slate-200'}`}>
+                  {Number(result.impact.projected_final_battery_percent ?? 0).toFixed(1)}%
+                </span>
+              </div>
+              <div>
+                <span className="text-[9px] text-slate-500 block">FINAL FUEL LEVEL</span>
+                <span className={`font-bold ${Number(result.impact.fuel_reserve_percent ?? 100) < 25 ? 'text-red-400' : 'text-slate-200'}`}>
+                  {Number(result.impact.fuel_reserve_percent ?? 0).toFixed(1)}%
+                </span>
+              </div>
+            </div>
+          )}
 
           {/* Affected Systems & Recommendations */}
           <div className="space-y-3 text-xs pt-1">
