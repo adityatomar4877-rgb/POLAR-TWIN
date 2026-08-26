@@ -26,17 +26,21 @@ class TelemetryEngine:
         station: Station,
         active_scenario: str = "NORMAL_OPERATION",
         target_equipment_id: Optional[int] = None,
+        custom_conditions: Optional[Dict] = None,
         dt_seconds: float = 10.0,
         broadcast_callback: Optional[Callable] = None,
     ) -> Dict:
         now = datetime.now(timezone.utc)
+        conds = custom_conditions or {}
 
         # 1. Update Environment Telemetry
-        weather_data = await weather_service.get_current_weather(
-            station_code=station.code,
-            lat=station.latitude,
-            lon=station.longitude,
-            elevation=station.elevation,
+        weather_data = dict(
+            await weather_service.get_current_weather(
+                station_code=station.code,
+                lat=station.latitude,
+                lon=station.longitude,
+                elevation=station.elevation,
+            )
         )
 
         # Scenario overrides on weather
@@ -46,6 +50,24 @@ class TelemetryEngine:
             weather_data["visibility"] = 1.2
             weather_data["is_simulated"] = True
             weather_data["source"] = "simulation_scenario_override"
+
+        # Custom conditions overrides on weather
+        if conds.get("temperature_c") is not None:
+            weather_data["temperature"] = round(float(conds["temperature_c"]), 1)
+            weather_data["is_simulated"] = True
+            weather_data["source"] = "custom_condition_override"
+
+        if conds.get("wind_speed_kmh") is not None:
+            weather_data["wind_speed"] = round(float(conds["wind_speed_kmh"]), 1)
+            weather_data["is_simulated"] = True
+            weather_data["source"] = "custom_condition_override"
+
+        if conds.get("blizzard_warning") is True:
+            weather_data["visibility"] = 0.8
+            weather_data["precipitation"] = 12.5
+            weather_data["wind_speed"] = max(weather_data["wind_speed"], 95.0)
+            weather_data["is_simulated"] = True
+            weather_data["source"] = "custom_condition_override"
 
         import random
         sensor_entry = SensorTelemetry(
@@ -74,11 +96,22 @@ class TelemetryEngine:
         prev_bat = latest_energy.battery_percentage if latest_energy else 85.0
         prev_fuel = latest_energy.fuel_percentage if latest_energy else 75.0
 
+        # Allow custom conditions to override starting battery/fuel
+        if conds.get("battery_percentage") is not None:
+            prev_bat = float(conds["battery_percentage"])
+        if conds.get("fuel_percentage") is not None:
+            prev_fuel = float(conds["fuel_percentage"])
+
         equipment_list = db.query(Equipment).filter(Equipment.station_id == station.id).all()
         gen1 = next((e for e in equipment_list if e.name == "Generator 1"), None)
         gen2 = next((e for e in equipment_list if e.name == "Generator 2"), None)
         gen1_online = (gen1.status in ["NORMAL", "ONLINE", "RUNNING"]) if gen1 else True
         gen2_online = (gen2.status in ["ONLINE", "RUNNING"]) if gen2 else False
+
+        if conds.get("generator_1_online") is not None:
+            gen1_online = bool(conds["generator_1_online"])
+        if conds.get("generator_2_online") is not None:
+            gen2_online = bool(conds["generator_2_online"])
 
         # 3. Simulate Microgrid Energy
         sim_energy = EnergySimulator.simulate_energy_cycle(
@@ -88,6 +121,7 @@ class TelemetryEngine:
             prev_battery_pct=prev_bat,
             prev_fuel_pct=prev_fuel,
             active_scenario=active_scenario,
+            custom_conditions=conds,
             generator_1_online=gen1_online,
             generator_2_online=gen2_online,
             dt_seconds=dt_seconds,
@@ -118,6 +152,7 @@ class TelemetryEngine:
                 equipment=eq,
                 active_scenario=active_scenario,
                 target_equipment_id=target_equipment_id,
+                custom_conditions=conds,
                 dt_seconds=dt_seconds,
             )
         db.flush()
@@ -129,7 +164,12 @@ class TelemetryEngine:
             if item.category == "FUEL":
                 total_capacity = 75000.0 if "MAITRI" in station.code.upper() else 60000.0
                 item.quantity = round(total_capacity * (sim_energy["fuel_percentage"] / 100.0), 1)
-            LogisticsSimulator.update_logistics_item(item, active_scenario=active_scenario, dt_seconds=dt_seconds)
+            LogisticsSimulator.update_logistics_item(
+                item,
+                active_scenario=active_scenario,
+                custom_conditions=conds,
+                dt_seconds=dt_seconds,
+            )
         db.flush()
 
         # 6. Automatic Anomaly Detection & Alerts
@@ -164,6 +204,8 @@ class TelemetryEngine:
             },
             "equipment_count": len(equipment_list),
             "new_alerts_triggered": len(new_alerts),
+            "active_scenario": active_scenario,
+            "custom_conditions_active": bool(conds),
         }
 
         # 7. WebSocket Broadcast if callback provided

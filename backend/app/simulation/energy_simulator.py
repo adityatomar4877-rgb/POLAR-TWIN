@@ -20,6 +20,7 @@ class EnergySimulator:
         prev_fuel_pct: float,
         active_scenario: str = "NORMAL_OPERATION",
         scenario_params: Optional[Dict] = None,
+        custom_conditions: Optional[Dict] = None,
         generator_1_online: Optional[bool] = None,
         generator_2_online: Optional[bool] = None,
         dt_seconds: float = 10.0,
@@ -28,7 +29,7 @@ class EnergySimulator:
         # Continuous time in seconds for smooth harmonic cycling
         time_sec = now.timestamp()
         hour = now.hour + (now.minute / 60.0) + (now.second / 3600.0)
-        scenario_params = scenario_params or {}
+        conds = custom_conditions or scenario_params or {}
 
         # 1. Base station life support & living quarters load
         is_maitri = "MAITRI" in station_code.upper()
@@ -58,6 +59,10 @@ class EnergySimulator:
             + electrical_jitter
         )
 
+        # Apply custom load modifier if present
+        if conds.get("load_modifier_kw") is not None:
+            total_consumption += float(conds["load_modifier_kw"])
+
         # 3. Solar PV Generation Model with Diurnal Curve & Atmospheric Attenuation
         solar_capacity = 60.0 if not is_maitri else 40.0
         if 6.5 <= hour <= 17.5:
@@ -69,9 +74,18 @@ class EnergySimulator:
         else:
             solar_gen = 0.0
 
+        # Apply custom solar factor override (e.g. 0.0 for Polar Night)
+        if conds.get("solar_factor") is not None:
+            solar_gen = max(0.0, solar_gen * float(conds["solar_factor"]))
+
         # 4. Generator Online Statuses & Scenario Modifiers
         g1_online = True if generator_1_online is None else generator_1_online
         g2_online = False if generator_2_online is None else generator_2_online
+
+        if conds.get("generator_1_online") is not None:
+            g1_online = bool(conds["generator_1_online"])
+        if conds.get("generator_2_online") is not None:
+            g2_online = bool(conds["generator_2_online"])
 
         if active_scenario == "EXTREME_COLD":
             total_consumption *= 1.55 # Thermal heating surge
@@ -82,6 +96,12 @@ class EnergySimulator:
             g1_online = False # Primary generator failure trip
         elif active_scenario == "FUEL_SHORTAGE":
             prev_fuel_pct = min(prev_fuel_pct, 12.5)
+
+        # Custom battery & fuel overrides from conditions
+        if conds.get("battery_percentage") is not None:
+            prev_battery_pct = float(conds["battery_percentage"])
+        if conds.get("fuel_percentage") is not None:
+            prev_fuel_pct = float(conds["fuel_percentage"])
 
         # 5. Diesel Generator Dispatch & Governor Dynamic Regulation
         gen1_max = 120.0 if g1_online else 0.0
@@ -151,7 +171,8 @@ class EnergySimulator:
         total_fuel_capacity_liters = 75000.0 if is_maitri else 60000.0
         load_factor = (diesel_gen / 120.0) if diesel_gen > 0 else 0.0
         bsfc = 0.255 + (0.02 * (1.0 - load_factor)) if load_factor > 0 else 0.255
-        liters_consumed = (diesel_gen * (dt_seconds / 3600.0)) * bsfc
+        fuel_burn_mult = float(conds.get("fuel_burn_multiplier", 1.0))
+        liters_consumed = (diesel_gen * (dt_seconds / 3600.0)) * bsfc * fuel_burn_mult
         fuel_pct_decrement = (liters_consumed / total_fuel_capacity_liters) * 100.0
         new_fuel_pct = round(clamp_percentage(prev_fuel_pct - fuel_pct_decrement), 2)
 

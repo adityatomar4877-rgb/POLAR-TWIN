@@ -88,6 +88,9 @@ class ExternalWeatherProvider(WeatherProvider):
     def __init__(self):
         self._cache: Dict[str, Dict[str, Any]] = {}
 
+    def clear_cache(self):
+        self._cache.clear()
+
     async def get_weather(self, station_code: str, lat: float, lon: float, elevation: float) -> Dict[str, Any]:
         cache_key = f"{lat:.3f}_{lon:.3f}"
         now_ts = datetime.now(timezone.utc).timestamp()
@@ -95,7 +98,7 @@ class ExternalWeatherProvider(WeatherProvider):
         if cache_key in self._cache:
             entry = self._cache[cache_key]
             if now_ts - entry["cached_at"] < settings.WEATHER_CACHE_TTL_SECONDS:
-                return entry["data"]
+                return dict(entry["data"])
 
         url = settings.WEATHER_API_URL
         params = {
@@ -148,6 +151,9 @@ class WeatherService:
         except Exception as e:
             logger.debug(f"External weather fetch failed for {station_code} ({e}). Using Antarctic climate fallback.")
             return await self.fallback_provider.get_weather(station_code, lat, lon, elevation)
+
+    def clear_cache(self):
+        self.external_provider.clear_cache()
 
 
 weather_service = WeatherService()

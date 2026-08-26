@@ -12,16 +12,51 @@ class EquipmentSimulator:
         equipment: Equipment,
         active_scenario: str = "NORMAL_OPERATION",
         target_equipment_id: Optional[int] = None,
+        custom_conditions: Optional[Dict] = None,
         dt_seconds: float = 10.0,
     ) -> None:
         eq_type = equipment.equipment_type.upper()
         hours_increment = dt_seconds / 3600.0
+        conds = custom_conditions or {}
 
         # Increment runtime
         if equipment.status not in ["OFFLINE", "MAINTENANCE"]:
             equipment.runtime_hours += hours_increment
 
         is_failed = False
+
+        # Custom conditions overrides
+        target_id = conds.get("target_equipment_id") or target_equipment_id
+        is_target = (target_id is not None and equipment.id == target_id)
+
+        if is_target:
+            if conds.get("equipment_state"):
+                st = str(conds["equipment_state"]).upper()
+                equipment.status = st
+                if st in ["OFFLINE", "FAILED"]:
+                    equipment.efficiency = 0.0
+                    equipment.temperature = 18.0
+                    is_failed = True
+            if conds.get("equipment_efficiency") is not None:
+                equipment.efficiency = float(conds["equipment_efficiency"])
+            if conds.get("equipment_temp_offset") is not None:
+                equipment.temperature += float(conds["equipment_temp_offset"])
+
+        # Check generator states from custom conditions
+        if conds.get("generator_1_online") is False and "Generator 1" in equipment.name:
+            equipment.status = "OFFLINE"
+            equipment.efficiency = 0.0
+            is_failed = True
+        elif conds.get("generator_1_online") is True and "Generator 1" in equipment.name and equipment.status == "OFFLINE":
+            equipment.status = "ONLINE"
+            equipment.efficiency = 94.0
+
+        if conds.get("generator_2_online") is True and "Generator 2" in equipment.name and equipment.status == "OFFLINE":
+            equipment.status = "ONLINE"
+            equipment.efficiency = 94.0
+        elif conds.get("generator_2_online") is False and "Generator 2" in equipment.name:
+            equipment.status = "OFFLINE"
+            equipment.efficiency = 0.0
 
         # Scenario impacts
         if active_scenario == "GENERATOR_FAILURE":
@@ -45,7 +80,7 @@ class EquipmentSimulator:
                 equipment.efficiency = max(78.0, equipment.efficiency - 0.1)
 
         # Baseline thermal and efficiency physics if running normally
-        if not is_failed and active_scenario == "NORMAL_OPERATION":
+        if not is_failed and active_scenario in ["NORMAL_OPERATION", "CUSTOM"] and not is_target:
             if eq_type == "GENERATOR":
                 equipment.temperature = round(72.0 + random.uniform(-1.5, 1.5), 1)
                 equipment.efficiency = round(max(88.0, min(97.0, 94.0 + random.uniform(-0.5, 0.5))), 1)
