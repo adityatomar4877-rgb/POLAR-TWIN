@@ -66,3 +66,44 @@ def test_reset_simulation(client):
     response = client.post("/api/simulation/reset")
     assert response.status_code == 200
     assert response.json()["success"] is True
+
+
+def test_trigger_custom_conditions_scenario(client):
+    payload = {
+        "station_id": "bharati",
+        "scenario": "CUSTOM",
+        "duration_minutes": 60,
+        "apply_to_live": True,
+        "custom_conditions": {
+            "temperature_c": -52.0,
+            "wind_speed_kmh": 115.0,
+            "solar_factor": 0.0,
+            "blizzard_warning": True,
+            "load_modifier_kw": 45.0,
+            "generator_1_online": False,
+            "generator_2_online": True,
+            "battery_percentage": 65.0,
+            "fuel_burn_multiplier": 1.5,
+        },
+    }
+    response = client.post("/api/simulation/scenario", json=payload)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["scenario"] == "CUSTOM"
+    assert data["station_code"] == "BHARATI"
+    assert "energy_deficit_kw" in data["impact"]
+    assert data["impact"]["projected_consumption_kw"] > 100.0
+    assert len(data["affected_systems"]) > 0
+    assert any("Generator 1" in s for s in data["affected_systems"])
+    assert len(data["recommendations"]) > 0
+    assert data["applied_to_simulation"] is True
+    assert data["custom_conditions"] is not None
+    assert data["custom_conditions"]["temperature_c"] == -52.0
+
+    # Verify active-conditions endpoint
+    active_resp = client.get("/api/simulation/active-conditions/bharati")
+    assert active_resp.status_code == 200
+    active_data = active_resp.json()
+    assert active_data["active_scenario"] == "CUSTOM"
+    assert active_data["active_conditions"]["temperature_c"] == -52.0
+

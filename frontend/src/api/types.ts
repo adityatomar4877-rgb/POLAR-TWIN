@@ -152,12 +152,31 @@ export interface CommandResponse {
   executed_at?: string;
 }
 
+export interface CustomConditions {
+  temperature_c?: number;
+  wind_speed_kmh?: number;
+  solar_factor?: number;
+  blizzard_warning?: boolean;
+  load_modifier_kw?: number;
+  generator_1_online?: boolean;
+  generator_2_online?: boolean;
+  battery_percentage?: number;
+  target_equipment_id?: number;
+  equipment_state?: string;
+  equipment_efficiency?: number;
+  equipment_temp_offset?: number;
+  fuel_percentage?: number;
+  fuel_burn_multiplier?: number;
+  resupply_delay_days?: number;
+}
+
 export interface ScenarioRequest {
   station_id: number | string;
   scenario: string;
   equipment_id?: number;
   duration_minutes?: number;
   apply_to_live?: boolean;
+  custom_conditions?: CustomConditions;
 }
 
 export interface ScenarioResponse {
@@ -169,4 +188,6 @@ export interface ScenarioResponse {
   recommendations: string[];
   applied_to_simulation: boolean;
   active_until?: string;
+  custom_conditions?: Record<string, any>;
 }
+

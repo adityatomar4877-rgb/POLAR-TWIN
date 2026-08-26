@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { getStationEquipment } from '../api/stations';
-import { Settings, ShieldCheck, Activity, Cpu } from 'lucide-react';
+import { Activity, Cpu } from 'lucide-react';
 
 export const Infrastructure = ({ stationId }: { stationId: number }) => {
   const { data: equipment, isLoading } = useQuery({

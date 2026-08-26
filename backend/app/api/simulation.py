@@ -15,6 +15,7 @@ VALID_SCENARIOS = {
     "FUEL_SHORTAGE",
     "EQUIPMENT_DEGRADATION",
     "SUPPLY_DELAY",
+    "CUSTOM",
 }
 
 
@@ -22,6 +23,21 @@ VALID_SCENARIOS = {
 def get_simulation_status():
     """Retrieves current simulation lifecycle status, tick interval, active scenarios, and cycles executed."""
     return simulation_service.get_status()
+
+
+@router.get("/active-conditions/{station_id}")
+def get_active_conditions(station_id: str, db: Session = Depends(get_db)):
+    """Retrieves the currently active custom conditions and active scenario for a specific station."""
+    from app.services.station_service import station_service
+    station = station_service.get_station_by_id_or_code(db, station_id)
+    code = station.code.upper()
+    return {
+        "station_id": station.id,
+        "station_code": code,
+        "active_scenario": simulation_service.active_scenarios.get(code, "NORMAL_OPERATION"),
+        "active_conditions": simulation_service.active_conditions.get(code, None),
+        "expires_at": simulation_service.scenario_expiries.get(code, None),
+    }
 
 
 @router.post("/start")
@@ -51,7 +67,7 @@ def trigger_scenario(
     db: Session = Depends(get_db),
 ):
     """
-    Executes What-If simulation scenarios (e.g. GENERATOR_FAILURE, EXTREME_COLD, HIGH_ENERGY_DEMAND, FUEL_SHORTAGE).
+    Executes What-If simulation scenarios (e.g. GENERATOR_FAILURE, EXTREME_COLD, HIGH_ENERGY_DEMAND, CUSTOM).
     Calculates immediate system impacts, affected subsystems, and operational recommendations.
     """
     scenario_clean = request.scenario.strip().upper()

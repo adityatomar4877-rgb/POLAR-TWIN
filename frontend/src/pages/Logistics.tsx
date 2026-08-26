@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { getStationDashboard } from '../api/stations';
-import { Package, Fuel, Utensils, Wrench, Activity, AlertCircle } from 'lucide-react';
+import { Package, Activity, AlertCircle } from 'lucide-react';
 
 export const Logistics = ({ stationId }: { stationId: number }) => {
   const { data: dashboard, isLoading } = useQuery({

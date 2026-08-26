@@ -1,5 +1,5 @@
 from datetime import datetime, timezone
-from typing import List, Optional
+from typing import Dict, List, Optional
 from app.models.logistics import LogisticsItem
 from app.utils.calculations import calculate_days_remaining
 from app.core.config import settings
@@ -12,13 +12,17 @@ class LogisticsSimulator:
     def update_logistics_item(
         item: LogisticsItem,
         active_scenario: str = "NORMAL_OPERATION",
+        custom_conditions: Optional[Dict] = None,
         dt_seconds: float = 10.0,
     ) -> None:
         fraction_of_day = dt_seconds / 86400.0
+        conds = custom_conditions or {}
 
-        # Adjust burn rate based on scenarios
+        # Adjust burn rate based on scenarios and custom conditions
         consumption_multiplier = 1.0
-        if active_scenario == "EXTREME_COLD" and item.category == "FUEL":
+        if conds.get("fuel_burn_multiplier") is not None and item.category == "FUEL":
+            consumption_multiplier = float(conds["fuel_burn_multiplier"])
+        elif active_scenario == "EXTREME_COLD" and item.category == "FUEL":
             consumption_multiplier = 1.5
         elif active_scenario == "HIGH_ENERGY_DEMAND" and item.category == "FUEL":
             consumption_multiplier = 1.35

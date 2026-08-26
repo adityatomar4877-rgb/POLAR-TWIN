@@ -1,5 +1,5 @@
 import { Canvas } from '@react-three/fiber';
-import { OrbitControls, Environment, ContactShadows, Box, Sphere, Text } from '@react-three/drei';
+import { OrbitControls, Environment, ContactShadows, Box, Text } from '@react-three/drei';
 import { useQuery } from '@tanstack/react-query';
 import { getStationEquipment } from '../../api/stations';
 import type { Equipment } from '../../api/types';
