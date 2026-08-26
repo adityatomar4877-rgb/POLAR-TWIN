@@ -1,100 +1,124 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useState } from 'react';
 import { WS_BASE_URL } from '../api/client';
 import { useQueryClient } from '@tanstack/react-query';
 
-export interface WsMessage {
-  type: string;
-  station_id: number;
-  data?: any;
+/**
+ * Backend broadcasts two message shapes over /ws/stations/{id}:
+ *
+ * 1) Telemetry tick (raw dict, no wrapper key):
+ *    { station_id, station_code, timestamp, environment: {...}, energy: {...},
+ *      equipment_count, new_alerts_triggered }
+ *
+ * 2) Command event envelope:
+ *    { event: "COMMAND_COMPLETED", station_code, timestamp, data: {...} }
+ */
+export interface WsTelemetryTick {
+  station_id?: number;
+  station_code?: string;
+  timestamp?: string;
+  environment?: Record<string, unknown>;
+  energy?: Record<string, unknown>;
+  equipment_count?: number;
+  new_alerts_triggered?: number;
 }
+
+export interface WsCommandEvent {
+  event?: string;
+  station_code?: string;
+  timestamp?: string;
+  data?: Record<string, unknown>;
+}
+
+export type WsMessage = WsTelemetryTick & WsCommandEvent & { type?: string };
 
 export function useWebSocket(stationId: number | null) {
   const [isConnected, setIsConnected] = useState(false);
   const [lastMessageTime, setLastMessageTime] = useState<Date | null>(null);
-  const ws = useRef<WebSocket | null>(null);
-  const reconnectTimeout = useRef<NodeJS.Timeout | null>(null);
   const queryClient = useQueryClient();
 
-  const connect = useCallback(() => {
+  useEffect(() => {
     if (!stationId) return;
 
-    if (ws.current?.readyState === WebSocket.OPEN) {
-      ws.current.close();
-    }
+    let ws: WebSocket | null = null;
+    let reconnectTimeout: ReturnType<typeof setTimeout> | null = null;
+    let disposed = false;
 
-    const url = `${WS_BASE_URL}/stations/${stationId}`;
-    console.log(`Connecting to WebSocket: ${url}`);
-    ws.current = new WebSocket(url);
+    const handleMessage = (message: WsMessage) => {
+      // Shape (a): raw telemetry tick carries numeric station_id directly
+      if (typeof message.station_id === 'number' && message.station_id !== stationId) return;
 
-    ws.current.onopen = () => {
-      console.log('WebSocket connected');
-      setIsConnected(true);
-      // Invalidate dashboard to get fresh initial state upon reconnection
-      queryClient.invalidateQueries({ queryKey: ['dashboard', stationId] });
-      queryClient.invalidateQueries({ queryKey: ['equipment', stationId] });
-    };
+      // Telemetry tick (no wrapper key): presence of energy/environment payload
+      if (!message.event && (message.energy || message.environment)) {
+        queryClient.invalidateQueries({ queryKey: ['dashboard', stationId] });
+        if ((message.new_alerts_triggered ?? 0) > 0) {
+          queryClient.invalidateQueries({ queryKey: ['alerts', stationId] });
+        }
+        return;
+      }
 
-    ws.current.onclose = () => {
-      console.log('WebSocket disconnected');
-      setIsConnected(false);
-      // Auto-reconnect after 3 seconds
-      reconnectTimeout.current = setTimeout(connect, 3000);
-    };
+      // Shape (b): command event envelope { event, data }
+      if (message.event === 'COMMAND_COMPLETED') {
+        ['equipment', 'dashboard', 'alerts', 'operations-history', 'loads', 'recommendations'].forEach(
+          (key) => queryClient.invalidateQueries({ queryKey: [key, stationId] })
+        );
+        return;
+      }
 
-    ws.current.onerror = (error) => {
-      console.error('WebSocket error:', error);
-      ws.current?.close();
-    };
-
-    ws.current.onmessage = (event) => {
-      setLastMessageTime(new Date());
-      try {
-        const message: WsMessage = JSON.parse(event.data);
-        handleMessage(message, stationId, queryClient);
-      } catch (e) {
-        console.error('Error parsing WS message:', e);
+      // Legacy typed envelope fallback
+      if (message.type === 'TELEMETRY_UPDATE') {
+        queryClient.invalidateQueries({ queryKey: ['dashboard', stationId] });
+      }
+      if (message.type === 'EQUIPMENT_UPDATE' || message.type === 'EQUIPMENT_STATE_CHANGED') {
+        ['equipment', 'dashboard'].forEach((key) =>
+          queryClient.invalidateQueries({ queryKey: [key, stationId] })
+        );
+      }
+      if (message.type === 'ALERT_TRIGGERED') {
+        queryClient.invalidateQueries({ queryKey: ['alerts', stationId] });
       }
     };
-  }, [stationId, queryClient]);
 
-  useEffect(() => {
+    const connect = () => {
+      if (disposed) return;
+      ws = new WebSocket(`${WS_BASE_URL}/stations/${stationId}`);
+
+      ws.onopen = () => {
+        if (disposed) return;
+        setIsConnected(true);
+        // Refresh initial state upon (re)connection
+        queryClient.invalidateQueries({ queryKey: ['dashboard', stationId] });
+        queryClient.invalidateQueries({ queryKey: ['equipment', stationId] });
+      };
+
+      ws.onclose = () => {
+        if (disposed) return;
+        setIsConnected(false);
+        reconnectTimeout = setTimeout(connect, 3000); // auto-reconnect
+      };
+
+      ws.onerror = () => {
+        ws?.close();
+      };
+
+      ws.onmessage = (event) => {
+        setLastMessageTime(new Date());
+        try {
+          const message: WsMessage = JSON.parse(event.data);
+          handleMessage(message);
+        } catch {
+          // Malformed frame; ignore.
+        }
+      };
+    };
+
     connect();
 
     return () => {
-      if (reconnectTimeout.current) clearTimeout(reconnectTimeout.current);
-      if (ws.current) {
-        ws.current.close();
-      }
+      disposed = true;
+      if (reconnectTimeout) clearTimeout(reconnectTimeout);
+      ws?.close();
     };
-  }, [connect]);
+  }, [stationId, queryClient]);
 
   return { isConnected, lastMessageTime };
-}
-
-// Logic to handle different types of real-time events
-function handleMessage(message: WsMessage, currentStationId: number, queryClient: any) {
-  if (message.station_id !== currentStationId) return;
-
-  // Real-time telemetry tick
-  if (message.type === 'TELEMETRY_UPDATE') {
-    // We could update a localized store here or update query cache directly
-    // Instead of completely invalidating (which causes full HTTP fetch),
-    // we can update the cache directly for high-frequency data if we want.
-    // For now, let's trigger a soft invalidate or just rely on the WS for the UI.
-    
-    // Example of setting query data directly if needed:
-    // queryClient.setQueryData(['dashboard', currentStationId], (oldData: any) => ({ ...oldData, ...message.data }));
-    queryClient.invalidateQueries({ queryKey: ['dashboard', currentStationId] });
-  }
-
-  // Equipment state changed (e.g., STARTING -> RUNNING)
-  if (message.type === 'EQUIPMENT_UPDATE' || message.type === 'EQUIPMENT_STATE_CHANGED') {
-    queryClient.invalidateQueries({ queryKey: ['equipment', currentStationId] });
-    queryClient.invalidateQueries({ queryKey: ['dashboard', currentStationId] });
-  }
-
-  // New alert triggered
-  if (message.type === 'ALERT_TRIGGERED') {
-    queryClient.invalidateQueries({ queryKey: ['alerts', currentStationId] });
-  }
 }

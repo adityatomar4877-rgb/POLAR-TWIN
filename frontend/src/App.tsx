@@ -1,31 +1,93 @@
-import { useState } from 'react';
+import type { ReactNode } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { StationProvider, useStation } from './context/StationContext';
 import { MainLayout } from './components/layout/MainLayout';
+import Landing from './pages/Landing';
 import { CommandCenter } from './pages/CommandCenter';
 import { EnergySystems } from './pages/EnergySystems';
 import { Environment } from './pages/Environment';
 import { Infrastructure } from './pages/Infrastructure';
 import { Logistics } from './pages/Logistics';
 import { Operations } from './pages/Operations';
+import CopilotPage from './pages/CopilotPage';
+import PredictionsPage from './pages/PredictionsPage';
+import SimulationPage from './pages/SimulationPage';
+import AuditPage from './pages/AuditPage';
+import CommsPage from './pages/CommsPage';
+import TasksPage from './pages/TasksPage';
+
+/** Injects the globally selected station id into a workspace page. */
+function Stationed({ render }: { render: (stationId: number) => ReactNode }) {
+  const { selectedStationId } = useStation();
+  return <>{render(selectedStationId)}</>;
+}
 
 function App() {
-  // Hardcoded to Bharati (ID 2) for the Generator Failure demo scenario
-  const [currentStationId] = useState<number>(2);
-
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<MainLayout currentStationId={currentStationId} />}>
-          <Route index element={<CommandCenter stationId={currentStationId} />} />
-          <Route path="energy" element={<EnergySystems stationId={currentStationId} />} />
-          <Route path="environment" element={<Environment stationId={currentStationId} />} />
-          <Route path="infrastructure" element={<Infrastructure stationId={currentStationId} />} />
-          <Route path="logistics" element={<Logistics stationId={currentStationId} />} />
-          <Route path="operations" element={<Operations stationId={currentStationId} />} />
+    <StationProvider>
+      <BrowserRouter>
+        <Routes>
+          {/* Cinematic mission landing — continuous scroll narrative */}
+          <Route path="/" element={<Landing />} />
+
+          {/* Operational workspaces */}
+          <Route element={<MainLayout />}>
+            <Route
+              path="/command"
+              element={<Stationed render={(id) => <CommandCenter stationId={id} />} />}
+            />
+            <Route
+              path="/energy"
+              element={<Stationed render={(id) => <EnergySystems stationId={id} />} />}
+            />
+            <Route
+              path="/environment"
+              element={<Stationed render={(id) => <Environment stationId={id} />} />}
+            />
+            <Route
+              path="/infrastructure"
+              element={<Stationed render={(id) => <Infrastructure stationId={id} />} />}
+            />
+            <Route
+              path="/logistics"
+              element={<Stationed render={(id) => <Logistics stationId={id} />} />}
+            />
+            <Route
+              path="/operations"
+              element={<Stationed render={(id) => <Operations stationId={id} />} />}
+            />
+            <Route path="/copilot" element={<CopilotPage />} />
+            <Route
+              path="/predictions"
+              element={<Stationed render={(id) => <PredictionsPage stationId={id} />} />}
+            />
+            <Route
+              path="/simulation"
+              element={<Stationed render={(id) => <SimulationPage stationId={id} />} />}
+            />
+            <Route path="/comms" element={<CommsPage />} />
+            <Route
+              path="/tasks"
+              element={<Stationed render={(id) => <TasksPage stationId={id} />} />}
+            />
+            <Route
+              path="/maintenance"
+              element={<Stationed render={(id) => <Infrastructure stationId={id} />} />}
+            />
+            <Route
+              path="/resupply"
+              element={<Stationed render={(id) => <Logistics stationId={id} />} />}
+            />
+            <Route
+              path="/audit"
+              element={<Stationed render={(id) => <AuditPage stationId={id} />} />}
+            />
+          </Route>
+
           <Route path="*" element={<Navigate to="/" replace />} />
-        </Route>
-      </Routes>
-    </BrowserRouter>
+        </Routes>
+      </BrowserRouter>
+    </StationProvider>
   );
 }
 

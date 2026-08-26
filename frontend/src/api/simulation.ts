@@ -1,5 +1,5 @@
 import { apiClient } from './client';
-import type { ScenarioRequest, ScenarioResponse } from './types';
+import type { ScenarioRequest, ScenarioResponse, SimulationStatusOut } from './types';
 
 export const runSimulationScenario = async (
   stationId: number | string,
@@ -11,6 +11,11 @@ export const runSimulationScenario = async (
     apply_to_live: true,
   };
   const { data } = await apiClient.post<ScenarioResponse>('/simulation/scenario', req);
+  return data;
+};
+
+export const getSimulationStatus = async (): Promise<SimulationStatusOut> => {
+  const { data } = await apiClient.get<SimulationStatusOut>('/simulation/status');
   return data;
 };
 

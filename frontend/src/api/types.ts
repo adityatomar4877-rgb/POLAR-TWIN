@@ -68,6 +68,7 @@ export interface Alert {
   title: string;
   message: string;
   source: string;
+  related_entity_id?: number | null;
   is_active?: boolean;
   acknowledged: boolean;
   created_at: string;
@@ -169,4 +170,152 @@ export interface ScenarioResponse {
   recommendations: string[];
   applied_to_simulation: boolean;
   active_until?: string;
+}
+
+/* ---------- Operational Recommendations ---------- */
+
+export interface OperationalRecommendation {
+  id: number;
+  station_id: number;
+  severity: 'INFO' | 'WARNING' | 'CRITICAL' | string;
+  category: 'ENERGY' | 'EQUIPMENT' | 'LOGISTICS' | 'ENVIRONMENT' | string;
+  title: string;
+  explanation: string;
+  suggested_action: string;
+  target_command_type?: string | null;
+  target_equipment_id?: number | null;
+  status: 'ACTIVE' | 'ACCEPTED' | 'DISMISSED' | 'EXECUTED' | 'EXPIRED' | string;
+  created_at: string;
+  expires_at?: string | null;
+}
+
+/* ---------- Audit Trail ---------- */
+
+export interface AuditLogOut {
+  id: number;
+  station_id: number;
+  command_id?: number | null;
+  actor: string;
+  action: string;
+  target: string;
+  result: string;
+  timestamp: string;
+  previous_state_json?: string | null;
+  new_state_json?: string | null;
+}
+
+/* ---------- Emergency Mode ---------- */
+
+export interface EmergencyModeRequest {
+  enabled: boolean;
+  reason?: string;
+}
+
+/* ---------- Maintenance ---------- */
+
+export interface MaintenanceTask {
+  id: number;
+  station_id: number;
+  equipment_id?: number | null;
+  title: string;
+  description?: string | null;
+  priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL' | string;
+  status: 'OPEN' | 'SCHEDULED' | 'IN_PROGRESS' | 'COMPLETED' | string;
+  recommended_by: string;
+  assigned_to?: string | null;
+  created_at: string;
+  scheduled_for?: string | null;
+  completed_at?: string | null;
+}
+
+export interface MaintenanceTaskCreate {
+  equipment_id?: number | null;
+  title: string;
+  description?: string | null;
+  priority?: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL' | string;
+  recommended_by?: string;
+  assigned_to?: string | null;
+  scheduled_for?: string | null;
+}
+
+/* ---------- Resupply ---------- */
+
+export interface ResupplyRequest {
+  id: number;
+  station_id: number;
+  item: string;
+  quantity: number;
+  unit: string;
+  priority: string;
+  reason?: string | null;
+  status: string;
+  requested_by: string;
+  requested_at: string;
+  expected_arrival?: string | null;
+  completed_at?: string | null;
+}
+
+export interface ResupplyRequestCreate {
+  item: string;
+  quantity: number;
+  unit?: string;
+  priority?: string;
+  reason?: string | null;
+  requested_by?: string;
+}
+
+/* ---------- Predictions ---------- */
+
+export interface EnergyPredictionPoint {
+  timestamp: string;
+  predicted_consumption_kw: number;
+  predicted_generation_kw: number;
+  predicted_balance_kw: number;
+  lower_bound_kw: number;
+  upper_bound_kw: number;
+  confidence: number;
+}
+
+export interface EnergyForecast {
+  station_id: number;
+  station_code: string;
+  generated_at: string;
+  horizon_hours: number;
+  model_name: string;
+  is_fallback: boolean;
+  current_consumption_kw: number;
+  average_predicted_consumption_kw: number;
+  forecast: EnergyPredictionPoint[];
+}
+
+export interface FuelForecast {
+  station_id: number;
+  station_code: string;
+  current_fuel_percentage: number;
+  current_fuel_liters: number;
+  estimated_daily_consumption_liters: number;
+  days_until_critical: number;
+  critical_threshold_percentage: number;
+  projected_critical_date?: string | null;
+  projected_depletion_date?: string | null;
+  recommended_resupply: boolean;
+  status: string;
+  advisory_notes: string;
+}
+
+export interface PredictionSummaryOut {
+  station_id: number;
+  energy_forecast_24h: EnergyForecast;
+  fuel_depletion_forecast: FuelForecast;
+}
+
+/* ---------- Simulation Status ---------- */
+
+export interface SimulationStatusOut {
+  is_running: boolean;
+  interval_seconds: number;
+  last_tick_at?: string | null;
+  active_scenarios: Record<string, string>;
+  active_scenario_expiry: Record<string, string | null>;
+  total_cycles_executed: number;
 }

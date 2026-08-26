@@ -1,35 +1,173 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
 @import "tailwindcss";
 
 @theme {
+  /* Antarctic command-center palette */
+  --color-polar-navy: #0b1329;
+  --color-polar-deep: #060b1a;
+  --color-polar-slate: #1c2a4a;
+  --color-ice-cyan: #06b6d4;
+  --color-ice-glow: #22d3ee;
+  --color-aurora-teal: #2dd4bf;
+  --color-warn-amber: #f59e0b;
+  --color-hazard-red: #ef4444;
+  --color-sim-violet: #a78bfa;
+
+  /* Light operations-center surfaces */
+  --color-canvas: #eef2f7;
+  --color-card: #ffffff;
+
   --color-brand-cyan: #06b6d4;
   --color-brand-blue: #3b82f6;
   --color-brand-navy: #0f172a;
-  
-  --color-status-healthy: #10b981; /* emerald-500 */
-  --color-status-warning: #f59e0b; /* amber-500 */
-  --color-status-critical: #ef4444; /* red-500 */
-  --color-status-offline: #3f3f46; /* zinc-700 */
-  --color-status-starting: #06b6d4; /* cyan-500 */
+
+  --color-status-healthy: #10b981;
+  --color-status-warning: #f59e0b;
+  --color-status-critical: #ef4444;
+  --color-status-offline: #9ca3af;
+  --color-status-starting: #06b6d4;
+
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+    Roboto, sans-serif;
+  --font-mono: "JetBrains Mono", "IBM Plex Mono", ui-monospace, SFMono-Regular,
+    Menlo, monospace;
 }
 
 @layer base {
+  html {
+    background-color: var(--color-canvas);
+  }
   body {
-    @apply bg-slate-950 text-slate-100 font-sans antialiased;
+    @apply bg-canvas text-slate-800 font-sans antialiased;
   }
 }
 
-/* Custom scrollbar for dark theme */
+/* ---------- Lenis smooth scroll ---------- */
+html.lenis,
+html.lenis body {
+  height: auto;
+}
+.lenis.lenis-smooth {
+  scroll-behavior: auto !important;
+}
+.lenis.lenis-smooth [data-lenis-prevent] {
+  overscroll-behavior: contain;
+}
+.lenis.lenis-stopped {
+  overflow: hidden;
+}
+
+/* ---------- Glassmorphism panels (light) ---------- */
+@layer utilities {
+  .glass-panel {
+    background: rgba(255, 255, 255, 0.82);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border: 1px solid rgb(226 232 240);
+    box-shadow:
+      0 1px 2px rgba(15, 23, 42, 0.04),
+      0 8px 24px rgba(15, 23, 42, 0.05);
+  }
+
+  .glass-panel-strong {
+    background: rgba(255, 255, 255, 0.94);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgb(203 213 225);
+    box-shadow:
+      0 4px 12px rgba(15, 23, 42, 0.06),
+      0 16px 48px rgba(15, 23, 42, 0.1);
+  }
+
+  .text-glow-cyan {
+    text-shadow: none;
+  }
+
+  .border-glow-cyan {
+    box-shadow: 0 0 0 3px rgba(34, 211, 238, 0.15);
+  }
+
+  .polar-grid-bg {
+    background-image:
+      linear-gradient(rgba(148, 163, 184, 0.08) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(148, 163, 184, 0.08) 1px, transparent 1px);
+    background-size: 56px 56px;
+  }
+
+  /* Dark variant used by the cinematic landing */
+  .theme-dark .glass-panel {
+    background: linear-gradient(
+      160deg,
+      rgba(28, 42, 74, 0.55),
+      rgba(11, 19, 41, 0.75)
+    );
+    border: 1px solid rgba(148, 197, 255, 0.12);
+    box-shadow:
+      0 8px 32px rgba(2, 6, 23, 0.55),
+      inset 0 1px 0 rgba(148, 197, 255, 0.08);
+  }
+  .theme-dark .text-glow-cyan {
+    text-shadow:
+      0 0 12px rgba(34, 211, 238, 0.65),
+      0 0 42px rgba(34, 211, 238, 0.25);
+  }
+}
+
+/* ---------- Status ring pulse animations ---------- */
+@keyframes status-ring-pulse {
+  0% {
+    box-shadow: 0 0 0 0 currentColor;
+    opacity: 0.9;
+  }
+  70% {
+    box-shadow: 0 0 0 10px transparent;
+    opacity: 1;
+  }
+  100% {
+    box-shadow: 0 0 0 0 transparent;
+    opacity: 0.9;
+  }
+}
+.animate-status-ring {
+  animation: status-ring-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes emergency-strobe {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+.animate-emergency-strobe {
+  animation: emergency-strobe 1s ease-in-out infinite;
+}
+
+/* ---------- Custom scrollbar ---------- */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
 ::-webkit-scrollbar-track {
-  background: #020617; /* slate-950 */
+  background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #1e293b; /* slate-800 */
+  background: #cbd5e1;
   border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #334155; /* slate-700 */
+  background: #94a3b8;
+}
+
+/* Dark scrollbar inside the sidebar / cinematic landing */
+.theme-dark ::-webkit-scrollbar-track {
+  background: #020617;
+}
+.theme-dark ::-webkit-scrollbar-thumb {
+  background: #1e293b;
+}
+.theme-dark ::-webkit-scrollbar-thumb:hover {
+  background: #334155;
 }

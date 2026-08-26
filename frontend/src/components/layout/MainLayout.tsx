@@ -1,41 +1,41 @@
 import { Outlet } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
-import { Header } from './Header';
-import { useWebSocket } from '../../hooks/useWebSocket';
+import TopBar from './TopBar';
+import EmergencyModeHUD from '../emergency/EmergencyModeHUD';
+import { useStation } from '../../context/StationContext';
 
-export const MainLayout = ({ currentStationId }: { currentStationId: number }) => {
-  // Global WebSocket connection for the active station
-  const { isConnected, lastMessageTime } = useWebSocket(currentStationId);
+export const MainLayout = () => {
+  const { dashboard, emergencyModeActive } = useStation();
+
+  const gridEmergency =
+    dashboard?.energy?.grid_status?.toUpperCase() === 'EMERGENCY' ||
+    dashboard?.energy?.grid_status?.toUpperCase() === 'CRITICAL';
 
   return (
-    <div className="flex h-screen w-full bg-slate-950 overflow-hidden text-slate-200">
-      <Sidebar />
-      
-      <div className="flex flex-col flex-1 min-w-0">
-        <Header currentStationId={currentStationId} />
-        
-        <main className="flex-1 overflow-auto p-4 md:p-6 relative">
+    <div className="relative flex h-screen w-full overflow-hidden bg-slate-950 text-slate-800">
+      {/* Dashboard photo background */}
+      <div
+        className="pointer-events-none fixed inset-0 z-0 bg-cover bg-center bg-no-repeat transition-all duration-700"
+        style={{ backgroundImage: "url('/polar-bg.jpg')" }}
+      >
+        <div className="absolute inset-0 bg-slate-900/20 backdrop-blur-[1px]" />
+      </div>
+
+      <div className="relative z-10 flex h-full">
+        <Sidebar />
+      </div>
+
+      <div className="relative z-10 flex min-w-0 flex-1 flex-col">
+        <TopBar />
+
+        <main className="custom-scrollbar relative flex-1 overflow-y-auto px-6 pb-6 pt-5 lg:px-8">
           {/* Main content injected here by router */}
           <Outlet />
         </main>
-        
-        {/* Global Footer / Status Bar */}
-        <footer className="h-8 border-t border-slate-800 bg-slate-950 flex items-center px-4 text-xs font-mono text-slate-500 justify-between shrink-0">
-          <div className="flex items-center gap-4">
-            <span className="flex items-center gap-2">
-              <span className={`w-2 h-2 rounded-full ${isConnected ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'bg-red-500'}`} />
-              {isConnected ? 'SECURE_LINK_ACTIVE' : 'LINK_OFFLINE'}
-            </span>
-            <span>|</span>
-            <span>PING: &lt;45ms</span>
-          </div>
-          <div className="flex items-center gap-4">
-            <span>STATION: {currentStationId === 1 ? 'MAITRI' : 'BHARATI'}</span>
-            <span>|</span>
-            <span>LAST_SYNC: {lastMessageTime ? lastMessageTime.toLocaleTimeString() : 'AWAITING'}</span>
-          </div>
-        </footer>
       </div>
+
+      {/* Emergency operational HUD overlay */}
+      {(emergencyModeActive || gridEmergency) && <EmergencyModeHUD />}
     </div>
   );
 };
