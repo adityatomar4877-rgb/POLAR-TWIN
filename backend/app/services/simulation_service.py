@@ -9,6 +9,7 @@ from app.models.equipment import Equipment
 from app.services.station_service import station_service
 from app.simulation.telemetry_engine import telemetry_engine
 from app.schemas.simulation import ScenarioRequest, ScenarioResponse, SimulationStatusOut
+from app.utils.calculations import calculate_building_thermal_load, calculate_microgrid_power_flow
 
 logger = logging.getLogger(__name__)
 
@@ -160,118 +161,119 @@ class SimulationService:
         impact: Dict[str, Union[float, int, str, bool]] = {}
         affected_systems: List[str] = []
         recommendations: List[str] = []
+        is_maitri = "MAITRI" in station.code.upper()
 
         if scenario_upper == "CUSTOM" or custom_conditions:
             conds = custom_conditions or {}
-            is_maitri = "MAITRI" in station.code.upper()
-            base_load = 88.0 if is_maitri else 78.0
 
-            # Dynamic thermodynamic building demand calculation
             temp = float(conds.get("temperature_c", -18.0 if is_maitri else -14.0))
             wind = float(conds.get("wind_speed_kmh", 30.0))
-            thermal_delta = max(0.0, -1.0 * temp)
-            conduction_loss = thermal_delta * 1.35
-            convection_loss = (wind / 45.0) * 5.8
             load_mod = float(conds.get("load_modifier_kw", 0.0))
-            projected_consumption = round(base_load + conduction_loss + convection_loss + load_mod, 1)
-
-            # Available generation calculation
-            g1_on = conds.get("generator_1_online", True)
-            g2_on = conds.get("generator_2_online", False)
-            gen1_kw = 120.0 if g1_on else 0.0
-            gen2_kw = 120.0 if g2_on else 0.0
-
-            solar_capacity = 40.0 if is_maitri else 60.0
-            solar_factor = float(conds.get("solar_factor", 0.5))
-            solar_kw = round(solar_capacity * solar_factor * 0.75, 1)
-
-            available_gen = gen1_kw + gen2_kw + solar_kw
-            net_balance = available_gen - projected_consumption
-            deficit_kw = round(max(0.0, -net_balance), 1)
-
-            # Battery depletion dynamics
-            bat_capacity_kwh = 350.0 if is_maitri else 300.0
-            initial_bat = float(conds.get("battery_percentage", 85.0))
-            if deficit_kw > 0:
-                kwh_drained = (deficit_kw * (duration_minutes / 60.0)) / 0.94
-                bat_drop_pct = round(min(100.0, (kwh_drained / bat_capacity_kwh) * 100.0), 1)
-            else:
-                bat_drop_pct = 0.0
-
-            projected_final_bat = round(max(0.0, initial_bat - bat_drop_pct), 1)
-
-            # Risk classification
-            if not g1_on and not g2_on:
-                risk = "CRITICAL / EMERGENCY"
-            elif deficit_kw > 40.0 or bat_drop_pct > 30.0 or projected_final_bat < 20.0:
-                risk = "HIGH"
-            elif deficit_kw > 0.0 or conds.get("blizzard_warning"):
-                risk = "ELEVATED"
-            else:
-                risk = "STABLE / NOMINAL"
-
-            fuel_mult = float(conds.get("fuel_burn_multiplier", 1.0))
+            solar_fac = float(conds.get("solar_factor", 0.5))
+            g1_on = bool(conds.get("generator_1_online", True))
+            g2_on = bool(conds.get("generator_2_online", False))
+            bat_pct = float(conds.get("battery_percentage", 85.0))
             fuel_pct = float(conds.get("fuel_percentage", 82.0))
+            fuel_mult = float(conds.get("fuel_burn_multiplier", 1.0))
+
+            # 1. Rigorous Building Thermodynamics
+            thermal_calc = calculate_building_thermal_load(
+                station_code=station.code,
+                ambient_temperature=temp,
+                wind_speed_kmh=wind,
+                load_modifier_kw=load_mod,
+            )
+            projected_consumption = thermal_calc["total_consumption_kw"]
+
+            # 2. Rigorous Microgrid Dispatch & Battery Dynamics
+            flow_calc = calculate_microgrid_power_flow(
+                station_code=station.code,
+                consumption_kw=projected_consumption,
+                solar_factor=solar_fac,
+                generator_1_online=g1_on,
+                generator_2_online=g2_on,
+                initial_battery_pct=bat_pct,
+                fuel_pct=fuel_pct,
+                fuel_burn_multiplier=fuel_mult,
+                duration_minutes=float(duration_minutes),
+            )
 
             impact = {
-                "projected_consumption_kw": projected_consumption,
-                "projected_generation_kw": available_gen,
-                "energy_deficit_kw": deficit_kw,
-                "battery_drop_percent": bat_drop_pct,
-                "projected_final_battery_percent": projected_final_bat,
+                "projected_consumption_kw": flow_calc["consumption_kw"],
+                "projected_generation_kw": flow_calc["total_generation_kw"],
+                "energy_deficit_kw": flow_calc["energy_deficit_kw"],
+                "battery_drop_percent": flow_calc["battery_drop_pct"],
+                "projected_final_battery_percent": flow_calc["final_battery_pct"],
                 "fuel_burn_multiplier": fuel_mult,
-                "fuel_reserve_percent": fuel_pct,
-                "grid_stability_risk": risk,
+                "fuel_reserve_percent": flow_calc["projected_final_fuel_pct"],
+                "grid_stability_risk": flow_calc["grid_risk"],
             }
 
-            # Identify affected systems dynamically
+            # Identify affected systems dynamically and accurately
             if not g1_on:
                 affected_systems.append("Primary Generator 1 (Offline)")
             if not g2_on and not g1_on:
                 affected_systems.append("Backup Generator 2 (Offline)")
-            if deficit_kw > 0:
+            if flow_calc["energy_deficit_kw"] > 0:
                 affected_systems.extend(["Microgrid Power Distribution", "Battery Energy Storage Bank"])
             if temp < -30.0 or wind > 70.0 or conds.get("blizzard_warning"):
                 affected_systems.extend(["Station HVAC & Life Support", "Exterior Building Thermal Envelope"])
             if load_mod > 25.0:
                 affected_systems.append("High-Demand Scientific Circuits")
-            if fuel_pct < 25.0 or fuel_mult > 1.25:
+            if flow_calc["projected_final_fuel_pct"] < 25.0 or fuel_mult > 1.25:
                 affected_systems.append("Diesel Fuel Reserves & Winter Supply")
             if conds.get("target_equipment_id"):
-                target_eq = db.query(Equipment).filter(Equipment.id == conds["target_equipment_id"]).first()
-                if target_eq:
-                    affected_systems.append(f"Equipment #{target_eq.id}: {target_eq.name}")
+                eq_state = str(conds.get("equipment_state", "")).upper()
+                eq_eff = conds.get("equipment_efficiency")
+                if eq_state in ["WARNING", "CRITICAL", "OFFLINE", "DEGRADED"] or (eq_eff is not None and float(eq_eff) < 85.0):
+                    target_eq = db.query(Equipment).filter(Equipment.id == conds["target_equipment_id"]).first()
+                    if target_eq:
+                        status_str = f" ({eq_state})" if eq_state else ""
+                        affected_systems.append(f"Equipment #{target_eq.id}: {target_eq.name}{status_str}")
             if not affected_systems:
                 affected_systems.append("All Station Subsystems Nominal")
 
-            # Prioritized recommendations
+            # Prioritized operational recommendations
             if not g1_on and not g2_on:
                 recommendations.append("EMERGENCY: Immediate black-start procedure required. Manually dispatch Generator 2.")
                 recommendations.append("EMERGENCY: Execute station-wide load shedding (SHED_NON_CRITICAL) immediately.")
             elif not g1_on:
                 recommendations.append("Recommendation: Dispatch and synchronize backup Generator 2 to restore microgrid capacity.")
-            if deficit_kw > 0 and g1_on and not g2_on:
+            if flow_calc["energy_deficit_kw"] > 0 and g1_on and not g2_on:
                 recommendations.append("Recommendation: Synchronize Generator 2 to parallel bus to cover net energy deficit.")
-            if deficit_kw > 0:
+            if flow_calc["energy_deficit_kw"] > 0:
                 recommendations.append("Recommendation: Shed non-essential laboratory and auxiliary loads to slow battery drain.")
             if temp < -35.0:
                 recommendations.append("Recommendation: Energize fuel line trace heaters to prevent cold-temperature paraffin gelling.")
                 recommendations.append("Recommendation: Activate secondary living quarters heating loop.")
             if conds.get("blizzard_warning") or wind > 85.0:
                 recommendations.append("Recommendation: Issue red blizzard alert, suspend all outdoor traverses, and seal airlocks.")
-            if fuel_pct < 20.0 or fuel_mult > 1.4:
+            if flow_calc["projected_final_fuel_pct"] < 20.0 or fuel_mult > 1.4:
                 recommendations.append("Recommendation: Initiate Tier-1 Fuel Rationing protocol and request priority resupply.")
             if not recommendations:
                 recommendations.append("Recommendation: Conditions are within design tolerances. Continue autonomous monitoring.")
 
         elif scenario_upper == "GENERATOR_FAILURE":
+            thermal_calc = calculate_building_thermal_load(station.code, -18.0 if is_maitri else -14.0, 30.0)
+            flow_calc = calculate_microgrid_power_flow(
+                station_code=station.code,
+                consumption_kw=thermal_calc["total_consumption_kw"],
+                solar_factor=0.3,
+                generator_1_online=False,
+                generator_2_online=False,
+                duration_minutes=float(duration_minutes),
+            )
             impact = {
-                "energy_deficit_kw": 120.0,
-                "battery_drop_percent": 18.5,
-                "fuel_consumption_change_percent": -100.0,
-                "grid_stability_risk": "HIGH",
+                "projected_consumption_kw": flow_calc["consumption_kw"],
+                "projected_generation_kw": flow_calc["total_generation_kw"],
+                "energy_deficit_kw": flow_calc["energy_deficit_kw"],
+                "battery_drop_percent": flow_calc["battery_drop_pct"],
+                "projected_final_battery_percent": flow_calc["final_battery_pct"],
+                "fuel_burn_multiplier": 1.0,
+                "fuel_reserve_percent": flow_calc["projected_final_fuel_pct"],
+                "grid_stability_risk": flow_calc["grid_risk"],
             }
-            affected_systems = ["Microgrid Power Generation", "Battery Storage Bank", "Auxiliary Life Support"]
+            affected_systems = ["Primary Generator 1 (Offline)", "Microgrid Power Distribution", "Battery Energy Storage Bank"]
             recommendations = [
                 "Recommendation: Operator should dispatch and start backup Generator 2 to restore microgrid generation capacity.",
                 "Recommendation: Shed non-essential laboratory and auxiliary electrical loads to reduce battery discharge rate.",
@@ -279,13 +281,27 @@ class SimulationService:
             ]
 
         elif scenario_upper == "EXTREME_COLD":
+            thermal_calc = calculate_building_thermal_load(station.code, -54.0, 95.0)
+            flow_calc = calculate_microgrid_power_flow(
+                station_code=station.code,
+                consumption_kw=thermal_calc["total_consumption_kw"],
+                solar_factor=0.05,
+                generator_1_online=True,
+                generator_2_online=False,
+                duration_minutes=float(duration_minutes),
+            )
             impact = {
                 "temperature_drop_celsius": -22.0,
-                "heating_load_increase_kw": 85.0,
-                "fuel_burn_rate_increase_percent": 45.0,
-                "battery_efficiency_loss_percent": 12.0,
+                "projected_consumption_kw": flow_calc["consumption_kw"],
+                "projected_generation_kw": flow_calc["total_generation_kw"],
+                "energy_deficit_kw": flow_calc["energy_deficit_kw"],
+                "battery_drop_percent": flow_calc["battery_drop_pct"],
+                "projected_final_battery_percent": flow_calc["final_battery_pct"],
+                "fuel_burn_multiplier": 1.45,
+                "fuel_reserve_percent": flow_calc["projected_final_fuel_pct"],
+                "grid_stability_risk": flow_calc["grid_risk"],
             }
-            affected_systems = ["HVAC Heating & Ventilation", "Diesel Fuel Reserves", "Thermal Insulation Envelopes"]
+            affected_systems = ["HVAC Heating & Ventilation", "Diesel Fuel Reserves", "Exterior Building Thermal Envelope"]
             recommendations = [
                 "Recommendation: Activate secondary auxiliary heating loop in living quarters.",
                 "Recommendation: Ensure fuel pipe heat-tracing cables are energized to prevent paraffin gelling.",
@@ -293,24 +309,53 @@ class SimulationService:
             ]
 
         elif scenario_upper == "HIGH_ENERGY_DEMAND":
+            thermal_calc = calculate_building_thermal_load(station.code, -18.0 if is_maitri else -14.0, 30.0, load_modifier_kw=55.0)
+            flow_calc = calculate_microgrid_power_flow(
+                station_code=station.code,
+                consumption_kw=thermal_calc["total_consumption_kw"],
+                solar_factor=0.4,
+                generator_1_online=True,
+                generator_2_online=False,
+                duration_minutes=float(duration_minutes),
+            )
             impact = {
-                "energy_deficit_kw": 65.0,
-                "battery_drop_percent": 10.0,
-                "fuel_consumption_change_percent": 28.0,
+                "projected_consumption_kw": flow_calc["consumption_kw"],
+                "projected_generation_kw": flow_calc["total_generation_kw"],
+                "energy_deficit_kw": flow_calc["energy_deficit_kw"],
+                "battery_drop_percent": flow_calc["battery_drop_pct"],
+                "projected_final_battery_percent": flow_calc["final_battery_pct"],
+                "fuel_burn_multiplier": 1.25,
+                "fuel_reserve_percent": flow_calc["projected_final_fuel_pct"],
+                "grid_stability_risk": flow_calc["grid_risk"],
             }
-            affected_systems = ["Power Distribution Grid", "Generator Loading", "Fuel Inventory"]
+            affected_systems = ["Power Distribution Grid", "Generator Loading", "High-Demand Scientific Circuits"]
             recommendations = [
                 "Recommendation: Synchronize Generator 1 and Generator 2 for parallel bus operation.",
                 "Recommendation: Stagger high-power deep ice core drilling equipment operations.",
             ]
 
         elif scenario_upper == "FUEL_SHORTAGE":
+            thermal_calc = calculate_building_thermal_load(station.code, -18.0 if is_maitri else -14.0, 30.0)
+            flow_calc = calculate_microgrid_power_flow(
+                station_code=station.code,
+                consumption_kw=thermal_calc["total_consumption_kw"],
+                solar_factor=0.3,
+                generator_1_online=True,
+                generator_2_online=False,
+                fuel_pct=12.0,
+                duration_minutes=float(duration_minutes),
+            )
             impact = {
-                "fuel_level_percent": 12.0,
-                "days_until_blackout": 8.5,
-                "safe_margin_breach": True,
+                "projected_consumption_kw": flow_calc["consumption_kw"],
+                "projected_generation_kw": flow_calc["total_generation_kw"],
+                "energy_deficit_kw": flow_calc["energy_deficit_kw"],
+                "battery_drop_percent": flow_calc["battery_drop_pct"],
+                "projected_final_battery_percent": flow_calc["final_battery_pct"],
+                "fuel_burn_multiplier": 1.0,
+                "fuel_reserve_percent": 12.0,
+                "grid_stability_risk": "HIGH RISK",
             }
-            affected_systems = ["Fuel Logistics", "Thermal Life Support", "Diesel Power Generation"]
+            affected_systems = ["Diesel Fuel Reserves & Winter Supply", "Thermal Life Support", "Diesel Power Generation"]
             recommendations = [
                 "Recommendation: Initiate Tier-1 Emergency Fuel Conservation Protocol immediately.",
                 "Recommendation: Lower ambient room temperatures in unoccupied station zones by 4°C.",
@@ -318,12 +363,26 @@ class SimulationService:
             ]
 
         elif scenario_upper == "EQUIPMENT_DEGRADATION":
+            thermal_calc = calculate_building_thermal_load(station.code, -18.0 if is_maitri else -14.0, 30.0)
+            flow_calc = calculate_microgrid_power_flow(
+                station_code=station.code,
+                consumption_kw=thermal_calc["total_consumption_kw"],
+                solar_factor=0.3,
+                generator_1_online=True,
+                generator_2_online=False,
+                duration_minutes=float(duration_minutes),
+            )
             impact = {
-                "efficiency_drop_percent": 32.0,
-                "operating_temperature_increase_celsius": 18.5,
-                "failure_risk_index": 0.85,
+                "projected_consumption_kw": flow_calc["consumption_kw"],
+                "projected_generation_kw": flow_calc["total_generation_kw"],
+                "energy_deficit_kw": flow_calc["energy_deficit_kw"],
+                "battery_drop_percent": flow_calc["battery_drop_pct"],
+                "projected_final_battery_percent": flow_calc["final_battery_pct"],
+                "fuel_burn_multiplier": 1.15,
+                "fuel_reserve_percent": flow_calc["projected_final_fuel_pct"],
+                "grid_stability_risk": "ELEVATED",
             }
-            affected_systems = ["HVAC System", "Primary Generator", "Thermal Management"]
+            affected_systems = ["HVAC Heat Pump System", "Primary Generator", "Thermal Management"]
             recommendations = [
                 "Recommendation: Schedule immediate mechanical maintenance window during favorable weather.",
                 "Recommendation: Inspect filter elements, lube oil pressure, and cooling water heat exchangers.",

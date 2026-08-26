@@ -5,7 +5,7 @@ from app.schemas.energy import EnergyTelemetryOut, HistoricalEnergyOut
 from app.schemas.prediction import EnergyForecastResponse
 from app.services.station_service import station_service
 from app.services.energy_service import energy_service
-from app.services.prediction_service import prediction_service
+from app.services.energy_forecast_service import energy_forecast_service
 from app.core.security import APIError
 
 router = APIRouter(prefix="/stations/{station_id}/energy", tags=["Energy Telemetry"])
@@ -44,9 +44,9 @@ def get_energy_history(
 @router.get("/forecast", response_model=EnergyForecastResponse)
 def get_energy_forecast(
     station_id: str,
-    horizon_hours: int = Query(default=24, ge=1, le=72, description="Forecast horizon in hours (e.g. 6, 12, 24)"),
     db: Session = Depends(get_db),
 ):
-    """Generates a predictive energy generation and consumption forecast with confidence intervals."""
+    """Generates Random Forest energy demand forecast (6h / 12h / 24h average demand)."""
     station = station_service.get_station_by_id_or_code(db, station_id)
-    return prediction_service.forecast_energy(db, station.id, station.code, horizon_hours=horizon_hours)
+    return energy_forecast_service.predict(db, station.id, station.code)
+
