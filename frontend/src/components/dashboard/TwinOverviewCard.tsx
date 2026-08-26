@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import clsx from 'clsx';
 import gsap from 'gsap';
 import {
@@ -18,7 +18,7 @@ import { DigitalTwinScene } from '../3d/DigitalTwinScene';
 import { getFuelPrediction } from '../../api/predictions';
 import type { StationDashboardOut } from '../../api/types';
 import { useStation } from '../../context/StationContext';
-import { useGSAPTimeline } from '../../hooks/useGSAPTimeline';
+import GSAPNumberTicker from './GSAPNumberTicker';
 
 type Health = 'ok' | 'bad';
 
@@ -31,20 +31,24 @@ function TwinLabel({
   value,
   className,
   connector = 'below',
+  visible = true,
 }: {
   icon: typeof Zap;
   iconClass: string;
   title: string;
   status: string;
   statusTone?: Health;
-  value: string;
+  value: React.ReactNode;
   className: string;
   connector?: 'below' | 'above' | 'none';
+  visible?: boolean;
 }) {
+  if (!visible) return null;
+
   return (
-    <div className={clsx('twin-label pointer-events-none absolute z-10 flex flex-col items-center', className)}>
+    <div className={clsx('twin-floating-label pointer-events-none absolute z-10 flex flex-col items-center transition-opacity duration-300', className)}>
       {connector === 'above' && <span className="h-8 border-l-2 border-dashed border-slate-400/60" />}
-      <div className="flex items-start gap-2.5 rounded-xl border border-slate-200/80 bg-white/90 px-3.5 py-2.5 shadow-lg backdrop-blur-md">
+      <div className="flex items-start gap-2.5 rounded-xl border border-slate-200/80 bg-white/90 px-3.5 py-2.5 shadow-lg backdrop-blur-md transition-transform duration-300">
         <span className={clsx('mt-0.5 rounded-md p-1.5', iconClass)}>
           <Icon size={14} />
         </span>
@@ -66,30 +70,33 @@ function TwinLabel({
   );
 }
 
+function TwinStat({
+  label,
+  value,
+  dot,
+  className,
+}: {
+  label: string;
+  value: string;
+  dot: string;
+  className?: string;
+}) {
+  return (
+    <div className={clsx('flex flex-col items-center justify-center gap-0.5 px-2 py-2', className)}>
+      <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+        <span className={clsx('h-1.5 w-1.5 rounded-full', dot)} />
+        {label}
+      </span>
+      <span className="text-[13px] font-bold tabular-nums text-slate-800">{value}</span>
+    </div>
+  );
+}
+
 export default function TwinOverviewCard({ dashboard }: { dashboard: StationDashboardOut }) {
   const { selectedStationId } = useStation();
   const [expanded, setExpanded] = useState(false);
   const [view, setView] = useState<'all' | 'power' | 'habitat'>('all');
-
-  // GSAP: cinematic reveal of the viewport, then staggered floating labels
-  const scopeRef = useGSAPTimeline((scope) => {
-    gsap.from(scope.querySelector('.twin-viewport'), {
-      opacity: 0,
-      scale: 0.97,
-      y: 20,
-      duration: 0.8,
-      ease: 'power3.out',
-    });
-    gsap.from(scope.querySelectorAll('.twin-label'), {
-      opacity: 0,
-      y: 14,
-      duration: 0.55,
-      stagger: 0.08,
-      delay: 0.4,
-      ease: 'power2.out',
-      clearProps: 'transform,opacity',
-    });
-  }, []);
+  const viewportRef = useRef<HTMLDivElement>(null);
 
   const { data: fuelForecast } = useQuery({
     queryKey: ['fuel-forecast', selectedStationId],
@@ -110,15 +117,36 @@ export default function TwinOverviewCard({ dashboard }: { dashboard: StationDash
     (energy?.grid_status ?? 'NOMINAL').toUpperCase()
   );
 
+  useEffect(() => {
+    if (!viewportRef.current) return;
+    const labels = viewportRef.current.querySelectorAll('.twin-floating-label');
+    if (labels.length === 0) return;
+
+    const ctx = gsap.context(() => {
+      labels.forEach((label, i) => {
+        gsap.to(label, {
+          y: -5,
+          duration: 2.2 + (i % 3) * 0.4,
+          repeat: -1,
+          yoyo: true,
+          ease: 'sine.inOut',
+          delay: i * 0.15,
+        });
+      });
+    }, viewportRef);
+
+    return () => ctx.revert();
+  }, [view]);
+
   return (
-    <section ref={scopeRef} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+    <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="text-[15px] font-extrabold uppercase tracking-wide text-slate-900">
             Digital Twin Overview
           </h2>
           <p className="mt-0.5 text-xs text-slate-400">
-            Real-time representation of {dashboard.station?.code?.toUpperCase() ?? 'station'} Station
+            Real-time interactive 3D telemetry of {dashboard.station?.code?.toUpperCase() ?? 'station'} Station
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -149,6 +177,7 @@ export default function TwinOverviewCard({ dashboard }: { dashboard: StationDash
 
       {/* Viewport */}
       <div
+        ref={viewportRef}
         className={clsx(
           'twin-viewport relative mt-4 overflow-hidden rounded-xl border border-slate-200 bg-gradient-to-b from-[#d8e5f2] via-[#e3edf6] to-[#eef4f9] transition-all duration-500',
           expanded ? 'h-[560px]' : 'h-[400px] lg:h-[440px]'
@@ -156,16 +185,21 @@ export default function TwinOverviewCard({ dashboard }: { dashboard: StationDash
       >
         <DigitalTwinScene stationId={selectedStationId} lightMode compact />
 
-        {/* Floating subsystem labels */}
+        {/* Floating subsystem labels with GSAP micro-bobbing */}
         <TwinLabel
           icon={Zap}
           iconClass="bg-blue-50 text-blue-600"
           title="Power Plant"
           status={powerOnline ? 'Operational' : 'Offline'}
           statusTone={powerOnline ? 'ok' : 'bad'}
-          value={`${(energy?.generation_kw ?? 0).toFixed(1)} kW`}
+          value={
+            <>
+              <GSAPNumberTicker value={energy?.generation_kw ?? 0} decimals={1} /> kW
+            </>
+          }
           className="left-[8%] top-[7%] hidden sm:flex"
           connector="below"
+          visible={view === 'all' || view === 'power'}
         />
         <TwinLabel
           icon={Home}
@@ -175,6 +209,7 @@ export default function TwinOverviewCard({ dashboard }: { dashboard: StationDash
           value={`${occupancy}% Capacity`}
           className="right-[6%] top-[10%] hidden md:flex"
           connector="below"
+          visible={view === 'all' || view === 'habitat'}
         />
         <TwinLabel
           icon={Fuel}
@@ -184,6 +219,7 @@ export default function TwinOverviewCard({ dashboard }: { dashboard: StationDash
           value={`${Math.max(1, Math.round(fuelForecast?.days_until_critical ?? 31))} Days Remaining`}
           className="left-[3%] top-[38%] hidden lg:flex"
           connector="none"
+          visible={view === 'all' || view === 'power'}
         />
         <TwinLabel
           icon={Building2}
@@ -194,6 +230,7 @@ export default function TwinOverviewCard({ dashboard }: { dashboard: StationDash
           value={gridOk ? 'All Systems Normal' : 'Energy deficit active'}
           className="bottom-[10%] left-[10%] hidden sm:flex"
           connector="above"
+          visible={view === 'all' || view === 'habitat'}
         />
         <TwinLabel
           icon={Droplets}
@@ -203,6 +240,7 @@ export default function TwinOverviewCard({ dashboard }: { dashboard: StationDash
           value="81% Available"
           className="bottom-[6%] left-1/2 hidden -translate-x-1/2 lg:flex"
           connector="above"
+          visible={view === 'all' || view === 'habitat'}
         />
         <TwinLabel
           icon={RadioTower}
@@ -212,6 +250,7 @@ export default function TwinOverviewCard({ dashboard }: { dashboard: StationDash
           value={`${(dashboard.environment?.wind_speed_kmh ?? 0).toFixed(1)} km/h winds`}
           className="bottom-[10%] right-[4%] hidden md:flex"
           connector="above"
+          visible={view === 'all'}
         />
 
         {/* Interaction hint */}
@@ -240,27 +279,5 @@ export default function TwinOverviewCard({ dashboard }: { dashboard: StationDash
         <TwinStat label="Occupancy" value={`${occupancy}%`} dot="bg-violet-500" className="col-span-2 sm:col-span-1" />
       </div>
     </section>
-  );
-}
-
-function TwinStat({
-  label,
-  value,
-  dot,
-  className,
-}: {
-  label: string;
-  value: string;
-  dot: string;
-  className?: string;
-}) {
-  return (
-    <div className={clsx('flex flex-col items-center justify-center gap-0.5 px-2 py-2', className)}>
-      <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-        <span className={clsx('h-1.5 w-1.5 rounded-full', dot)} />
-        {label}
-      </span>
-      <span className="text-[13px] font-bold tabular-nums text-slate-800">{value}</span>
-    </div>
   );
 }

@@ -1,4 +1,6 @@
+import { useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import gsap from 'gsap';
 import clsx from 'clsx';
 import { TrendingUp, Fuel, Activity, Brain, Clock, ShieldCheck, Zap } from 'lucide-react';
 import {
@@ -12,9 +14,12 @@ import {
   Cell,
 } from 'recharts';
 import { getEnergyPrediction, getFuelPrediction } from '../api/predictions';
+import GSAPNumberTicker from '../components/dashboard/GSAPNumberTicker';
 import type { MLForecastHorizon } from '../api/types';
 
 export const PredictionsPage = ({ stationId }: { stationId: number }) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+
   const { data: energy } = useQuery({
     queryKey: ['energy-forecast', stationId],
     queryFn: () => getEnergyPrediction(stationId),
@@ -23,6 +28,19 @@ export const PredictionsPage = ({ stationId }: { stationId: number }) => {
     queryKey: ['fuel-forecast', stationId],
     queryFn: () => getFuelPrediction(stationId),
   });
+
+  useEffect(() => {
+    if (!containerRef.current) return;
+    const ctx = gsap.context(() => {
+      gsap.fromTo(
+        '.gsap-predict-item',
+        { y: 16, opacity: 0 },
+        { y: 0, opacity: 1, duration: 0.5, stagger: 0.08, ease: 'power2.out' }
+      );
+    }, containerRef);
+
+    return () => ctx.revert();
+  }, [stationId]);
 
   // Extract 6h, 12h, 24h predictions safely whether forecast is an object or array
   const isObjectForecast = energy?.forecast && !Array.isArray(energy.forecast);
@@ -59,9 +77,9 @@ export const PredictionsPage = ({ stationId }: { stationId: number }) => {
   ];
 
   return (
-    <div className="flex flex-col gap-6">
+    <div ref={containerRef} className="flex flex-col gap-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+      <div className="gsap-predict-item flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div className="flex items-center gap-3">
           <span className="rounded-xl bg-blue-100 p-2.5 text-blue-600">
             <Brain size={22} />
@@ -89,8 +107,8 @@ export const PredictionsPage = ({ stationId }: { stationId: number }) => {
       </div>
 
       {/* Top Metric Cards */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+      <div className="gsap-predict-item grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="group rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-slate-300 hover:shadow-md">
           <div className="flex items-center justify-between">
             <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
               Current Base Load
@@ -98,15 +116,13 @@ export const PredictionsPage = ({ stationId }: { stationId: number }) => {
             <Zap size={16} className="text-amber-500" />
           </div>
           <p className="mt-2 text-3xl font-black text-slate-900">
-            {energy?.current_consumption_kw != null
-              ? `${energy.current_consumption_kw.toFixed(1)}`
-              : '—'}{' '}
+            <GSAPNumberTicker value={energy?.current_consumption_kw ?? 0} decimals={1} />{' '}
             <span className="text-sm font-semibold text-slate-400">kW</span>
           </p>
           <p className="mt-1 text-xs text-slate-400">Live telemetry reading</p>
         </div>
 
-        <div className="rounded-2xl border border-blue-200 bg-gradient-to-br from-blue-50/60 to-white p-5 shadow-sm">
+        <div className="group rounded-2xl border border-blue-200 bg-gradient-to-br from-blue-50/60 to-white p-5 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-blue-300 hover:shadow-md">
           <div className="flex items-center justify-between">
             <p className="text-[11px] font-semibold uppercase tracking-wider text-blue-600">
               6h Predicted Avg
@@ -114,13 +130,13 @@ export const PredictionsPage = ({ stationId }: { stationId: number }) => {
             <Clock size={16} className="text-blue-500" />
           </div>
           <p className="mt-2 text-3xl font-black text-blue-700">
-            {pred6h != null ? `${pred6h.toFixed(1)}` : '—'}{' '}
+            <GSAPNumberTicker value={pred6h ?? 0} decimals={1} />{' '}
             <span className="text-sm font-semibold text-blue-400">kW</span>
           </p>
           <p className="mt-1 text-xs text-blue-500">Short-term microgrid dispatch</p>
         </div>
 
-        <div className="rounded-2xl border border-indigo-200 bg-gradient-to-br from-indigo-50/60 to-white p-5 shadow-sm">
+        <div className="group rounded-2xl border border-indigo-200 bg-gradient-to-br from-indigo-50/60 to-white p-5 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-indigo-300 hover:shadow-md">
           <div className="flex items-center justify-between">
             <p className="text-[11px] font-semibold uppercase tracking-wider text-indigo-600">
               12h Predicted Avg
@@ -128,13 +144,13 @@ export const PredictionsPage = ({ stationId }: { stationId: number }) => {
             <TrendingUp size={16} className="text-indigo-500" />
           </div>
           <p className="mt-2 text-3xl font-black text-indigo-700">
-            {pred12h != null ? `${pred12h.toFixed(1)}` : '—'}{' '}
+            <GSAPNumberTicker value={pred12h ?? 0} decimals={1} />{' '}
             <span className="text-sm font-semibold text-indigo-400">kW</span>
           </p>
           <p className="mt-1 text-xs text-indigo-500">Mid-horizon operational target</p>
         </div>
 
-        <div className="rounded-2xl border border-purple-200 bg-gradient-to-br from-purple-50/60 to-white p-5 shadow-sm">
+        <div className="group rounded-2xl border border-purple-200 bg-gradient-to-br from-purple-50/60 to-white p-5 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-purple-300 hover:shadow-md">
           <div className="flex items-center justify-between">
             <p className="text-[11px] font-semibold uppercase tracking-wider text-purple-600">
               24h Predicted Avg
@@ -142,7 +158,7 @@ export const PredictionsPage = ({ stationId }: { stationId: number }) => {
             <Activity size={16} className="text-purple-500" />
           </div>
           <p className="mt-2 text-3xl font-black text-purple-700">
-            {pred24h != null ? `${pred24h.toFixed(1)}` : '—'}{' '}
+            <GSAPNumberTicker value={pred24h ?? 0} decimals={1} />{' '}
             <span className="text-sm font-semibold text-purple-400">kW</span>
           </p>
           <p className="mt-1 text-xs text-purple-500">Full diurnal cycle planning</p>
@@ -150,7 +166,7 @@ export const PredictionsPage = ({ stationId }: { stationId: number }) => {
       </div>
 
       {/* Horizon Comparison Chart */}
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+      <div className="gsap-predict-item rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
         <div className="flex items-center justify-between mb-4">
           <h2 className="flex items-center gap-2 text-[13px] font-extrabold uppercase tracking-wider text-slate-900">
             <Activity size={16} className="text-blue-500" /> Multi-Horizon Demand Forecast (kW)
@@ -181,7 +197,7 @@ export const PredictionsPage = ({ stationId }: { stationId: number }) => {
 
       {/* Fuel Depletion Section */}
       {fuel && (
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="gsap-predict-item rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
           <div className="flex items-center justify-between mb-4">
             <h2 className="flex items-center gap-2 text-[13px] font-extrabold uppercase tracking-wider text-slate-900">
               <Fuel size={16} className="text-orange-500" /> Fuel Logistics & Depletion Trajectory
@@ -200,19 +216,38 @@ export const PredictionsPage = ({ stationId }: { stationId: number }) => {
             </span>
           </div>
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-            {[
-              ['Reserves Level', `${fuel.current_fuel_percentage.toFixed(1)}%`],
-              ['Remaining Liters', `${Math.round(fuel.current_fuel_liters).toLocaleString()} L`],
-              ['Estimated Daily Burn', `${fuel.estimated_daily_consumption_liters.toFixed(0)} L/day`],
-              ['Days to Critical (10%)', `${Math.round(fuel.days_until_critical)} Days`],
-            ].map(([label, value]) => (
-              <div key={label} className="rounded-xl bg-slate-50 p-4">
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
-                  {label}
-                </p>
-                <p className="mt-1 text-xl font-bold text-slate-900">{value}</p>
-              </div>
-            ))}
+            <div className="rounded-xl bg-slate-50 p-4">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+                Reserves Level
+              </p>
+              <p className="mt-1 text-xl font-bold text-slate-900">
+                <GSAPNumberTicker value={fuel.current_fuel_percentage} decimals={1} suffix="%" />
+              </p>
+            </div>
+            <div className="rounded-xl bg-slate-50 p-4">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+                Remaining Volume
+              </p>
+              <p className="mt-1 text-xl font-bold text-slate-900">
+                <GSAPNumberTicker value={fuel.current_fuel_liters} decimals={0} suffix=" L" />
+              </p>
+            </div>
+            <div className="rounded-xl bg-slate-50 p-4">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+                Estimated Daily Burn
+              </p>
+              <p className="mt-1 text-xl font-bold text-slate-900">
+                <GSAPNumberTicker value={fuel.estimated_daily_consumption_liters} decimals={0} suffix=" L/day" />
+              </p>
+            </div>
+            <div className="rounded-xl bg-slate-50 p-4">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+                Days to Critical (10%)
+              </p>
+              <p className="mt-1 text-xl font-bold text-slate-900">
+                <GSAPNumberTicker value={fuel.days_until_critical} decimals={0} suffix=" Days" />
+              </p>
+            </div>
           </div>
           {fuel.advisory_notes && (
             <p className="mt-4 rounded-xl bg-blue-50/70 border border-blue-100 px-4 py-3 text-sm text-blue-800 font-medium">

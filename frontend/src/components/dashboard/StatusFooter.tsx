@@ -18,13 +18,13 @@ export default function StatusFooter() {
     .map((r) => r.expected_arrival)
     .filter((d): d is string => !!d)
     .sort()[0];
-  const daysOut = useMemo(
-    () =>
-      nextArrival
-        ? Math.max(1, Math.round((new Date(nextArrival).getTime() - Date.now()) / 86400000))
-        : 14,
-    [nextArrival]
-  );
+
+  const daysOut = useMemo(() => {
+    if (!nextArrival) return 14;
+    const arrivalTime = new Date(nextArrival).getTime();
+    const current = new Date().getTime();
+    return Math.max(1, Math.round((arrivalTime - current) / 86400000));
+  }, [nextArrival]);
 
   const population = dashboard?.station?.current_population ?? 18;
 
@@ -41,10 +41,10 @@ export default function StatusFooter() {
   ];
 
   return (
-    <footer className="grid grid-cols-2 gap-4 rounded-2xl border border-slate-200 bg-white px-6 py-4 shadow-sm lg:grid-cols-4">
+    <footer className="grid grid-cols-2 gap-4 rounded-2xl border border-slate-200 bg-white px-6 py-4 shadow-sm lg:grid-cols-4 transition-all duration-300 hover:border-slate-300">
       {items.map(({ icon: Icon, label, value, tone }) => (
-        <div key={label} className="flex items-center gap-3">
-          <span className="rounded-lg bg-slate-100 p-2 text-slate-500">
+        <div key={label} className="group flex items-center gap-3">
+          <span className="rounded-lg bg-slate-100 p-2 text-slate-500 transition-transform duration-300 group-hover:scale-110">
             <Icon size={16} />
           </span>
           <div className="leading-tight">
@@ -56,3 +56,4 @@ export default function StatusFooter() {
     </footer>
   );
 }
+

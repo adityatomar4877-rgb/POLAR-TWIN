@@ -29,7 +29,7 @@ export default function RecentAutomationsCard({ stationId }: { stationId: number
   const rows = (history ?? []).slice(0, 4);
 
   return (
-    <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+    <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition-all duration-300 hover:border-slate-300 hover:shadow-md">
       <div className="flex items-center justify-between">
         <h2 className="text-[13px] font-extrabold uppercase tracking-wider text-slate-900">
           Recent Automations
@@ -53,7 +53,11 @@ export default function RecentAutomationsCard({ stationId }: { stationId: number
           const Icon = iconFor(entry.action);
           const automated = !entry.actor.toLowerCase().includes('operator');
           return (
-            <div key={entry.id} className="flex items-center gap-3 py-2.5">
+            <div
+              key={entry.id}
+              onClick={() => navigate('/audit')}
+              className="group flex cursor-pointer items-center gap-3 py-2.5 px-1.5 -mx-1.5 rounded-lg transition-colors hover:bg-slate-50"
+            >
               <span className="w-10 shrink-0 font-mono text-[11px] tabular-nums text-slate-400">
                 {new Date(entry.timestamp).toLocaleTimeString('en-IN', {
                   timeZone: 'Asia/Kolkata',
@@ -64,7 +68,7 @@ export default function RecentAutomationsCard({ stationId }: { stationId: number
               </span>
               <span
                 className={clsx(
-                  'rounded-lg p-1.5',
+                  'rounded-lg p-1.5 transition-transform duration-300 group-hover:scale-110',
                   entry.result === 'SUCCESS' || entry.result === 'COMPLETED'
                     ? 'bg-slate-100 text-slate-600'
                     : 'bg-red-50 text-red-500'
@@ -72,7 +76,7 @@ export default function RecentAutomationsCard({ stationId }: { stationId: number
               >
                 <Icon size={13} />
               </span>
-              <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-slate-700">
+              <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-slate-700 group-hover:text-blue-600 transition-colors">
                 {prettify(entry.action)}
               </span>
               <span
@@ -90,3 +94,4 @@ export default function RecentAutomationsCard({ stationId }: { stationId: number
     </section>
   );
 }
+

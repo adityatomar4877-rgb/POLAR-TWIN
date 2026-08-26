@@ -4,7 +4,7 @@ import { Thermometer, Wind, Droplets, Gauge, Eye, TrendingUp, TrendingDown, Minu
 import type { StationDashboardOut } from '../../api/types';
 import { useTelemetryHistory } from '../../hooks/useTelemetryHistory';
 import Sparkline from './Sparkline';
-import GsapNumber from '../motion/GsapNumber';
+import GSAPNumberTicker from './GSAPNumberTicker';
 
 const compass = (deg: number) => {
   const dirs = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW'];
@@ -72,17 +72,17 @@ const KpiCard = memo(function KpiCard({
   dangerBelow?: number | null;
 }) {
   return (
-    <div className="flex flex-col justify-between rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition-colors hover:border-slate-300">
+    <div className="group flex flex-col justify-between rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-slate-300 hover:shadow-md">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">{label}</p>
           <p className="mt-1.5 text-[22px] font-bold leading-none text-slate-900">
-            <GsapNumber value={value} decimals={decimals} />{' '}
+            <GSAPNumberTicker value={value} decimals={decimals} />{' '}
             <span className="text-sm font-semibold text-slate-400">{unit}</span>
           </p>
           <p className="mt-1 truncate text-xs text-slate-400">{sub}</p>
         </div>
-        <span className={clsx('shrink-0 rounded-lg p-2', iconClass)}>
+        <span className={clsx('shrink-0 rounded-lg p-2 transition-transform duration-300 group-hover:scale-110', iconClass)}>
           <Icon size={17} />
         </span>
       </div>
@@ -125,7 +125,7 @@ function StationStatusRing({ health, critical }: { health: number; critical: boo
           critical ? 'text-red-500' : 'text-emerald-500'
         )}
       >
-        <span className="text-[13px] leading-none">{Math.round(pct)}</span>
+        <span className="text-[13px] leading-none">{Math.round(pct)}%</span>
         <span className="mt-0.5 text-[8px] font-semibold uppercase tracking-wider text-slate-400">Health</span>
       </span>
     </div>
@@ -235,7 +235,7 @@ export default function WeatherKpiRow({ dashboard }: { dashboard: StationDashboa
       />
 
       {/* Station status */}
-      <div className="col-span-2 flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition-colors hover:border-slate-300 md:col-span-1">
+      <div className="group col-span-2 flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-slate-300 hover:shadow-md md:col-span-1">
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Station Status</p>
           <p
@@ -247,7 +247,7 @@ export default function WeatherKpiRow({ dashboard }: { dashboard: StationDashboa
             {critical ? 'Alert State' : 'Operational'}
           </p>
           <p className="mt-1 text-xs text-slate-400">
-            {critical ? 'Immediate action required' : 'All Systems Active'}
+            Health: <GSAPNumberTicker value={avgHealth} decimals={0} suffix="%" />
           </p>
         </div>
         <StationStatusRing health={avgHealth} critical={critical} />

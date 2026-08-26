@@ -28,7 +28,7 @@ export default function LogisticsCrewCard({ station }: { station: Station }) {
     .filter((d): d is string => !!d)
     .sort()[0];
   const daysOut = nextArrivalDate
-    ? Math.max(0, Math.round((new Date(nextArrivalDate).getTime() - Date.now()) / 86400000))
+    ? Math.max(0, Math.round((new Date(nextArrivalDate).getTime() - new Date().setHours(0, 0, 0, 0)) / 86400000))
     : null;
 
   const population = station.current_population ?? 0;

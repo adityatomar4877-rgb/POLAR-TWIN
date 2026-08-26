@@ -1,9 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import gsap from 'gsap';
 import clsx from 'clsx';
 import { Cpu, Activity, Plus, CheckCircle2, Wrench } from 'lucide-react';
 import { getStationEquipment } from '../api/stations';
 import { getMaintenanceTasks, createMaintenanceTask, completeMaintenanceTask } from '../api/maintenance';
+import GSAPNumberTicker from '../components/dashboard/GSAPNumberTicker';
 import type { MaintenanceTaskCreate } from '../api/types';
 
 const PRIORITY_TONE: Record<string, string> = {
@@ -16,6 +18,7 @@ const PRIORITY_TONE: Record<string, string> = {
 export const Infrastructure = ({ stationId }: { stationId: number }) => {
   const qc = useQueryClient();
   const [modalOpen, setModalOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const { data: equipment, isLoading } = useQuery({
     queryKey: ['equipment', stationId],
@@ -38,6 +41,19 @@ export const Infrastructure = ({ stationId }: { stationId: number }) => {
     },
   });
 
+  useEffect(() => {
+    if (!containerRef.current) return;
+    const ctx = gsap.context(() => {
+      gsap.fromTo(
+        '.gsap-infra-item',
+        { y: 16, opacity: 0 },
+        { y: 0, opacity: 1, duration: 0.5, stagger: 0.06, ease: 'power2.out' }
+      );
+    }, containerRef);
+
+    return () => ctx.revert();
+  }, [stationId]);
+
   if (isLoading || !equipment) {
     return (
       <div className="flex h-full items-center justify-center">
@@ -50,8 +66,8 @@ export const Infrastructure = ({ stationId }: { stationId: number }) => {
   const doneTasks = (tasks ?? []).filter((t) => t.status === 'COMPLETED');
 
   return (
-    <div className="custom-scrollbar mx-auto flex h-full max-w-6xl flex-col gap-6 overflow-auto pb-10 pr-2">
-      <div className="flex items-center justify-between">
+    <div ref={containerRef} className="custom-scrollbar mx-auto flex h-full max-w-6xl flex-col gap-6 overflow-auto pb-10 pr-2">
+      <div className="gsap-infra-item flex items-center justify-between">
         <div>
           <h1 className="flex items-center gap-3 text-2xl font-bold tracking-widest text-slate-800">
             <Cpu className="h-6 w-6 text-cyan-600" />
@@ -63,35 +79,35 @@ export const Infrastructure = ({ stationId }: { stationId: number }) => {
         </div>
         <button
           onClick={() => setModalOpen(true)}
-          className="flex items-center gap-2 rounded-lg border border-cyan-300 bg-cyan-100 px-4 py-2 font-mono text-xs tracking-widest text-cyan-700 transition-colors hover:bg-cyan-400/20"
+          className="flex items-center gap-2 rounded-xl border border-cyan-300 bg-cyan-100 px-4 py-2 font-mono text-xs tracking-widest text-cyan-700 shadow-xs transition-all hover:bg-cyan-200 hover:shadow-sm"
         >
           <Plus size={14} /> NEW MAINTENANCE TASK
         </button>
       </div>
 
       {/* Equipment health grid */}
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+      <div className="gsap-infra-item grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
         {equipment.map((eq) => {
           const faulted = eq.status === 'WARNING' || eq.status === 'CRITICAL' || eq.status === 'OFFLINE' || eq.status === 'FAILED';
           return (
             <div
               key={eq.id}
               className={clsx(
-                'relative flex flex-col justify-between rounded-lg border p-5',
-                faulted ? 'border-red-200 bg-red-50/[0.12]' : 'border-slate-200 bg-white'
+                'group relative flex flex-col justify-between rounded-2xl border p-5 shadow-xs transition-all duration-300 hover:-translate-y-1 hover:shadow-md',
+                faulted ? 'border-red-200 bg-red-50/[0.15]' : 'border-slate-200 bg-white hover:border-slate-300'
               )}
             >
               {faulted && (
-                <span className="absolute right-4 top-4 h-2 w-2 animate-status-ring rounded-full bg-red-400 text-red-600" />
+                <span className="absolute right-4 top-4 h-2.5 w-2.5 animate-ping rounded-full bg-red-400" />
               )}
               <div>
                 <div className="mb-2 flex items-start justify-between">
-                  <span className="font-mono text-xs text-cyan-600">
+                  <span className="font-mono text-xs text-cyan-600 font-semibold">
                     #{eq.id} • {eq.equipment_type}
                   </span>
                   <span
                     className={clsx(
-                      'rounded px-2 py-0.5 font-mono text-[11px] font-bold',
+                      'rounded-md px-2 py-0.5 font-mono text-[11px] font-bold',
                       eq.status === 'RUNNING' || eq.status === 'ONLINE'
                         ? 'bg-emerald-100 text-emerald-600'
                         : 'bg-red-100 text-red-600'
@@ -100,19 +116,19 @@ export const Infrastructure = ({ stationId }: { stationId: number }) => {
                     {eq.status}
                   </span>
                 </div>
-                <h3 className="text-lg font-bold text-slate-700">{eq.name}</h3>
+                <h3 className="text-base font-bold text-slate-800 transition-colors group-hover:text-cyan-700">{eq.name}</h3>
               </div>
 
-              <div className="mt-4 flex items-end justify-between border-t border-slate-200 pt-4">
+              <div className="mt-4 flex items-end justify-between border-t border-slate-100 pt-4">
                 <div className="flex flex-col">
-                  <span className="font-mono text-[10px] text-slate-500">HEALTH_INDEX</span>
-                  <span className={clsx('font-mono text-xl font-bold', eq.health_score < 50 ? 'text-red-600' : 'text-emerald-600')}>
-                    {eq.health_score}%
+                  <span className="font-mono text-[10px] text-slate-400 font-semibold">HEALTH_INDEX</span>
+                  <span className={clsx('font-mono text-xl font-extrabold', eq.health_score < 50 ? 'text-red-600' : 'text-emerald-600')}>
+                    <GSAPNumberTicker value={eq.health_score} decimals={0} suffix="%" />
                   </span>
                 </div>
                 <div className="text-right">
-                  <span className="block font-mono text-[10px] text-slate-500">CRITICAL_TIER</span>
-                  <span className="font-mono text-xs text-slate-600">{eq.is_critical ? 'TIER-1 CRITICAL' : 'STANDARD'}</span>
+                  <span className="block font-mono text-[10px] text-slate-400 font-semibold">CRITICAL_TIER</span>
+                  <span className="font-mono text-xs text-slate-600 font-bold">{eq.is_critical ? 'TIER-1 CRITICAL' : 'STANDARD'}</span>
                 </div>
               </div>
             </div>
@@ -121,7 +137,7 @@ export const Infrastructure = ({ stationId }: { stationId: number }) => {
       </div>
 
       {/* Maintenance board */}
-      <div className="glass-panel rounded-xl p-5">
+      <div className="gsap-infra-item rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
         <h3 className="mb-4 flex items-center gap-2 font-mono text-xs font-bold tracking-[0.35em] text-slate-600">
           <Wrench size={14} className="text-amber-600" /> MAINTENANCE BOARD ({openTasks.length} OPEN)
         </h3>

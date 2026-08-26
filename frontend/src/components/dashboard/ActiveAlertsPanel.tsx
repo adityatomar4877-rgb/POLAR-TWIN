@@ -18,7 +18,7 @@ export default function ActiveAlertsPanel({ alerts }: { alerts: Alert[] }) {
   const active = alerts.filter((a) => !a.resolved_at && a.is_active !== false).slice(0, 4);
 
   return (
-    <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+    <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition-all duration-300 hover:border-slate-300 hover:shadow-md">
       <div className="flex items-center justify-between">
         <h2 className="text-[13px] font-extrabold uppercase tracking-wider text-slate-900">Active Alerts</h2>
         <button
@@ -35,7 +35,7 @@ export default function ActiveAlertsPanel({ alerts }: { alerts: Alert[] }) {
           <motion.p
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="rounded-xl bg-emerald-50 px-4 py-5 text-center text-sm font-medium text-emerald-600"
+            className="rounded-xl bg-emerald-50 px-4 py-5 text-center text-sm font-medium text-emerald-600 border border-emerald-200/50"
           >
             All clear — no active alerts
           </motion.p>
@@ -52,9 +52,10 @@ export default function ActiveAlertsPanel({ alerts }: { alerts: Alert[] }) {
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: 12 }}
                 transition={{ duration: 0.3, delay: Math.min(idx * 0.05, 0.25), ease: [0.22, 1, 0.36, 1] }}
-                className="-mx-2 flex gap-3 rounded-xl border border-transparent px-2 py-1.5 transition-colors hover:border-slate-200 hover:bg-slate-50/70"
+                onClick={() => navigate('/operations')}
+                className="group -mx-2 flex cursor-pointer gap-3 rounded-xl border border-transparent px-2 py-1.5 transition-colors hover:border-slate-200 hover:bg-slate-50/70"
               >
-                <span className={clsx('mt-0.5 rounded-lg p-1.5 h-fit', meta.chip)}>
+                <span className={clsx('mt-0.5 rounded-lg p-1.5 h-fit transition-transform duration-300 group-hover:scale-110', meta.chip)}>
                   <Icon size={14} />
                 </span>
                 <div className="min-w-0 flex-1">
@@ -76,7 +77,9 @@ export default function ActiveAlertsPanel({ alerts }: { alerts: Alert[] }) {
                       </span>
                     </span>
                   </div>
-                  <p className="mt-0.5 truncate text-[13px] font-semibold text-slate-800">{alert.title}</p>
+                  <p className="mt-0.5 truncate text-[13px] font-semibold text-slate-800 group-hover:text-blue-600 transition-colors">
+                    {alert.title}
+                  </p>
                   <p className="truncate text-xs text-slate-400">{alert.message}</p>
                 </div>
               </motion.div>

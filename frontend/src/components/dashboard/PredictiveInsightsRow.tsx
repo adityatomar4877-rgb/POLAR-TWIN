@@ -4,13 +4,15 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowUpRight } from 'lucide-react';
 import { useTelemetryHistory } from '../../hooks/useTelemetryHistory';
 import Sparkline from './Sparkline';
+import GSAPNumberTicker from './GSAPNumberTicker';
 import type { StationDashboardOut, FuelForecast, EnergyForecast } from '../../api/types';
 
 function InsightCard({
   title,
   subtitle,
-  value,
-  valueSuffix,
+  numValue,
+  decimals = 0,
+  valueSuffix = '%',
   noteLabel,
   tone,
   sparkValues,
@@ -20,7 +22,8 @@ function InsightCard({
 }: {
   title: string;
   subtitle: string;
-  value: string;
+  numValue: number;
+  decimals?: number;
   valueSuffix?: string;
   noteLabel: string;
   tone: 'green' | 'amber' | 'red' | 'blue';
@@ -52,7 +55,7 @@ function InsightCard({
       title="Open prediction details"
       whileHover={{ y: -4 }}
       transition={{ type: 'spring', stiffness: 320, damping: 24 }}
-      className="group flex cursor-pointer flex-col justify-between rounded-2xl border border-slate-200 bg-white p-4 text-left shadow-sm transition-colors hover:border-slate-300 hover:shadow-md"
+      className="group flex cursor-pointer flex-col justify-between rounded-2xl border border-slate-200 bg-white p-4 text-left shadow-sm transition-all hover:border-slate-300 hover:shadow-md"
     >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
@@ -66,8 +69,9 @@ function InsightCard({
       </div>
       <div className="mt-2.5 flex items-end justify-between gap-2">
         <p>
-          <span className={clsx('text-[26px] font-extrabold leading-none', toneCls)}>{value}</span>
-          {valueSuffix && <span className="ml-1 text-xs font-medium text-slate-400">{valueSuffix}</span>}
+          <span className={clsx('text-[26px] font-extrabold leading-none', toneCls)}>
+            <GSAPNumberTicker value={numValue} decimals={decimals} suffix={valueSuffix} />
+          </span>
         </p>
         {chip && (
           <span className={clsx('shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold tabular-nums', chipCls)}>
@@ -144,8 +148,10 @@ export default function PredictiveInsightsRow({
       <InsightCard
         title="Generator 1 Failure Risk"
         subtitle={gen1 ? `Health index ${gen1.health_score}%` : 'Predictive model'}
-        value={`${Math.round(failureRisk)}%`}
-        noteLabel={nextServiceNote}
+        numValue={failureRisk}
+        decimals={0}
+        valueSuffix="%"
+        noteLabel={nextServiceNote || riskLabel}
         tone={riskTone as 'green' | 'amber' | 'red'}
         sparkValues={gen1Hist}
         sparkColor="#10b981"
@@ -155,7 +161,9 @@ export default function PredictiveInsightsRow({
       <InsightCard
         title={env?.blizzard_warning ? 'Blizzard Warning Active' : 'Weather Alert'}
         subtitle={`Sustained winds ${wind.toFixed(1)} km/h`}
-        value={`${windProb}%`}
+        numValue={windProb}
+        decimals={0}
+        valueSuffix="%"
         noteLabel="Disruption probability · next 24h"
         tone={windTone as 'green' | 'amber' | 'red'}
         sparkValues={windHist}
@@ -166,7 +174,9 @@ export default function PredictiveInsightsRow({
       <InsightCard
         title="Fuel Depletion Horizon"
         subtitle={`${fuelDays} days until critical threshold`}
-        value={`${fuelPct}%`}
+        numValue={fuelPct}
+        decimals={0}
+        valueSuffix="%"
         noteLabel={
           fuelForecast?.recommended_resupply
             ? 'Resupply recommended'

@@ -1,4 +1,6 @@
+import { useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import gsap from 'gsap';
 import { getStationDashboard, getStationRecommendations } from '../api/stations';
 import { getEnergyPrediction, getFuelPrediction } from '../api/predictions';
 import { Activity } from 'lucide-react';
@@ -14,11 +16,12 @@ import LogisticsCrewCard from '../components/dashboard/LogisticsCrewCard';
 import SimulationStrip from '../components/dashboard/SimulationStrip';
 import RecentAutomationsCard from '../components/dashboard/RecentAutomationsCard';
 import StatusFooter from '../components/dashboard/StatusFooter';
-import { Stagger, StaggerItem } from '../components/motion/primitives';
+import OperationalModeSelector from '../components/dashboard/OperationalModeSelector';
 import { useStation } from '../context/StationContext';
 
 export const CommandCenter = ({ stationId }: { stationId: number }) => {
   const { dashboard: ctxDashboard } = useStation();
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const { data: dashboard, isLoading } = useQuery({
     queryKey: ['dashboard', stationId],
@@ -44,6 +47,19 @@ export const CommandCenter = ({ stationId }: { stationId: number }) => {
     refetchInterval: 60000,
   });
 
+  useEffect(() => {
+    if (!containerRef.current) return;
+    const ctx = gsap.context(() => {
+      gsap.fromTo(
+        '.gsap-reveal-card',
+        { y: 16, opacity: 0 },
+        { y: 0, opacity: 1, duration: 0.5, stagger: 0.05, ease: 'power2.out' }
+      );
+    }, containerRef);
+
+    return () => ctx.revert();
+  }, [stationId]);
+
   if ((isLoading && !ctxDashboard) || (!dashboard && !ctxDashboard)) {
     return (
       <div className="flex h-full items-center justify-center">
@@ -61,50 +77,69 @@ export const CommandCenter = ({ stationId }: { stationId: number }) => {
   const alerts = dashboard?.alerts ?? ctxDashboard?.alerts ?? [];
 
   return (
-    <Stagger className="flex flex-col gap-5">
+    <div ref={containerRef} className="flex flex-col gap-5">
+      {/* Interactive Command & Operational Mode selector */}
+      <div className="gsap-reveal-card">
+        <OperationalModeSelector />
+      </div>
+
       {/* Environment — live telemetry cards */}
-      <StaggerItem>
+      <div className="gsap-reveal-card">
         <WeatherKpiRow dashboard={data} />
-      </StaggerItem>
+      </div>
 
-      <StaggerItem>
-        <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_380px]">
-          {/* Left: digital twin, energy predictions, equipment, logistics */}
-          <div className="flex min-w-0 flex-col gap-5">
+      <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_380px]">
+        {/* Left: digital twin, energy predictions, equipment, logistics */}
+        <div className="flex min-w-0 flex-col gap-5">
+          <div className="gsap-reveal-card">
             <TwinOverviewCard dashboard={data} />
-
-            <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,340px)_minmax(0,1fr)]">
-              <EnergyOverviewCard energy={data.energy} />
-              <EnergyForecastCard forecast={energyForecast} />
-            </div>
-
-            <EquipmentHealthCard equipment={data.equipment ?? []} />
-            <LogisticsCrewCard station={data.station} />
           </div>
 
-          {/* Right rail: alerts + copilot + automations */}
-          <div className="flex min-w-0 flex-col gap-5">
+          <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,340px)_minmax(0,1fr)]">
+            <div className="gsap-reveal-card">
+              <EnergyOverviewCard energy={data.energy} />
+            </div>
+            <div className="gsap-reveal-card">
+              <EnergyForecastCard forecast={energyForecast} />
+            </div>
+          </div>
+
+          <div className="gsap-reveal-card">
+            <EquipmentHealthCard equipment={data.equipment ?? []} />
+          </div>
+          <div className="gsap-reveal-card">
+            <LogisticsCrewCard station={data.station} />
+          </div>
+        </div>
+
+        {/* Right rail: alerts + copilot + automations */}
+        <div className="flex min-w-0 flex-col gap-5">
+          <div className="gsap-reveal-card">
             <ActiveAlertsPanel alerts={alerts} />
+          </div>
+          <div className="gsap-reveal-card">
             <CopilotInsightsCard dashboard={data} recommendations={recommendations} />
+          </div>
+          <div className="gsap-reveal-card">
             <RecentAutomationsCard stationId={stationId} />
           </div>
         </div>
-      </StaggerItem>
+      </div>
 
       {/* Simulation-driven predictive insights */}
-      <StaggerItem>
+      <div className="gsap-reveal-card">
         <PredictiveInsightsRow dashboard={data} fuelForecast={fuelForecast} energyForecast={energyForecast} />
-      </StaggerItem>
+      </div>
 
       {/* What-if simulation quick access */}
-      <StaggerItem>
+      <div className="gsap-reveal-card">
         <SimulationStrip stationId={stationId} />
-      </StaggerItem>
+      </div>
 
-      <StaggerItem>
+      <div className="gsap-reveal-card">
         <StatusFooter />
-      </StaggerItem>
-    </Stagger>
+      </div>
+    </div>
   );
 };
 
