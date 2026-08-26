@@ -4,7 +4,7 @@ from app.schemas.energy import EnergyTelemetryBase, EnergyTelemetryCreate, Energ
 from app.schemas.equipment import EquipmentBase, EquipmentCreate, EquipmentOut, EquipmentHealthOut
 from app.schemas.logistics import LogisticsItemBase, LogisticsItemCreate, LogisticsItemOut, LogisticsForecastOut
 from app.schemas.alert import AlertBase, AlertCreate, AlertOut, AlertAcknowledge
-from app.schemas.prediction import EnergyPredictionPoint, EnergyForecastResponse, FuelDepletionForecastResponse, PredictionSummaryOut
+from app.schemas.prediction import MLForecastHorizon, EnergyForecastResponse, FuelDepletionForecastResponse, PredictionSummaryOut
 from app.schemas.simulation import ScenarioRequest, ScenarioResponse, SimulationStatusOut
 from app.schemas.dashboard import StationDashboardOut
 from app.schemas.command import (
@@ -25,7 +25,7 @@ __all__ = [
     "EquipmentBase", "EquipmentCreate", "EquipmentOut", "EquipmentHealthOut",
     "LogisticsItemBase", "LogisticsItemCreate", "LogisticsItemOut", "LogisticsForecastOut",
     "AlertBase", "AlertCreate", "AlertOut", "AlertAcknowledge",
-    "EnergyPredictionPoint", "EnergyForecastResponse", "FuelDepletionForecastResponse", "PredictionSummaryOut",
+    "MLForecastHorizon", "EnergyForecastResponse", "FuelDepletionForecastResponse", "PredictionSummaryOut",
     "ScenarioRequest", "ScenarioResponse", "SimulationStatusOut",
     "StationDashboardOut",
     "CommandRequest", "CommandResponse", "CommandPreviewRequest", "CommandPreviewResponse", "CommandHistoryOut",

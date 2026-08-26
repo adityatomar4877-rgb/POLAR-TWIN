@@ -108,3 +108,174 @@ def calculate_equipment_health(
         "factors": factors if factors else ["All monitored telemetry within nominal bounds."],
         "recommendation": recommendation,
     }
+
+
+def calculate_building_thermal_load(
+    station_code: str,
+    ambient_temperature: float,
+    wind_speed_kmh: float,
+    load_modifier_kw: float = 0.0,
+    indoor_setpoint_c: float = 18.0,
+) -> Dict[str, float]:
+    """
+    Thermodynamic building heat loss & electrical demand model for Antarctic research stations.
+    
+    Physics components:
+    1. Indoor habitability setpoint (standard ASHRAE/Antarctic habitat: 18.0°C).
+    2. Delta T = max(0, T_indoor - T_ambient).
+    3. Fourier conduction envelope loss: Q_cond = (U * A) * Delta T.
+       Bharati: composite envelope ~0.48 kW/K. Maitri: ~0.58 kW/K.
+    4. Forced convection multiplier via wind boundary layer: (1 + 0.045 * (v / 10)^0.8).
+    5. Ventilation & fresh air infiltration exchange: Q_vent ~ 0.32 kW/K (Bharati), 0.38 kW/K (Maitri).
+    6. Heat pump COP = max(1.0, 1.85 - 0.02 * max(0, -T_ambient - 10.0)).
+    7. Base electrical load (scientific instruments, water pumps, lighting, server comms):
+       Bharati: 54.0 kW, Maitri: 62.0 kW.
+    """
+    is_maitri = "MAITRI" in station_code.upper()
+    base_electrical = 62.0 if is_maitri else 54.0
+    u_envelope = 0.58 if is_maitri else 0.48
+    vent_coeff = 0.38 if is_maitri else 0.32
+
+    delta_t = max(0.0, indoor_setpoint_c - ambient_temperature)
+    wind_clamped = max(0.0, wind_speed_kmh)
+    wind_multiplier = 1.0 + 0.045 * ((wind_clamped / 10.0) ** 0.8)
+
+    q_conduction = u_envelope * delta_t * wind_multiplier
+    q_ventilation = vent_coeff * delta_t
+    total_thermal_demand = q_conduction + q_ventilation
+
+    # Heat pump COP degradation curve with extreme sub-zero ambient
+    cop = max(1.0, 1.85 - 0.02 * max(0.0, -ambient_temperature - 10.0))
+    heating_electrical_kw = total_thermal_demand / cop
+
+    total_consumption = base_electrical + heating_electrical_kw + load_modifier_kw
+
+    return {
+        "base_electrical_kw": round(base_electrical, 2),
+        "thermal_delta_c": round(delta_t, 2),
+        "heating_electrical_kw": round(heating_electrical_kw, 2),
+        "total_consumption_kw": round(max(10.0, total_consumption), 2),
+    }
+
+
+def calculate_microgrid_power_flow(
+    station_code: str,
+    consumption_kw: float,
+    solar_factor: float = 0.5,
+    generator_1_online: bool = True,
+    generator_2_online: bool = False,
+    initial_battery_pct: float = 85.0,
+    fuel_pct: float = 82.0,
+    fuel_burn_multiplier: float = 1.0,
+    duration_minutes: float = 60.0,
+    hour_of_day: Optional[float] = None,
+) -> Dict:
+    """
+    Rigorous Microgrid dispatch, electrochemical battery storage, and fuel logistics model.
+    """
+    import math
+
+    is_maitri = "MAITRI" in station_code.upper()
+    solar_peak_capacity = 40.0 if is_maitri else 60.0
+    battery_capacity_kwh = 350.0 if is_maitri else 300.0
+    fuel_tank_capacity_liters = 75000.0 if is_maitri else 60000.0
+
+    # 1. Solar generation calculation
+    if hour_of_day is not None:
+        zenith = max(0.0, math.sin((hour_of_day - 6.0) / 12.0 * math.pi))
+    else:
+        zenith = 0.75  # Nominal daylight average
+    solar_kw = round(solar_peak_capacity * max(0.0, min(1.0, solar_factor)) * zenith, 2)
+
+    # 2. Generator dispatch & rating
+    net_demand_for_diesel = max(0.0, consumption_kw - solar_kw)
+    gen_unit_capacity = 120.0  # kW per unit continuous
+
+    if generator_1_online and generator_2_online:
+        total_gen_cap = 240.0
+        # Generators share load equally
+        diesel_generation_kw = min(total_gen_cap, net_demand_for_diesel)
+    elif generator_1_online or generator_2_online:
+        total_gen_cap = 120.0
+        diesel_generation_kw = min(total_gen_cap, net_demand_for_diesel)
+    else:
+        total_gen_cap = 0.0
+        diesel_generation_kw = 0.0
+
+    total_generation_kw = round(solar_kw + diesel_generation_kw, 2)
+    net_balance_kw = round(total_generation_kw - consumption_kw, 2)
+    energy_deficit_kw = round(max(0.0, -net_balance_kw), 2)
+
+    # 3. Battery electrochemical dynamics
+    eta_discharge = 0.95
+    eta_charge = 0.92
+    max_charge_kw = 35.0
+    max_discharge_kw = 60.0
+
+    duration_hours = max(0.01, duration_minutes / 60.0)
+
+    if energy_deficit_kw > 0:
+        actual_discharge_kw = min(max_discharge_kw, energy_deficit_kw)
+        kwh_drained = (actual_discharge_kw * duration_hours) / eta_discharge
+        battery_drop_pct = min(initial_battery_pct, (kwh_drained / battery_capacity_kwh) * 100.0)
+        # Avoid negative zero or micro-jitter
+        battery_drop_pct = round(battery_drop_pct, 1)
+        if battery_drop_pct < 0.05:
+            battery_drop_pct = 0.0
+        final_battery_pct = round(max(0.0, initial_battery_pct - battery_drop_pct), 1)
+
+        # Hours until blackout / battery depletion
+        hours_to_blackout = (
+            ((initial_battery_pct / 100.0) * battery_capacity_kwh * eta_discharge) / actual_discharge_kw
+            if actual_discharge_kw > 0 else 999.0
+        )
+    else:
+        actual_charge_kw = min(max_charge_kw, max(0.0, net_balance_kw))
+        kwh_stored = actual_charge_kw * duration_hours * eta_charge
+        battery_gain_pct = (kwh_stored / battery_capacity_kwh) * 100.0
+        battery_drop_pct = 0.0
+        final_battery_pct = round(min(100.0, initial_battery_pct + battery_gain_pct), 1)
+        hours_to_blackout = 999.0
+
+    # 4. Fuel burn & logistics dynamics
+    # Brake Specific Fuel Consumption (BSFC) curve (L/kWh)
+    load_factor = (diesel_generation_kw / total_gen_cap) if total_gen_cap > 0 else 0.0
+    bsfc = 0.250 + 0.020 * (1.0 - load_factor)
+    hourly_fuel_liters = diesel_generation_kw * bsfc * fuel_burn_multiplier
+    daily_fuel_liters = hourly_fuel_liters * 24.0
+
+    current_fuel_liters = fuel_tank_capacity_liters * (fuel_pct / 100.0)
+    fuel_drained_over_window = hourly_fuel_liters * duration_hours
+    projected_final_fuel_pct = round(
+        max(0.0, ((current_fuel_liters - fuel_drained_over_window) / fuel_tank_capacity_liters) * 100.0), 1
+    )
+    days_of_fuel_remaining = (
+        round(current_fuel_liters / daily_fuel_liters, 1) if daily_fuel_liters > 0 else 999.0
+    )
+
+    # 5. Precise Risk Index Classification
+    if (not generator_1_online and not generator_2_online) or final_battery_pct < 15.0 or energy_deficit_kw > 50.0:
+        grid_risk = "CRITICAL"
+    elif not generator_1_online or energy_deficit_kw > 20.0 or final_battery_pct < 30.0 or projected_final_fuel_pct < 20.0:
+        grid_risk = "HIGH RISK"
+    elif energy_deficit_kw > 0.0 or hours_to_blackout < 48.0 or projected_final_fuel_pct < 35.0:
+        grid_risk = "ELEVATED"
+    else:
+        grid_risk = "NOMINAL"
+
+    return {
+        "solar_generation_kw": solar_kw,
+        "diesel_generation_kw": diesel_generation_kw,
+        "total_generation_kw": total_generation_kw,
+        "consumption_kw": consumption_kw,
+        "net_balance_kw": net_balance_kw,
+        "energy_deficit_kw": energy_deficit_kw,
+        "battery_drop_pct": battery_drop_pct,
+        "final_battery_pct": final_battery_pct,
+        "hours_to_blackout": round(hours_to_blackout, 1),
+        "hourly_fuel_burn_liters": round(hourly_fuel_liters, 2),
+        "daily_fuel_burn_liters": round(daily_fuel_liters, 1),
+        "days_of_fuel_remaining": days_of_fuel_remaining,
+        "projected_final_fuel_pct": projected_final_fuel_pct,
+        "grid_risk": grid_risk,
+    }

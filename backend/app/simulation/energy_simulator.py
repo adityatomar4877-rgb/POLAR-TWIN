@@ -3,6 +3,7 @@ import random
 from datetime import datetime, timezone
 from typing import Dict, Optional
 from app.utils.validators import clamp_percentage
+from app.utils.calculations import calculate_building_thermal_load
 
 
 class EnergySimulator:
@@ -31,37 +32,26 @@ class EnergySimulator:
         hour = now.hour + (now.minute / 60.0) + (now.second / 3600.0)
         conds = custom_conditions or scenario_params or {}
 
-        # 1. Base station life support & living quarters load
+        # 1. Base station life support & living quarters load + Thermodynamic heat loss
         is_maitri = "MAITRI" in station_code.upper()
-        base_station_load = 88.0 if is_maitri else 78.0 # Base electrical load (kW)
+        thermal_res = calculate_building_thermal_load(
+            station_code=station_code,
+            ambient_temperature=ambient_temperature,
+            wind_speed_kmh=wind_speed,
+            load_modifier_kw=float(conds.get("load_modifier_kw", 0.0)),
+        )
+        base_physics_consumption = thermal_res["total_consumption_kw"]
 
-        # 2. Thermodynamic Building Heat Loss & HVAC Compressor Cycling
-        # Fourier heat conduction through insulated composite panels + wind convection
-        thermal_delta = max(0.0, -1.0 * ambient_temperature)
-        conduction_loss = thermal_delta * 1.35
-        convection_loss = (wind_speed / 45.0) * 5.8
-        
         # HVAC heat pump thermostat cyclic modulation (~3 minute oscillation period)
-        hvac_cycling = 3.2 * math.sin(time_sec / 180.0 * 2 * math.pi)
+        hvac_cycling = 2.4 * math.sin(time_sec / 180.0 * 2 * math.pi)
         
         # Scientific equipment & water desalination pump duty cycle (~5 minute period)
-        lab_duty_cycle = 2.4 * math.sin((time_sec / 300.0 * 2 * math.pi) + 1.2)
+        lab_duty_cycle = 1.6 * math.sin((time_sec / 300.0 * 2 * math.pi) + 1.2)
         
         # Natural sub-circuit electrical noise
-        electrical_jitter = random.uniform(-0.85, 0.85)
+        electrical_jitter = random.uniform(-0.5, 0.5)
 
-        total_consumption = (
-            base_station_load 
-            + conduction_loss 
-            + convection_loss 
-            + hvac_cycling 
-            + lab_duty_cycle 
-            + electrical_jitter
-        )
-
-        # Apply custom load modifier if present
-        if conds.get("load_modifier_kw") is not None:
-            total_consumption += float(conds["load_modifier_kw"])
+        total_consumption = max(10.0, base_physics_consumption + hvac_cycling + lab_duty_cycle + electrical_jitter)
 
         # 3. Solar PV Generation Model with Diurnal Curve & Atmospheric Attenuation
         solar_capacity = 60.0 if not is_maitri else 40.0

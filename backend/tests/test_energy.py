@@ -20,10 +20,15 @@ def test_get_energy_history(client):
 
 
 def test_get_energy_forecast(client):
-    response = client.get("/api/stations/bharati/energy/forecast?horizon_hours=12")
+    response = client.get("/api/stations/bharati/energy/forecast")
     assert response.status_code == 200
     data = response.json()
-    assert data["horizon_hours"] == 12
-    assert len(data["forecast"]) == 12
-    assert "model_name" in data
-    assert data["forecast"][0]["predicted_consumption_kw"] > 0
+    assert data["model_name"] == "RandomForestEnergyForecast"
+    assert data["is_fallback"] is False
+    assert data["feature_count"] == 63
+    assert "forecast" in data
+    assert "6h" in data["forecast"]
+    assert "12h" in data["forecast"]
+    assert "24h" in data["forecast"]
+    assert data["forecast"]["6h"]["average_consumption_kw"] >= 0
+

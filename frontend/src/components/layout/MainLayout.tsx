@@ -1,5 +1,6 @@
 import { useRef, useEffect } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
+import { AnimatePresence, motion } from 'framer-motion';
 import { Sidebar } from './Sidebar';
 import TopBar from './TopBar';
 import EmergencyModeHUD from '../emergency/EmergencyModeHUD';
@@ -35,10 +36,10 @@ export const MainLayout = () => {
     <div className="relative flex h-screen w-full overflow-hidden bg-slate-950 text-slate-800">
       {/* Dashboard photo background */}
       <div
-        className="pointer-events-none fixed inset-0 z-0 bg-cover bg-center bg-no-repeat transition-all duration-700"
+        className="pointer-events-none fixed inset-0 z-0 bg-cover bg-center bg-no-repeat"
         style={{ backgroundImage: "url('/polar-bg.jpg')" }}
       >
-        <div className="absolute inset-0 bg-slate-900/20 backdrop-blur-[1px]" />
+        <div className="absolute inset-0 bg-slate-900/25" />
       </div>
 
       <div className="relative z-10 flex h-full">
@@ -53,8 +54,19 @@ export const MainLayout = () => {
           className="custom-scrollbar relative flex-1 overflow-y-auto px-6 pb-6 pt-5 lg:px-8"
         >
           <div ref={contentRef}>
-            {/* Main content injected here by router */}
-            <Outlet />
+            {/* Route transitions — smooth crossfade + rise between workspaces */}
+            <AnimatePresence mode="wait" initial={false}>
+              <motion.div
+                key={location.pathname}
+                initial={{ opacity: 0, y: 14 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+              >
+                {/* Main content injected here by router */}
+                <Outlet />
+              </motion.div>
+            </AnimatePresence>
           </div>
         </main>
       </div>

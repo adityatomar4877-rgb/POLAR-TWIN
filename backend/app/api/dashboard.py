@@ -54,10 +54,12 @@ def get_station_dashboard_summary(station_id: str, db: Session = Depends(get_db)
     alerts_out = [AlertOut.model_validate(a) for a in alerts]
 
     # 6. Predictions
-    energy_forecast = prediction_service.forecast_energy(db, station.id, station.code, horizon_hours=24)
+    from app.services.energy_forecast_service import energy_forecast_service
+    energy_forecast = energy_forecast_service.predict(db, station.id, station.code)
     fuel_forecast = prediction_service.forecast_fuel_depletion(db, station.id, station.code)
     predictions_out = {
-        "energy_forecast_24h": energy_forecast.model_dump(),
+        "energy_forecast": energy_forecast,
+        "energy_forecast_24h": energy_forecast,
         "fuel_forecast": fuel_forecast.model_dump(),
     }
 

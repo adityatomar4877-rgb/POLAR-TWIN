@@ -70,6 +70,28 @@ function TwinLabel({
   );
 }
 
+function TwinStat({
+  label,
+  value,
+  dot,
+  className,
+}: {
+  label: string;
+  value: string;
+  dot: string;
+  className?: string;
+}) {
+  return (
+    <div className={clsx('flex flex-col items-center justify-center gap-0.5 px-2 py-2', className)}>
+      <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+        <span className={clsx('h-1.5 w-1.5 rounded-full', dot)} />
+        {label}
+      </span>
+      <span className="text-[13px] font-bold tabular-nums text-slate-800">{value}</span>
+    </div>
+  );
+}
+
 export default function TwinOverviewCard({ dashboard }: { dashboard: StationDashboardOut }) {
   const { selectedStationId } = useStation();
   const [expanded, setExpanded] = useState(false);
@@ -118,7 +140,6 @@ export default function TwinOverviewCard({ dashboard }: { dashboard: StationDash
 
   return (
     <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-      {/* Header */}
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="text-[15px] font-extrabold uppercase tracking-wide text-slate-900">
@@ -158,7 +179,7 @@ export default function TwinOverviewCard({ dashboard }: { dashboard: StationDash
       <div
         ref={viewportRef}
         className={clsx(
-          'relative mt-4 overflow-hidden rounded-xl border border-slate-200 bg-gradient-to-b from-[#d8e5f2] via-[#e3edf6] to-[#eef4f9] transition-all duration-500',
+          'twin-viewport relative mt-4 overflow-hidden rounded-xl border border-slate-200 bg-gradient-to-b from-[#d8e5f2] via-[#e3edf6] to-[#eef4f9] transition-all duration-500',
           expanded ? 'h-[560px]' : 'h-[400px] lg:h-[440px]'
         )}
       >
@@ -240,7 +261,23 @@ export default function TwinOverviewCard({ dashboard }: { dashboard: StationDash
           Scroll to zoom
         </div>
       </div>
+
+      {/* Live twin telemetry strip */}
+      <div className="mt-4 grid grid-cols-2 divide-slate-100 rounded-xl border border-slate-100 bg-slate-50/60 p-1 sm:grid-cols-5 sm:divide-x">
+        <TwinStat label="Generation" value={`${(energy?.generation_kw ?? 0).toFixed(1)} kW`} dot="bg-teal-500" />
+        <TwinStat label="Consumption" value={`${(energy?.consumption_kw ?? 0).toFixed(1)} kW`} dot="bg-blue-500" />
+        <TwinStat
+          label="Battery"
+          value={`${(energy?.battery_percentage ?? 0).toFixed(0)}%`}
+          dot={(energy?.battery_percentage ?? 0) < 20 ? 'bg-red-500' : 'bg-emerald-500'}
+        />
+        <TwinStat
+          label="Fuel Reserve"
+          value={`${Math.round(energy?.fuel_percentage ?? 82)}%`}
+          dot={(energy?.fuel_percentage ?? 82) < 25 ? 'bg-red-500' : (energy?.fuel_percentage ?? 82) < 50 ? 'bg-amber-500' : 'bg-emerald-500'}
+        />
+        <TwinStat label="Occupancy" value={`${occupancy}%`} dot="bg-violet-500" className="col-span-2 sm:col-span-1" />
+      </div>
     </section>
   );
 }
-

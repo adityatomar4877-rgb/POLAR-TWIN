@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import clsx from 'clsx';
 import { BatteryCharging, Fuel, Zap } from 'lucide-react';
@@ -9,7 +10,7 @@ import GSAPEnergyFlow from './GSAPEnergyFlow';
 
 const SEGMENT_COLORS = ['#14b8a6', '#3b82f6', '#8b5cf6'];
 
-function Donut({
+const Donut = memo(function Donut({
   segments,
   centerVal,
   centerSub,
@@ -57,7 +58,7 @@ function Donut({
       </div>
     </div>
   );
-}
+});
 
 export default function EnergyOverviewCard({ energy }: { energy?: EnergyTelemetry }) {
   const { selectedStationId } = useStation();
@@ -78,6 +79,14 @@ export default function EnergyOverviewCard({ energy }: { energy?: EnergyTelemetr
     { label: 'Generated', val: generated, color: SEGMENT_COLORS[0] },
     { label: 'Consumed', val: consumed, color: SEGMENT_COLORS[1] },
     { label: 'Stored', val: stored, color: SEGMENT_COLORS[2] },
+  ];
+
+  const diesel = Math.max(energy?.diesel_generation_kw ?? 0, 0);
+  const solar = Math.max(energy?.solar_generation_kw ?? 0, 0);
+  const sourceTotal = generated > 0 ? generated : diesel + solar || 1;
+  const sourceMix = [
+    { label: 'Diesel', value: diesel, color: 'bg-slate-500' },
+    { label: 'Solar PV', value: solar, color: 'bg-amber-400' },
   ];
 
   return (
@@ -108,6 +117,23 @@ export default function EnergyOverviewCard({ energy }: { energy?: EnergyTelemetr
                 </span>
               </div>
             ))}
+            <div className="space-y-1.5 border-t border-slate-100 pt-2.5">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Generation Mix</p>
+              {sourceMix.map((s) => (
+                <div key={s.label} className="flex items-center gap-2">
+                  <span className="w-12 shrink-0 text-[11px] text-slate-400">{s.label}</span>
+                  <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-slate-100">
+                    <span
+                      className={`block h-full rounded-full ${s.color} transition-all duration-700`}
+                      style={{ width: `${Math.min(100, (s.value / sourceTotal) * 100)}%` }}
+                    />
+                  </span>
+                  <span className="w-14 shrink-0 text-right text-[11px] font-semibold tabular-nums text-slate-600">
+                    {s.value.toFixed(1)} kW
+                  </span>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
 
@@ -181,4 +207,3 @@ export default function EnergyOverviewCard({ energy }: { energy?: EnergyTelemetr
     </section>
   );
 }
-

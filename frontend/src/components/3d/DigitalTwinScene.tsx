@@ -1,4 +1,4 @@
-import { useMemo, useRef } from 'react';
+import { memo, useCallback, useMemo, useRef } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { OrbitControls, ContactShadows, Box, Sphere, Text, Line, Cone } from '@react-three/drei';
 import * as THREE from 'three';
@@ -338,53 +338,49 @@ function CameraRig({
 
 /* ---------------- main scene ---------------- */
 
-export const DigitalTwinScene = ({
+interface SceneDataProps {
+  stationId: number;
+  interactive: boolean;
+  compact: boolean;
+  lightMode: boolean;
+  selectedEquipmentId: number | null;
+  onSubsystemSelect?: (equipmentId: number | null, label: string | null) => void;
+  gen1Status: string;
+  gen2Status: string;
+  batStatus: string;
+  solarStatus: string | undefined;
+  windKmh: number;
+  batteryCharging: boolean;
+  consumptionKw: number;
+  pins: PinTarget[];
+  pinStatuses: Record<string, string | undefined>;
+}
+
+const SceneContent = memo(function SceneContent({
   stationId,
-  interactive = true,
-  compact = false,
-  lightMode = false,
-  selectedEquipmentId = null,
+  interactive,
+  compact,
+  lightMode,
+  selectedEquipmentId,
   onSubsystemSelect,
-}: DigitalTwinSceneProps) => {
+  gen1Status,
+  gen2Status,
+  batStatus,
+  solarStatus,
+  windKmh,
+  batteryCharging,
+  consumptionKw,
+  pins,
+  pinStatuses,
+}: SceneDataProps) {
   const controlsRef = useRef<OrbitControlsImpl>(null);
 
-  const { data: equipment } = useQuery({
-    queryKey: ['equipment', stationId],
-    queryFn: () => getStationEquipment(stationId),
-    enabled: stationId != null,
-  });
-
-  const { data: dashboard } = useQuery({
-    queryKey: ['dashboard', stationId],
-    queryFn: () => getStationDashboard(stationId),
-    enabled: stationId != null,
-    refetchInterval: 15000,
-  });
-
-  const windKmh = dashboard?.environment?.wind_speed_kmh ?? 24;
-  const energy = dashboard?.energy;
-  const batteryCharging = (energy?.battery_power_kw ?? 0) > 0;
-
-  const getEq = (name: string): Equipment | undefined =>
-    equipment?.find((e) => e.name === name);
-
-  const gen1 = getEq('Generator 1');
-  const gen2 = getEq('Generator 2');
-  const bat = getEq('Battery Storage Bank');
-  const hvac = equipment?.find((e) => e.equipment_type?.toUpperCase().includes('HVAC'));
-  const solarEq = equipment?.find((e) => e.equipment_type?.toUpperCase().includes('SOLAR'));
-
-  const pins: PinTarget[] = [
-    { equipmentId: gen1?.id ?? null, label: 'GEN-1', focus: [-6.5, 1.2, 3] },
-    { equipmentId: gen2?.id ?? null, label: 'GEN-2', focus: [-2.2, 1.2, 4.8] },
-    { equipmentId: bat?.id ?? null, label: 'BATTERY', focus: [5.2, 1, 3] },
-    { equipmentId: solarEq?.id ?? null, label: 'SOLAR', focus: [-4.5, 1, -4] },
-    { equipmentId: hvac?.id ?? null, label: 'HVAC', focus: [0.5, 3.2, -2] },
-  ];
-
-  const handleSelect = (equipmentId: number | null, label: string | null) => {
-    onSubsystemSelect?.(equipmentId, label);
-  };
+  const handleSelect = useCallback(
+    (equipmentId: number | null, label: string | null) => {
+      onSubsystemSelect?.(equipmentId, label);
+    },
+    [onSubsystemSelect]
+  );
 
   const focusPin = pins.find(
     (p) => p.equipmentId != null && p.equipmentId === selectedEquipmentId
@@ -393,7 +389,7 @@ export const DigitalTwinScene = ({
   const maitri = stationId === 1;
 
   return (
-    <Canvas camera={{ position: [15, 12, 15], fov: 45 }} dpr={[1, 1.8]}>
+    <>
       <color attach="background" args={[lightMode ? '#d8e5f2' : '#020617']} />
 
       <ambientLight intensity={lightMode ? 1.0 : 0.3} />
@@ -402,7 +398,7 @@ export const DigitalTwinScene = ({
 
       {/* Ice platform */}
       <mesh position={[0, -0.5, 0]}>
-        <cylinderGeometry args={[15, 15, 1, 64]} />
+        <cylinderGeometry args={[15, 15, 1, 48]} />
         <meshStandardMaterial color={lightMode ? '#eef3f8' : '#0f172a'} roughness={lightMode ? 0.95 : 0.85} />
       </mesh>
       {!compact && (
@@ -411,7 +407,7 @@ export const DigitalTwinScene = ({
           position={[0, 0.02, 0]}
         />
       )}
-      <ContactShadows resolution={1024} scale={20} blur={2} opacity={lightMode ? 0.25 : 0.5} far={10} color={lightMode ? '#94a3b8' : '#000000'} />
+      <ContactShadows resolution={512} scale={20} blur={2} opacity={lightMode ? 0.25 : 0.5} far={10} color={lightMode ? '#94a3b8' : '#000000'} frames={1} />
 
       {/* Main station building — distinct architecture per station */}
       <group position={[0, 0, -2]}>
@@ -478,7 +474,7 @@ export const DigitalTwinScene = ({
           <cylinderGeometry args={[0.14, 0.14, 0.7, 8]} />
           <meshStandardMaterial color="#475569" metalness={0.5} />
         </mesh>
-        <StatusLight position={[0, 1.25, 0]} status={gen1?.status || 'OFFLINE'} />
+        <StatusLight position={[0, 1.25, 0]} status={gen1Status} />
       </group>
 
       {/* Generator 2 */}
@@ -490,7 +486,7 @@ export const DigitalTwinScene = ({
           <cylinderGeometry args={[0.14, 0.14, 0.7, 8]} />
           <meshStandardMaterial color="#475569" metalness={0.5} />
         </mesh>
-        <StatusLight position={[0, 1.25, 0]} status={gen2?.status || 'OFFLINE'} />
+        <StatusLight position={[0, 1.25, 0]} status={gen2Status} />
       </group>
 
       {/* Battery bank */}
@@ -498,13 +494,13 @@ export const DigitalTwinScene = ({
         <Box args={[4, 1.5, 2]} castShadow receiveShadow>
           <meshStandardMaterial color="#0f766e" emissive="#134e4a" emissiveIntensity={0.4} />
         </Box>
-        <StatusLight position={[0, 1.05, 0]} status={bat?.status || 'OFFLINE'} />
+        <StatusLight position={[0, 1.05, 0]} status={batStatus} />
       </group>
 
       {/* Solar array */}
       <group position={[-4.5, 0.9, -4]}>
         <SolarArray position={[0, 0, 0]} />
-        {solarEq && <StatusLight position={[1.6, 0.4, 0.6]} status={solarEq.status} />}
+        {solarStatus && <StatusLight position={[1.6, 0.4, 0.6]} status={solarStatus} />}
       </group>
 
       {/* Wind turbines driven by live wind */}
@@ -527,13 +523,13 @@ export const DigitalTwinScene = ({
         from={[-5.5, 2.1, 3]}
         to={[3.2, 1.6, 3]}
         color="#22d3ee"
-        active={(gen1?.status === 'RUNNING' || gen2?.status === 'RUNNING') ?? true}
+        active={gen1Status === 'RUNNING' || gen2Status === 'RUNNING'}
       />
       <FlowLine
         from={[3.2, 1.6, 3]}
         to={[-4, 1.4, 0.4]}
         color={batteryCharging ? '#34d399' : '#fbbf24'}
-        active={(energy?.consumption_kw ?? 1) > 0}
+        active={consumptionKw > 0}
         reverse={!batteryCharging}
       />
 
@@ -545,9 +541,7 @@ export const DigitalTwinScene = ({
             position={[p.focus[0], p.focus[1] + 2.6, p.focus[2]]}
             label={p.label}
             equipmentId={p.equipmentId}
-            status={
-              equipment?.find((e) => e.id === p.equipmentId)?.status
-            }
+            status={pinStatuses[p.label]}
             selected={selectedEquipmentId === p.equipmentId}
             onSelect={handleSelect}
           />
@@ -565,6 +559,93 @@ export const DigitalTwinScene = ({
         autoRotateSpeed={0.5}
       />
       <CameraRig controlsRef={controlsRef} focus={focusPin ? focusPin.focus : null} interactive={interactive} />
+    </>
+  );
+});
+
+export const DigitalTwinScene = ({
+  stationId,
+  interactive = true,
+  compact = false,
+  lightMode = false,
+  selectedEquipmentId = null,
+  onSubsystemSelect,
+}: DigitalTwinSceneProps) => {
+  const { data: equipment } = useQuery({
+    queryKey: ['equipment', stationId],
+    queryFn: () => getStationEquipment(stationId),
+    enabled: stationId != null,
+    staleTime: 10000,
+  });
+
+  const { data: dashboard } = useQuery({
+    queryKey: ['dashboard', stationId],
+    queryFn: () => getStationDashboard(stationId),
+    enabled: stationId != null,
+    staleTime: 10000,
+  });
+
+  const windKmh = Math.round(dashboard?.environment?.wind_speed_kmh ?? 24);
+  const energy = dashboard?.energy;
+  const batteryCharging = (energy?.battery_power_kw ?? 0) > 0;
+  const consumptionKw = energy?.consumption_kw ?? 1;
+
+  const getEq = (name: string): Equipment | undefined =>
+    equipment?.find((e) => e.name === name);
+
+  const gen1 = getEq('Generator 1');
+  const gen2 = getEq('Generator 2');
+  const bat = getEq('Battery Storage Bank');
+  const hvac = equipment?.find((e) => e.equipment_type?.toUpperCase().includes('HVAC'));
+  const solarEq = equipment?.find((e) => e.equipment_type?.toUpperCase().includes('SOLAR'));
+
+  const pins: PinTarget[] = useMemo(
+    () => [
+      { equipmentId: gen1?.id ?? null, label: 'GEN-1', focus: [-6.5, 1.2, 3] },
+      { equipmentId: gen2?.id ?? null, label: 'GEN-2', focus: [-2.2, 1.2, 4.8] },
+      { equipmentId: bat?.id ?? null, label: 'BATTERY', focus: [5.2, 1, 3] },
+      { equipmentId: solarEq?.id ?? null, label: 'SOLAR', focus: [-4.5, 1, -4] },
+      { equipmentId: hvac?.id ?? null, label: 'HVAC', focus: [0.5, 3.2, -2] },
+    ],
+    [gen1?.id, gen2?.id, bat?.id, solarEq?.id, hvac?.id]
+  );
+
+  const pinStatuses = useMemo(() => {
+    const byId = new Map(equipment?.map((e) => [e.id, e.status]));
+    return {
+      'GEN-1': gen1?.status,
+      'GEN-2': gen2?.status,
+      BATTERY: bat?.status,
+      SOLAR: solarEq?.status,
+      HVAC: hvac?.status,
+      ...Object.fromEntries(pins.filter((p) => p.equipmentId != null).map((p) => [p.label, byId.get(p.equipmentId!)])),
+    } as Record<string, string | undefined>;
+  }, [equipment, pins, gen1?.status, gen2?.status, bat?.status, solarEq?.status, hvac?.status]);
+
+  return (
+    <Canvas
+      camera={{ position: [15, 12, 15], fov: 45 }}
+      dpr={[1, 1.5]}
+      gl={{ antialias: true, powerPreference: 'high-performance' }}
+      performance={{ min: 0.5 }}
+    >
+      <SceneContent
+        stationId={stationId}
+        interactive={interactive}
+        compact={compact}
+        lightMode={lightMode}
+        selectedEquipmentId={selectedEquipmentId}
+        onSubsystemSelect={onSubsystemSelect}
+        gen1Status={gen1?.status ?? 'OFFLINE'}
+        gen2Status={gen2?.status ?? 'OFFLINE'}
+        batStatus={bat?.status ?? 'OFFLINE'}
+        solarStatus={solarEq?.status}
+        windKmh={windKmh}
+        batteryCharging={batteryCharging}
+        consumptionKw={consumptionKw}
+        pins={pins}
+        pinStatuses={pinStatuses}
+      />
     </Canvas>
   );
 };

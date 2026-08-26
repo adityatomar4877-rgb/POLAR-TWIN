@@ -8,8 +8,12 @@ import WeatherKpiRow from '../components/dashboard/WeatherKpiRow';
 import TwinOverviewCard from '../components/dashboard/TwinOverviewCard';
 import ActiveAlertsPanel from '../components/dashboard/ActiveAlertsPanel';
 import EnergyOverviewCard from '../components/dashboard/EnergyOverviewCard';
+import EnergyForecastCard from '../components/dashboard/EnergyForecastCard';
 import CopilotInsightsCard from '../components/dashboard/CopilotInsightsCard';
 import PredictiveInsightsRow from '../components/dashboard/PredictiveInsightsRow';
+import EquipmentHealthCard from '../components/dashboard/EquipmentHealthCard';
+import LogisticsCrewCard from '../components/dashboard/LogisticsCrewCard';
+import SimulationStrip from '../components/dashboard/SimulationStrip';
 import RecentAutomationsCard from '../components/dashboard/RecentAutomationsCard';
 import StatusFooter from '../components/dashboard/StatusFooter';
 import OperationalModeSelector from '../components/dashboard/OperationalModeSelector';
@@ -49,7 +53,7 @@ export const CommandCenter = ({ stationId }: { stationId: number }) => {
       gsap.fromTo(
         '.gsap-reveal-card',
         { y: 16, opacity: 0 },
-        { y: 0, opacity: 1, duration: 0.5, stagger: 0.06, ease: 'power2.out' }
+        { y: 0, opacity: 1, duration: 0.5, stagger: 0.05, ease: 'power2.out' }
       );
     }, containerRef);
 
@@ -79,39 +83,57 @@ export const CommandCenter = ({ stationId }: { stationId: number }) => {
         <OperationalModeSelector />
       </div>
 
-      {/* Real-time Weather & Station telemetry row */}
+      {/* Environment — live telemetry cards */}
       <div className="gsap-reveal-card">
         <WeatherKpiRow dashboard={data} />
       </div>
 
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_380px]">
-        {/* Left: twin + intelligence */}
+        {/* Left: digital twin, energy predictions, equipment, logistics */}
         <div className="flex min-w-0 flex-col gap-5">
           <div className="gsap-reveal-card">
             <TwinOverviewCard dashboard={data} />
           </div>
+
           <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,340px)_minmax(0,1fr)]">
             <div className="gsap-reveal-card">
-              <CopilotInsightsCard dashboard={data} recommendations={recommendations} />
+              <EnergyOverviewCard energy={data.energy} />
             </div>
             <div className="gsap-reveal-card">
-              <PredictiveInsightsRow dashboard={data} fuelForecast={fuelForecast} energyForecast={energyForecast} />
+              <EnergyForecastCard forecast={energyForecast} />
             </div>
+          </div>
+
+          <div className="gsap-reveal-card">
+            <EquipmentHealthCard equipment={data.equipment ?? []} />
+          </div>
+          <div className="gsap-reveal-card">
+            <LogisticsCrewCard station={data.station} />
           </div>
         </div>
 
-        {/* Right: alerts + energy + automations */}
+        {/* Right rail: alerts + copilot + automations */}
         <div className="flex min-w-0 flex-col gap-5">
           <div className="gsap-reveal-card">
             <ActiveAlertsPanel alerts={alerts} />
           </div>
           <div className="gsap-reveal-card">
-            <EnergyOverviewCard energy={data.energy} />
+            <CopilotInsightsCard dashboard={data} recommendations={recommendations} />
           </div>
           <div className="gsap-reveal-card">
             <RecentAutomationsCard stationId={stationId} />
           </div>
         </div>
+      </div>
+
+      {/* Simulation-driven predictive insights */}
+      <div className="gsap-reveal-card">
+        <PredictiveInsightsRow dashboard={data} fuelForecast={fuelForecast} energyForecast={energyForecast} />
+      </div>
+
+      {/* What-if simulation quick access */}
+      <div className="gsap-reveal-card">
+        <SimulationStrip stationId={stationId} />
       </div>
 
       <div className="gsap-reveal-card">
@@ -122,4 +144,3 @@ export const CommandCenter = ({ stationId }: { stationId: number }) => {
 };
 
 export default CommandCenter;
-

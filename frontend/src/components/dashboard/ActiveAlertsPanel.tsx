@@ -1,4 +1,5 @@
 import clsx from 'clsx';
+import { AnimatePresence, motion } from 'framer-motion';
 import { AlertTriangle, ShieldAlert, Info, ArrowUpRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import type { Alert } from '../../api/types';
@@ -29,46 +30,63 @@ export default function ActiveAlertsPanel({ alerts }: { alerts: Alert[] }) {
         </button>
       </div>
 
-      <div className="mt-4 space-y-4">
+      <div className="mt-4 space-y-3">
         {active.length === 0 && (
-          <p className="rounded-xl bg-emerald-50 px-4 py-5 text-center text-sm font-medium text-emerald-600 border border-emerald-200/50">
+          <motion.p
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="rounded-xl bg-emerald-50 px-4 py-5 text-center text-sm font-medium text-emerald-600 border border-emerald-200/50"
+          >
             All clear — no active alerts
-          </p>
+          </motion.p>
         )}
-        {active.map((alert) => {
-          const meta = severityMeta(alert.severity);
-          const Icon = meta.icon;
-          return (
-            <div
-              key={alert.id}
-              onClick={() => navigate('/operations')}
-              className="group flex cursor-pointer gap-3 rounded-xl p-1.5 -mx-1.5 transition-colors hover:bg-slate-50"
-            >
-              <span className={clsx('mt-0.5 rounded-lg p-1.5 h-fit transition-transform duration-300 group-hover:scale-110', meta.chip)}>
-                <Icon size={14} />
-              </span>
-              <div className="min-w-0 flex-1">
-                <div className="flex items-baseline justify-between gap-2">
-                  <span className={clsx('text-[11px] font-bold tracking-wider', meta.cls)}>{meta.label}</span>
-                  <span className="text-[11px] tabular-nums text-slate-400">
-                    {new Date(alert.created_at).toLocaleTimeString('en-IN', {
-                      timeZone: 'Asia/Kolkata',
-                      hour: '2-digit',
-                      minute: '2-digit',
-                      hour12: false,
-                    })}
-                  </span>
+        <AnimatePresence initial={false}>
+          {active.map((alert, idx) => {
+            const meta = severityMeta(alert.severity);
+            const Icon = meta.icon;
+            return (
+              <motion.div
+                key={alert.id}
+                layout
+                initial={{ opacity: 0, x: -12 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 12 }}
+                transition={{ duration: 0.3, delay: Math.min(idx * 0.05, 0.25), ease: [0.22, 1, 0.36, 1] }}
+                onClick={() => navigate('/operations')}
+                className="group -mx-2 flex cursor-pointer gap-3 rounded-xl border border-transparent px-2 py-1.5 transition-colors hover:border-slate-200 hover:bg-slate-50/70"
+              >
+                <span className={clsx('mt-0.5 rounded-lg p-1.5 h-fit transition-transform duration-300 group-hover:scale-110', meta.chip)}>
+                  <Icon size={14} />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-baseline justify-between gap-2">
+                    <span className={clsx('text-[11px] font-bold tracking-wider', meta.cls)}>{meta.label}</span>
+                    <span className="flex shrink-0 items-center gap-1.5">
+                      {!alert.acknowledged && (
+                        <span className="rounded-full bg-blue-50 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-blue-600">
+                          New
+                        </span>
+                      )}
+                      <span className="text-[11px] tabular-nums text-slate-400">
+                        {new Date(alert.created_at).toLocaleTimeString('en-IN', {
+                          timeZone: 'Asia/Kolkata',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                          hour12: false,
+                        })}
+                      </span>
+                    </span>
+                  </div>
+                  <p className="mt-0.5 truncate text-[13px] font-semibold text-slate-800 group-hover:text-blue-600 transition-colors">
+                    {alert.title}
+                  </p>
+                  <p className="truncate text-xs text-slate-400">{alert.message}</p>
                 </div>
-                <p className="mt-0.5 truncate text-[13px] font-semibold text-slate-800 group-hover:text-blue-600 transition-colors">
-                  {alert.title}
-                </p>
-                <p className="truncate text-xs text-slate-400">{alert.message}</p>
-              </div>
-            </div>
-          );
-        })}
+              </motion.div>
+            );
+          })}
+        </AnimatePresence>
       </div>
     </section>
   );
 }
-
