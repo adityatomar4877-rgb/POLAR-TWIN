@@ -1,8 +1,7 @@
 import { useState } from 'react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useLocation } from 'react-router-dom';
 import {
   Home,
-  Film,
   CloudRain,
   Zap,
   Building2,
@@ -32,8 +31,7 @@ const GROUPS: Array<{ label: string; items: NavItem[] }> = [
   {
     label: 'Mission',
     items: [
-      { name: 'Overview', path: '/command', icon: Home },
-      { name: 'Mission Brief', path: '/', icon: Film },
+      { name: 'Overview', path: '/', icon: Home },
     ],
   },
   {
@@ -69,6 +67,7 @@ const GROUPS: Array<{ label: string; items: NavItem[] }> = [
 export const Sidebar = () => {
   const [collapsed, setCollapsed] = useState(false);
   const { lastSyncAt, dashboard } = useStation();
+  const location = useLocation();
 
   return (
     <aside
@@ -106,32 +105,39 @@ export const Sidebar = () => {
               </p>
             )}
             <div className="flex flex-col gap-0.5">
-              {group.items.map((item) => (
-                <NavLink
-                  key={item.name}
-                  to={item.path}
-                  title={collapsed ? item.name : undefined}
-                  className={({ isActive }) =>
-                    clsx(
-                      'group relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-[13px] font-medium transition-all duration-200',
-                      isActive
-                        ? 'bg-cyan-400/10 text-cyan-200 ring-1 ring-cyan-400/25'
-                        : 'text-slate-400 hover:bg-white/[0.04] hover:text-slate-200'
-                    )
-                  }
-                >
-                  {({ isActive }) => (
-                    <>
-                      <item.icon
-                        size={17}
-                        className={clsx('shrink-0', isActive ? 'text-cyan-300' : 'text-slate-500 group-hover:text-slate-300')}
-                      />
-                      {!collapsed && <span className="truncate">{item.name}</span>}
-                      {collapsed && <span className="pointer-events-none absolute left-full z-50 ml-3 whitespace-nowrap rounded-md bg-slate-900 px-2.5 py-1.5 text-xs text-slate-200 opacity-0 shadow-xl ring-1 ring-white/10 transition-opacity group-hover:opacity-100">{item.name}</span>}
-                    </>
-                  )}
-                </NavLink>
-              ))}
+              {group.items.map((item) => {
+                const isItemActive =
+                  item.path === '/'
+                    ? location.pathname === '/' || location.pathname === '/command'
+                    : location.pathname === item.path;
+
+                return (
+                  <NavLink
+                    key={item.name}
+                    to={item.path}
+                    title={collapsed ? item.name : undefined}
+                    className={
+                      clsx(
+                        'group relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-[13px] font-medium transition-all duration-200',
+                        isItemActive
+                          ? 'bg-cyan-400/10 text-cyan-200 ring-1 ring-cyan-400/25'
+                          : 'text-slate-400 hover:bg-white/[0.04] hover:text-slate-200'
+                      )
+                    }
+                  >
+                    <item.icon
+                      size={17}
+                      className={clsx('shrink-0', isItemActive ? 'text-cyan-300' : 'text-slate-500 group-hover:text-slate-300')}
+                    />
+                    {!collapsed && <span className="truncate">{item.name}</span>}
+                    {collapsed && (
+                      <span className="pointer-events-none absolute left-full z-50 ml-3 whitespace-nowrap rounded-md bg-slate-900 px-2.5 py-1.5 text-xs text-slate-200 opacity-0 shadow-xl ring-1 ring-white/10 transition-opacity group-hover:opacity-100">
+                        {item.name}
+                      </span>
+                    )}
+                  </NavLink>
+                );
+              })}
             </div>
           </div>
         ))}

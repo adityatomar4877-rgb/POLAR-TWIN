@@ -1,14 +1,18 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Package, Activity, AlertCircle, Ship, Anchor, Warehouse, Plus } from 'lucide-react';
+import gsap from 'gsap';
+import { Package, Activity, AlertCircle, Plus, Ship } from 'lucide-react';
 import { getStationDashboard } from '../api/stations';
 import { getResupplyRequests, createResupplyRequest } from '../api/maintenance';
 import { getFuelPrediction } from '../api/predictions';
+import GSAPShipTransit from '../components/dashboard/GSAPShipTransit';
+import GSAPNumberTicker from '../components/dashboard/GSAPNumberTicker';
 import type { ResupplyRequestCreate } from '../api/types';
 
 export const Logistics = ({ stationId }: { stationId: number }) => {
   const qc = useQueryClient();
   const [modalOpen, setModalOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const { data: dashboard, isLoading } = useQuery({
     queryKey: ['dashboard', stationId],
@@ -26,6 +30,19 @@ export const Logistics = ({ stationId }: { stationId: number }) => {
     queryFn: () => getFuelPrediction(stationId),
   });
 
+  useEffect(() => {
+    if (!containerRef.current) return;
+    const ctx = gsap.context(() => {
+      gsap.fromTo(
+        '.gsap-logistics-item',
+        { y: 16, opacity: 0 },
+        { y: 0, opacity: 1, duration: 0.5, stagger: 0.07, ease: 'power2.out' }
+      );
+    }, containerRef);
+
+    return () => ctx.revert();
+  }, [stationId]);
+
   if (isLoading || !dashboard) {
     return (
       <div className="flex h-full items-center justify-center">
@@ -37,8 +54,8 @@ export const Logistics = ({ stationId }: { stationId: number }) => {
   const items = dashboard.logistics || [];
 
   return (
-    <div className="custom-scrollbar mx-auto flex h-full max-w-6xl flex-col gap-6 overflow-auto pb-10 pr-2">
-      <div className="flex items-center justify-between">
+    <div ref={containerRef} className="custom-scrollbar mx-auto flex h-full max-w-6xl flex-col gap-6 overflow-auto pb-10 pr-2">
+      <div className="gsap-logistics-item flex items-center justify-between">
         <div>
           <h1 className="flex items-center gap-3 text-2xl font-bold tracking-widest text-slate-800">
             <Package className="h-6 w-6 text-purple-600" />
@@ -56,57 +73,32 @@ export const Logistics = ({ stationId }: { stationId: number }) => {
         </button>
       </div>
 
-      {/* Supply chain journey */}
-      <div className="glass-panel flex flex-col items-stretch gap-4 rounded-xl p-5 lg:flex-row lg:items-center">
-        {[
-          { icon: Ship, title: 'GOA, INDIA', sub: 'NCPOR DEPARTURE PORT', tone: 'text-cyan-600' },
-          { icon: Anchor, title: 'SOUTHERN OCEAN', sub: `${fuelForecast?.estimated_daily_consumption_liters.toFixed(0) ?? '—'} L/DAY BURN · ${items.length ? 'CARGO TRANSIT' : 'SEA ROUTE'}`, tone: 'text-sky-600' },
-          { icon: Ship, title: 'OFFLOAD POINT', sub: 'ICE EDGE / HILLS BASIN', tone: 'text-teal-600' },
-          { icon: Warehouse, title: 'STATION INVENTORY', sub: `LIVE STOCK · ${items.length} CATEGORIES`, tone: 'text-emerald-600' },
-        ].map((node, i) => (
-          <div key={node.title} className="flex flex-1 items-center gap-4">
-            <div className="flex items-center gap-3">
-              <span className={`flex h-10 w-10 items-center justify-center rounded-lg border border-slate-300 bg-white/80 ${node.tone}`}>
-                <node.icon size={17} />
-              </span>
-              <div>
-                <p className="font-mono text-xs font-bold tracking-widest text-slate-700">{node.title}</p>
-                <p className="font-mono text-[9px] tracking-wider text-slate-500">{node.sub}</p>
-              </div>
-            </div>
-            {i < 3 && (
-              <svg className="mx-auto hidden h-4 min-w-8 flex-1 lg:block" aria-hidden>
-                <line x1="0" y1="8" x2="100%" y2="8" stroke="#334155" strokeWidth="1.5" strokeDasharray="5 5" />
-                <circle r="3" fill="#22d3ee">
-                  <animateMotion dur="2.4s" repeatCount="indefinite" path="M 0 8 H 100%" />
-                </circle>
-              </svg>
-            )}
-          </div>
-        ))}
+      {/* Dynamic Maritime Voyage Route Tracker */}
+      <div className="gsap-logistics-item">
+        <GSAPShipTransit progress={68} />
       </div>
 
       {/* Fuel forecast strip */}
       {fuelForecast && (
         <div
-          className={`rounded-lg border p-4 ${
+          className={`gsap-logistics-item rounded-2xl border p-4 shadow-sm transition-all duration-300 ${
             fuelForecast.recommended_resupply
               ? 'border-red-300 bg-red-50'
-              : 'border-slate-200 bg-white/75'
+              : 'border-slate-200 bg-white'
           }`}
         >
           <div className="flex flex-wrap items-center gap-x-6 gap-y-2 font-mono text-xs">
-            <span className={`tracking-[0.3em] ${fuelForecast.recommended_resupply ? 'text-red-600' : 'text-slate-600'}`}>
+            <span className={`tracking-[0.3em] font-bold ${fuelForecast.recommended_resupply ? 'text-red-600' : 'text-slate-600'}`}>
               FUEL FORECAST
             </span>
             <span className="text-slate-500">
-              RESERVES <b className="text-slate-800">{fuelForecast.current_fuel_percentage.toFixed(1)}%</b> (
-              {fuelForecast.current_fuel_liters.toLocaleString()} L)
+              RESERVES <b className="text-slate-800"><GSAPNumberTicker value={fuelForecast.current_fuel_percentage} decimals={1} suffix="%" /></b> (
+              <GSAPNumberTicker value={fuelForecast.current_fuel_liters} decimals={0} suffix=" L" />)
             </span>
             <span className="text-slate-500">
               CRITICAL IN{' '}
-              <b className={fuelForecast.days_until_critical < 45 ? 'text-amber-600' : 'text-emerald-600'}>
-                {fuelForecast.days_until_critical.toFixed(0)} DAYS
+              <b className={fuelForecast.days_until_critical < 45 ? 'text-amber-600 font-bold' : 'text-emerald-600 font-bold'}>
+                <GSAPNumberTicker value={fuelForecast.days_until_critical} decimals={0} suffix=" DAYS" />
               </b>
             </span>
             {fuelForecast.projected_depletion_date && (
@@ -115,7 +107,7 @@ export const Logistics = ({ stationId }: { stationId: number }) => {
               </span>
             )}
             {fuelForecast.recommended_resupply && (
-              <span className="ml-auto rounded bg-red-100 px-2 py-1 text-[9px] font-bold tracking-widest text-red-600">
+              <span className="ml-auto rounded-full bg-red-100 px-3 py-1 text-[10px] font-bold tracking-widest text-red-600 animate-pulse">
                 RESUPPLY RECOMMENDED — FILE REQUEST NOW
               </span>
             )}
@@ -125,17 +117,17 @@ export const Logistics = ({ stationId }: { stationId: number }) => {
 
       {/* Inventory cards */}
       {items.length === 0 ? (
-        <div className="rounded-lg border border-slate-200 bg-white p-8 text-center font-mono text-slate-500">
+        <div className="gsap-logistics-item rounded-2xl border border-slate-200 bg-white p-8 text-center font-mono text-slate-500">
           NO_LOGISTICS_RECORDS_AVAILABLE
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+        <div className="gsap-logistics-item grid grid-cols-1 gap-4 md:grid-cols-3">
           {items.map((item: any, i: number) => {
             const daysLeft = item.days_remaining ?? 90;
             const isLow = daysLeft < 30;
 
             return (
-              <div key={item.id || i} className="flex flex-col justify-between rounded-lg border border-slate-200 bg-white p-5">
+              <div key={item.id || i} className="group flex flex-col justify-between rounded-2xl border border-slate-200 bg-white p-5 shadow-xs transition-all duration-300 hover:-translate-y-1 hover:border-slate-300 hover:shadow-md">
                 <div>
                   <div className="mb-2 flex items-start justify-between">
                     <span className="font-mono text-xs text-purple-600">{item.category || 'SUPPLY'}</span>

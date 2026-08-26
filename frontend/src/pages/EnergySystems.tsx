@@ -1,18 +1,35 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import gsap from 'gsap';
 import { getStationDashboard } from '../api/stations';
 import { Zap, Sun, Wind, Battery, Fuel, Activity, ShieldCheck, Play, ArrowDownToLine, ArrowUpFromLine } from 'lucide-react';
 import { CommandPreviewModal } from '../components/operations/CommandPreviewModal';
 import EnergyFlowDiagram from '../components/energy/EnergyFlowDiagram';
+import GSAPLiveOscillator from '../components/energy/GSAPLiveOscillator';
+import GSAPNumberTicker from '../components/dashboard/GSAPNumberTicker';
 import type { CommandRequest } from '../api/types';
 
 export const EnergySystems = ({ stationId }: { stationId: number }) => {
   const [activeRequest, setActiveRequest] = useState<CommandRequest | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const { data: dashboard, isLoading } = useQuery({
     queryKey: ['dashboard', stationId],
     queryFn: () => getStationDashboard(stationId),
   });
+
+  useEffect(() => {
+    if (!containerRef.current) return;
+    const ctx = gsap.context(() => {
+      gsap.fromTo(
+        '.gsap-energy-item',
+        { y: 16, opacity: 0 },
+        { y: 0, opacity: 1, duration: 0.5, stagger: 0.06, ease: 'power2.out' }
+      );
+    }, containerRef);
+
+    return () => ctx.revert();
+  }, [stationId]);
 
   if (isLoading || !dashboard) {
     return (
@@ -69,8 +86,8 @@ export const EnergySystems = ({ stationId }: { stationId: number }) => {
   };
 
   return (
-    <div className="flex flex-col gap-6 max-w-6xl mx-auto h-full overflow-auto pr-2 custom-scrollbar pb-10">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div ref={containerRef} className="flex flex-col gap-6 max-w-6xl mx-auto h-full overflow-auto pr-2 custom-scrollbar pb-10">
+      <div className="gsap-energy-item flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-widest text-slate-800 flex items-center gap-3">
             <Zap className="w-6 h-6 text-amber-600" />
@@ -78,7 +95,8 @@ export const EnergySystems = ({ stationId }: { stationId: number }) => {
           </h1>
           <p className="text-slate-500 text-sm mt-1">Real-time power generation, battery energy storage, and fuel telemetry.</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <GSAPLiveOscillator nominalHz={50.0} color="#06b6d4" />
           <div className="px-3 py-1.5 bg-white border border-slate-200 rounded text-xs font-mono">
             GRID_STATUS: <span className={!isEmergency ? 'text-emerald-600 font-bold' : 'text-red-600 font-bold'}>{gridStatus}</span>
           </div>
@@ -86,20 +104,23 @@ export const EnergySystems = ({ stationId }: { stationId: number }) => {
       </div>
 
       {/* Live power flow schematic */}
-      <EnergyFlowDiagram energy={energy} loads={dashboard.loads} />
+      <div className="gsap-energy-item">
+        <EnergyFlowDiagram energy={energy} loads={dashboard.loads} />
+      </div>
 
       {isEmergency && (
-        <div className="p-4 bg-red-50 border border-red-200 rounded-lg flex flex-col md:flex-row items-start md:items-center justify-between gap-4 animate-in fade-in">
+        <div className="gsap-energy-item p-4 bg-red-50 border border-red-200 rounded-lg flex flex-col md:flex-row items-start md:items-center justify-between gap-4 animate-in fade-in">
           <div>
             <div className="text-red-600 font-bold font-mono text-sm flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-red-500 animate-ping" />
-              MICROGRID DEFICIT DETECTED: {Math.abs(netKw).toFixed(1)} kW SHORTAGE
+              MICROGRID DEFICIT DETECTED: <GSAPNumberTicker value={Math.abs(netKw)} decimals={1} suffix=" kW" /> SHORTAGE
             </div>
             <div className="text-xs text-red-700 mt-1">
               Station generators are offline or overloaded. Battery bank is discharging to support baseline loads.
             </div>
           </div>
-          <div className="flex gap-2 shrink-0">            <button 
+          <div className="flex gap-2 shrink-0">
+            <button 
               onClick={handleStartBackup}
               className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded font-mono text-xs font-bold transition-all shadow-[0_0_15px_rgba(16,185,129,0.3)] flex items-center gap-1.5"
             >
@@ -116,47 +137,59 @@ export const EnergySystems = ({ stationId }: { stationId: number }) => {
       )}
 
       {/* Primary KPI Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="bg-white border border-slate-200 p-4 rounded-lg flex flex-col justify-between">
+      <div className="gsap-energy-item grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="bg-white border border-slate-200 p-4 rounded-xl shadow-xs transition-all duration-300 hover:-translate-y-1 hover:shadow-md flex flex-col justify-between">
           <div className="flex items-center justify-between text-slate-500 text-xs font-mono">
             <span>TOTAL_GENERATION</span>
             <Zap className="w-4 h-4 text-emerald-600" />
           </div>
-          <div className="text-3xl font-bold text-emerald-600 font-mono my-2">{genKw.toFixed(1)} <span className="text-sm text-slate-500">kW</span></div>
-          <div className="text-xs text-slate-500 font-mono">Diesel: {dieselKw.toFixed(1)} kW | Solar: {solarKw.toFixed(1)} kW</div>
+          <div className="text-3xl font-bold text-emerald-600 font-mono my-2">
+            <GSAPNumberTicker value={genKw} decimals={1} /> <span className="text-sm text-slate-500">kW</span>
+          </div>
+          <div className="text-xs text-slate-500 font-mono">
+            Diesel: <GSAPNumberTicker value={dieselKw} decimals={1} /> kW | Solar: <GSAPNumberTicker value={solarKw} decimals={1} /> kW
+          </div>
         </div>
 
-        <div className="bg-white border border-slate-200 p-4 rounded-lg flex flex-col justify-between">
+        <div className="bg-white border border-slate-200 p-4 rounded-xl shadow-xs transition-all duration-300 hover:-translate-y-1 hover:shadow-md flex flex-col justify-between">
           <div className="flex items-center justify-between text-slate-500 text-xs font-mono">
             <span>TOTAL_DEMAND</span>
             <Activity className="w-4 h-4 text-amber-600" />
           </div>
-          <div className="text-3xl font-bold text-amber-600 font-mono my-2">{consKw.toFixed(1)} <span className="text-sm text-slate-500">kW</span></div>
+          <div className="text-3xl font-bold text-amber-600 font-mono my-2">
+            <GSAPNumberTicker value={consKw} decimals={1} /> <span className="text-sm text-slate-500">kW</span>
+          </div>
           <div className="text-xs text-slate-500 font-mono">Life Support + HVAC + Lab</div>
         </div>
 
-        <div className="bg-white border border-slate-200 p-4 rounded-lg flex flex-col justify-between">
+        <div className="bg-white border border-slate-200 p-4 rounded-xl shadow-xs transition-all duration-300 hover:-translate-y-1 hover:shadow-md flex flex-col justify-between">
           <div className="flex items-center justify-between text-slate-500 text-xs font-mono">
             <span>BATTERY_STORAGE</span>
             <Battery className="w-4 h-4 text-cyan-600" />
           </div>
-          <div className="text-3xl font-bold text-cyan-600 font-mono my-2">{batteryPct.toFixed(1)}%</div>
-          <div className="text-xs text-slate-500 font-mono">Net Flow: {batteryPower > 0 ? `+${batteryPower.toFixed(1)} kW (Charging)` : `${batteryPower.toFixed(1)} kW (Discharging)`}</div>
+          <div className="text-3xl font-bold text-cyan-600 font-mono my-2">
+            <GSAPNumberTicker value={batteryPct} decimals={1} suffix="%" />
+          </div>
+          <div className="text-xs text-slate-500 font-mono">
+            Net: <GSAPNumberTicker value={batteryPower} decimals={1} prefix={batteryPower >= 0 ? '+' : ''} suffix=" kW" /> ({batteryPower >= 0 ? 'Charging' : 'Discharging'})
+          </div>
         </div>
 
-        <div className="bg-white border border-slate-200 p-4 rounded-lg flex flex-col justify-between">
+        <div className="bg-white border border-slate-200 p-4 rounded-xl shadow-xs transition-all duration-300 hover:-translate-y-1 hover:shadow-md flex flex-col justify-between">
           <div className="flex items-center justify-between text-slate-500 text-xs font-mono">
             <span>FUEL_RESERVES</span>
             <Fuel className="w-4 h-4 text-purple-600" />
           </div>
-          <div className="text-3xl font-bold text-purple-600 font-mono my-2">{fuelPct.toFixed(1)}%</div>
+          <div className="text-3xl font-bold text-purple-600 font-mono my-2">
+            <GSAPNumberTicker value={fuelPct} decimals={1} suffix="%" />
+          </div>
           <div className="text-xs text-slate-500 font-mono">Estimated Runway: ~180 Days</div>
         </div>
       </div>
 
       {/* Generation Sources Breakdown */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-white border border-slate-200 p-5 rounded-lg">
+      <div className="gsap-energy-item grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="bg-white border border-slate-200 p-5 rounded-xl shadow-xs transition-all duration-300 hover:-translate-y-1 hover:shadow-md">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2 text-slate-600 font-bold font-mono">
               <Sun className="w-4 h-4 text-amber-600" />
@@ -164,11 +197,13 @@ export const EnergySystems = ({ stationId }: { stationId: number }) => {
             </div>
             <span className="text-xs font-mono text-emerald-600 font-bold">ACTIVE</span>
           </div>
-          <div className="text-2xl font-bold font-mono text-slate-800">{solarKw.toFixed(1)} kW</div>
+          <div className="text-2xl font-bold font-mono text-slate-800">
+            <GSAPNumberTicker value={solarKw} decimals={1} /> kW
+          </div>
           <p className="text-xs text-slate-500 mt-2">Station photovoltaic panels tracking seasonal solar flux.</p>
         </div>
 
-        <div className="bg-white border border-slate-200 p-5 rounded-lg">
+        <div className="bg-white border border-slate-200 p-5 rounded-xl shadow-xs transition-all duration-300 hover:-translate-y-1 hover:shadow-md">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2 text-slate-600 font-bold font-mono">
               <Wind className="w-4 h-4 text-cyan-600" />
@@ -180,7 +215,7 @@ export const EnergySystems = ({ stationId }: { stationId: number }) => {
           <p className="text-xs text-slate-500 mt-2">Katabatic polar wind turbines configured for high-wind modes.</p>
         </div>
 
-        <div className="bg-white border border-slate-200 p-5 rounded-lg">
+        <div className="bg-white border border-slate-200 p-5 rounded-xl shadow-xs transition-all duration-300 hover:-translate-y-1 hover:shadow-md">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2 text-slate-600 font-bold font-mono">
               <Zap className="w-4 h-4 text-emerald-600" />
@@ -190,13 +225,15 @@ export const EnergySystems = ({ stationId }: { stationId: number }) => {
               {dieselKw > 0 ? 'SYNCHRONIZED' : 'OFFLINE'}
             </span>
           </div>
-          <div className="text-2xl font-bold font-mono text-slate-800">{dieselKw.toFixed(1)} kW</div>
+          <div className="text-2xl font-bold font-mono text-slate-800">
+            <GSAPNumberTicker value={dieselKw} decimals={1} /> kW
+          </div>
           <p className="text-xs text-slate-500 mt-2">Continuous baseline primary microgrid power generation.</p>
         </div>
       </div>
 
       {/* Interactive Operations Quick Controls */}
-      <div className="bg-white border border-slate-200 p-5 rounded-lg flex flex-col gap-4">
+      <div className="gsap-energy-item bg-white border border-slate-200 p-5 rounded-xl shadow-xs flex flex-col gap-4">
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-bold font-mono text-slate-600 flex items-center gap-2">
             <ShieldCheck className="w-4 h-4 text-cyan-600" />
@@ -208,7 +245,7 @@ export const EnergySystems = ({ stationId }: { stationId: number }) => {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <button 
             onClick={() => handleShedLoad('NON_CRITICAL')}
-            className="p-3 bg-slate-50 hover:bg-slate-100/80 border border-slate-200 hover:border-amber-500/50 rounded flex items-center justify-between transition-all group"
+            className="p-3 bg-slate-50 hover:bg-slate-100/80 border border-slate-200 hover:border-amber-500/50 rounded-xl flex items-center justify-between transition-all group"
           >
             <div className="text-left">
               <div className="text-xs font-bold font-mono text-slate-700 group-hover:text-amber-600">SHED NON-CRITICAL</div>
@@ -219,7 +256,7 @@ export const EnergySystems = ({ stationId }: { stationId: number }) => {
 
           <button 
             onClick={() => handleShedLoad('HIGH_PRIORITY')}
-            className="p-3 bg-slate-50 hover:bg-slate-100/80 border border-slate-200 hover:border-red-300 rounded flex items-center justify-between transition-all group"
+            className="p-3 bg-slate-50 hover:bg-slate-100/80 border border-slate-200 hover:border-red-300 rounded-xl flex items-center justify-between transition-all group"
           >
             <div className="text-left">
               <div className="text-xs font-bold font-mono text-slate-700 group-hover:text-red-600">SHED LABS & LIDAR</div>
@@ -230,7 +267,7 @@ export const EnergySystems = ({ stationId }: { stationId: number }) => {
 
           <button 
             onClick={() => handleRestoreLoad('ALL')}
-            className="p-3 bg-slate-50 hover:bg-slate-100/80 border border-slate-200 hover:border-emerald-300 rounded flex items-center justify-between transition-all group"
+            className="p-3 bg-slate-50 hover:bg-slate-100/80 border border-slate-200 hover:border-emerald-300 rounded-xl flex items-center justify-between transition-all group"
           >
             <div className="text-left">
               <div className="text-xs font-bold font-mono text-slate-700 group-hover:text-emerald-600">RESTORE ALL LOADS</div>

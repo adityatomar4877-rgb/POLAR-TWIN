@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, type RefObject } from 'react';
 import Lenis from 'lenis';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
@@ -13,14 +13,21 @@ export function useLenisScroll(options?: {
   lerp?: number;
   wheelMultiplier?: number;
   enabled?: boolean;
+  wrapperRef?: RefObject<HTMLElement | null>;
+  contentRef?: RefObject<HTMLElement | null>;
 }) {
   const lenisRef = useRef<Lenis | null>(null);
-  const { lerp = 0.09, wheelMultiplier = 1, enabled = true } = options ?? {};
+  const { lerp = 0.09, wheelMultiplier = 1, enabled = true, wrapperRef, contentRef } = options ?? {};
 
   useEffect(() => {
     if (!enabled) return;
 
+    const wrapper = wrapperRef?.current ?? undefined;
+    const content = contentRef?.current ?? undefined;
+
     const lenis = new Lenis({
+      wrapper,
+      content,
       lerp,
       wheelMultiplier,
       smoothWheel: true,
@@ -41,7 +48,8 @@ export function useLenisScroll(options?: {
       lenis.destroy();
       lenisRef.current = null;
     };
-  }, [lerp, wheelMultiplier, enabled]);
+  }, [lerp, wheelMultiplier, enabled, wrapperRef, contentRef]);
 
   return lenisRef;
 }
+

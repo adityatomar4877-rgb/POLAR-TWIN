@@ -1,15 +1,18 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import gsap from 'gsap';
 import { Settings, Play, Square, RotateCcw, AlertTriangle, ShieldCheck, Power, RefreshCw, Zap, SlidersHorizontal } from 'lucide-react';
 import { getStationEquipment, getActiveAlerts } from '../api/stations';
 import { resetSimulation } from '../api/simulation';
 import { CommandPreviewModal } from '../components/operations/CommandPreviewModal';
 import CommandHistoryTable from '../components/operations/CommandHistoryTable';
+import GSAPNumberTicker from '../components/dashboard/GSAPNumberTicker';
 import type { CommandRequest, Equipment } from '../api/types';
 
 export const Operations = ({ stationId }: { stationId: number }) => {
   const queryClient = useQueryClient();
   const [activeRequest, setActiveRequest] = useState<CommandRequest | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const { data: equipment, isLoading } = useQuery({
     queryKey: ['equipment', stationId],
@@ -29,6 +32,19 @@ export const Operations = ({ stationId }: { stationId: number }) => {
       queryClient.invalidateQueries({ queryKey: ['alerts', stationId] });
     }
   });
+
+  useEffect(() => {
+    if (!containerRef.current) return;
+    const ctx = gsap.context(() => {
+      gsap.fromTo(
+        '.gsap-ops-item',
+        { y: 16, opacity: 0 },
+        { y: 0, opacity: 1, duration: 0.5, stagger: 0.06, ease: 'power2.out' }
+      );
+    }, containerRef);
+
+    return () => ctx.revert();
+  }, [stationId]);
 
   const handleAction = (eq: Equipment, action: 'START' | 'STOP' | 'RESTART' | 'SHUTDOWN' | 'ISOLATE') => {
     let commandType = `${action}_EQUIPMENT`;
@@ -76,23 +92,23 @@ export const Operations = ({ stationId }: { stationId: number }) => {
     const isGenerator = eq.equipment_type === 'GENERATOR';
 
     return (
-      <div className="bg-white border border-slate-200 hover:border-slate-200 transition-all rounded-lg p-5 flex flex-col justify-between gap-4 shadow-sm">
+      <div className="group bg-white border border-slate-200 hover:border-slate-300 transition-all duration-300 hover:-translate-y-1 hover:shadow-md rounded-2xl p-5 flex flex-col justify-between gap-4 shadow-xs">
         <div>
           <div className="flex justify-between items-start mb-2">
             <div>
               <span className="text-xs font-mono text-cyan-600 font-semibold">#{eq.id} • {eq.equipment_type}</span>
               <h4 className="text-slate-800 font-bold text-base mt-0.5">{eq.name}</h4>
             </div>
-            <div className={`px-2.5 py-1 rounded text-xs font-bold font-mono tracking-wider ${isOffline ? 'bg-red-100 text-red-600 border border-red-200 animate-pulse' : 'bg-emerald-100 text-emerald-600 border border-emerald-200'}`}>
+            <div className={`px-2.5 py-1 rounded-md text-xs font-bold font-mono tracking-wider ${isOffline ? 'bg-red-100 text-red-600 border border-red-200 animate-pulse' : 'bg-emerald-100 text-emerald-600 border border-emerald-200'}`}>
               {eq.status}
             </div>
           </div>
           
-          <div className="grid grid-cols-2 gap-2 mt-3 pt-3 border-t border-slate-200/80 text-xs font-mono">
+          <div className="grid grid-cols-2 gap-2 mt-3 pt-3 border-t border-slate-100 text-xs font-mono">
             <div>
               <span className="text-slate-500 block text-[10px]">HEALTH_SCORE</span>
               <span className={`font-bold text-sm ${eq.health_score < 50 ? 'text-red-600' : 'text-emerald-600'}`}>
-                {eq.health_score}%
+                <GSAPNumberTicker value={eq.health_score} decimals={0} suffix="%" />
               </span>
             </div>
             <div>
@@ -105,24 +121,24 @@ export const Operations = ({ stationId }: { stationId: number }) => {
         </div>
         
         {/* Action Buttons */}
-        <div className="flex items-center gap-2 pt-2 border-t border-slate-200/80 flex-wrap">
+        <div className="flex items-center gap-2 pt-2 border-t border-slate-100 flex-wrap">
           {isGenerator ? (
             <>
               <button 
                 onClick={() => handleAction(eq, 'START')}
-                className="flex-1 min-w-[70px] flex items-center justify-center gap-1.5 px-3 py-2 bg-emerald-100 hover:bg-emerald-200 text-emerald-700 border border-emerald-800/60 rounded text-xs font-mono font-bold transition-all shadow-[0_0_10px_rgba(16,185,129,0.15)]"
+                className="flex-1 min-w-[70px] flex items-center justify-center gap-1.5 px-3 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-lg text-xs font-mono font-bold transition-all shadow-xs"
               >
                 <Play className="w-3.5 h-3.5" /> START
               </button>
               <button 
                 onClick={() => handleAction(eq, 'STOP')}
-                className="flex-1 min-w-[70px] flex items-center justify-center gap-1.5 px-3 py-2 bg-red-50/60 hover:bg-red-100 text-red-600 border border-red-800/60 rounded text-xs font-mono font-bold transition-all"
+                className="flex-1 min-w-[70px] flex items-center justify-center gap-1.5 px-3 py-2 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 rounded-lg text-xs font-mono font-bold transition-all"
               >
                 <Square className="w-3.5 h-3.5" /> STOP
               </button>
               <button 
                 onClick={() => handleAction(eq, 'RESTART')}
-                className="flex items-center justify-center px-2.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded text-xs font-mono transition-all"
+                className="flex items-center justify-center px-2.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg text-xs font-mono transition-all"
                 title="Restart Unit"
               >
                 <RotateCcw className="w-3.5 h-3.5" />
@@ -132,13 +148,13 @@ export const Operations = ({ stationId }: { stationId: number }) => {
             <>
               <button 
                 onClick={() => handleAction(eq, 'RESTART')}
-                className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 rounded text-xs font-mono font-bold transition-all"
+                className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 rounded-lg text-xs font-mono font-bold transition-all"
               >
                 <RotateCcw className="w-3.5 h-3.5 text-cyan-600" /> RESTART
               </button>
               <button 
                 onClick={() => handleAction(eq, 'ISOLATE')}
-                className="flex items-center justify-center gap-1 px-3 py-2 bg-amber-100 hover:bg-amber-200 text-amber-700 border border-amber-200 rounded text-xs font-mono font-bold transition-all"
+                className="flex items-center justify-center gap-1 px-3 py-2 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 rounded-lg text-xs font-mono font-bold transition-all"
                 title="Lock out for Maintenance"
               >
                 <Power className="w-3.5 h-3.5" /> ISOLATE
@@ -151,10 +167,10 @@ export const Operations = ({ stationId }: { stationId: number }) => {
   };
 
   return (
-    <div className="flex flex-col gap-6 max-w-6xl mx-auto h-full overflow-auto pr-2 custom-scrollbar pb-10">
+    <div ref={containerRef} className="flex flex-col gap-6 max-w-6xl mx-auto h-full overflow-auto pr-2 custom-scrollbar pb-10">
       
       {/* Header & Quick Action Bar */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="gsap-ops-item flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-widest text-slate-800 flex items-center gap-3">
             <Settings className="w-6 h-6 text-cyan-600" />

@@ -3,6 +3,7 @@ import { Thermometer, Wind, Droplets, Gauge } from 'lucide-react';
 import type { StationDashboardOut } from '../../api/types';
 import { useTelemetryHistory } from '../../hooks/useTelemetryHistory';
 import Sparkline from './Sparkline';
+import GSAPNumberTicker from './GSAPNumberTicker';
 
 const compass = (deg: number) => {
   const dirs = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW'];
@@ -13,7 +14,8 @@ function KpiCard({
   icon: Icon,
   iconClass,
   label,
-  value,
+  numValue,
+  decimals = 0,
   unit,
   sub,
   sparkValues,
@@ -22,23 +24,25 @@ function KpiCard({
   icon: typeof Thermometer;
   iconClass: string;
   label: string;
-  value: string;
+  numValue: number;
+  decimals?: number;
   unit: string;
   sub: string;
   sparkValues: number[];
   sparkColor: string;
 }) {
   return (
-    <div className="flex flex-col justify-between rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+    <div className="group flex flex-col justify-between rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-slate-300 hover:shadow-md">
       <div className="flex items-start justify-between">
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">{label}</p>
           <p className="mt-1.5 text-[22px] font-bold leading-none text-slate-900">
-            {value} <span className="text-sm font-semibold text-slate-400">{unit}</span>
+            <GSAPNumberTicker value={numValue} decimals={decimals} />{' '}
+            <span className="text-sm font-semibold text-slate-400">{unit}</span>
           </p>
           <p className="mt-1 text-xs text-slate-400">{sub}</p>
         </div>
-        <span className={clsx('rounded-lg p-2', iconClass)}>
+        <span className={clsx('rounded-lg p-2 transition-transform duration-300 group-hover:scale-110', iconClass)}>
           <Icon size={17} />
         </span>
       </div>
@@ -76,7 +80,7 @@ function StationStatusRing({ health, critical }: { health: number; critical: boo
           critical ? 'text-red-500' : 'text-emerald-500'
         )}
       >
-        <span className="h-3 w-3 rounded-full bg-current" />
+        <span className="h-3 w-3 rounded-full bg-current animate-ping opacity-75" />
       </span>
     </div>
   );
@@ -113,7 +117,8 @@ export default function WeatherKpiRow({ dashboard }: { dashboard: StationDashboa
         icon={Thermometer}
         iconClass="bg-sky-50 text-sky-600"
         label="Temperature"
-        value={temp.toFixed(1)}
+        numValue={temp}
+        decimals={1}
         unit="°C"
         sub={`Feels like · ${feelsLike.toFixed(1)}°C`}
         sparkValues={tempHist}
@@ -123,7 +128,8 @@ export default function WeatherKpiRow({ dashboard }: { dashboard: StationDashboa
         icon={Wind}
         iconClass="bg-indigo-50 text-indigo-600"
         label="Wind Speed"
-        value={wind.toFixed(1)}
+        numValue={wind}
+        decimals={1}
         unit="km/h"
         sub={`${compass(env?.wind_direction_deg ?? 231)} ${Math.round(env?.wind_direction_deg ?? 231)}°`}
         sparkValues={windHist}
@@ -133,7 +139,8 @@ export default function WeatherKpiRow({ dashboard }: { dashboard: StationDashboa
         icon={Droplets}
         iconClass="bg-cyan-50 text-cyan-600"
         label="Humidity"
-        value={Math.round(humidity).toString()}
+        numValue={humidity}
+        decimals={0}
         unit="%"
         sub={humidity > 75 ? 'Saturated' : 'Normal'}
         sparkValues={humHist}
@@ -143,7 +150,8 @@ export default function WeatherKpiRow({ dashboard }: { dashboard: StationDashboa
         icon={Gauge}
         iconClass="bg-violet-50 text-violet-600"
         label="Pressure"
-        value={Math.round(pressure).toString()}
+        numValue={pressure}
+        decimals={0}
         unit="hPa"
         sub={pressure < 970 ? 'Falling' : 'Stable'}
         sparkValues={presHist}
@@ -151,7 +159,7 @@ export default function WeatherKpiRow({ dashboard }: { dashboard: StationDashboa
       />
 
       {/* Station status */}
-      <div className="col-span-2 flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm md:col-span-1">
+      <div className="group col-span-2 flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-slate-300 hover:shadow-md md:col-span-1">
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Station Status</p>
           <p
@@ -163,7 +171,7 @@ export default function WeatherKpiRow({ dashboard }: { dashboard: StationDashboa
             {critical ? 'Alert State' : 'Operational'}
           </p>
           <p className="mt-1 text-xs text-slate-400">
-            {critical ? 'Immediate action required' : 'All Systems Active'}
+            Health: <GSAPNumberTicker value={avgHealth} decimals={0} suffix="%" />
           </p>
         </div>
         <StationStatusRing health={avgHealth} critical={critical} />
@@ -171,3 +179,4 @@ export default function WeatherKpiRow({ dashboard }: { dashboard: StationDashboa
     </div>
   );
 }
+

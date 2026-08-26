@@ -1,13 +1,15 @@
 import clsx from 'clsx';
 import { useTelemetryHistory } from '../../hooks/useTelemetryHistory';
 import Sparkline from './Sparkline';
+import GSAPNumberTicker from './GSAPNumberTicker';
 import type { StationDashboardOut, FuelForecast, EnergyForecast } from '../../api/types';
 
 function InsightCard({
   title,
   subtitle,
-  value,
-  valueSuffix,
+  numValue,
+  decimals = 0,
+  valueSuffix = '%',
   noteLabel,
   tone,
   sparkValues,
@@ -15,7 +17,8 @@ function InsightCard({
 }: {
   title: string;
   subtitle: string;
-  value: string;
+  numValue: number;
+  decimals?: number;
   valueSuffix?: string;
   noteLabel: string;
   tone: 'green' | 'amber' | 'red' | 'blue';
@@ -30,14 +33,15 @@ function InsightCard({
   }[tone];
 
   return (
-    <div className="flex flex-col justify-between rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+    <div className="group flex flex-col justify-between rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-slate-300 hover:shadow-md">
       <div>
         <p className="truncate text-[13px] font-semibold text-slate-700">{title}</p>
         <p className="text-xs text-slate-400">{subtitle}</p>
       </div>
       <p className="mt-2.5">
-        <span className={clsx('text-[26px] font-extrabold leading-none', toneCls)}>{value}</span>
-        {valueSuffix && <span className="ml-1 text-xs font-medium text-slate-400">{valueSuffix}</span>}
+        <span className={clsx('text-[26px] font-extrabold leading-none', toneCls)}>
+          <GSAPNumberTicker value={numValue} decimals={decimals} suffix={valueSuffix} />
+        </span>
       </p>
       <p className="mt-0.5 text-[11px] font-medium text-slate-400">{noteLabel}</p>
       <div className="-mx-1 mt-2">
@@ -84,7 +88,7 @@ export default function PredictiveInsightsRow({
       <InsightCard
         title="Generator 1 Failure Risk"
         subtitle={gen1 ? `Health index ${gen1.health_score}%` : 'Predictive model'}
-        value={`${Math.round(failureRisk)}%`}
+        numValue={failureRisk}
         noteLabel={riskLabel}
         tone={riskTone as 'green' | 'amber' | 'red'}
         sparkValues={gen1Hist}
@@ -93,7 +97,7 @@ export default function PredictiveInsightsRow({
       <InsightCard
         title="Weather Alert"
         subtitle={env?.blizzard_warning ? 'Blizzard warning active' : 'High Winds'}
-        value={`${windProb}%`}
+        numValue={windProb}
         noteLabel="Probability"
         tone={windTone as 'green' | 'amber' | 'red'}
         sparkValues={windHist}
@@ -102,7 +106,7 @@ export default function PredictiveInsightsRow({
       <InsightCard
         title="Fuel Depletion"
         subtitle={`In ${fuelDays} Days`}
-        value={`${fuelPct}%`}
+        numValue={fuelPct}
         noteLabel="Confidence"
         tone="blue"
         sparkValues={fuelHist}
@@ -111,3 +115,4 @@ export default function PredictiveInsightsRow({
     </div>
   );
 }
+

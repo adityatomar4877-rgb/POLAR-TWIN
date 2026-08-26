@@ -17,7 +17,7 @@ export default function ActiveAlertsPanel({ alerts }: { alerts: Alert[] }) {
   const active = alerts.filter((a) => !a.resolved_at && a.is_active !== false).slice(0, 4);
 
   return (
-    <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+    <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition-all duration-300 hover:border-slate-300 hover:shadow-md">
       <div className="flex items-center justify-between">
         <h2 className="text-[13px] font-extrabold uppercase tracking-wider text-slate-900">Active Alerts</h2>
         <button
@@ -31,7 +31,7 @@ export default function ActiveAlertsPanel({ alerts }: { alerts: Alert[] }) {
 
       <div className="mt-4 space-y-4">
         {active.length === 0 && (
-          <p className="rounded-xl bg-emerald-50 px-4 py-5 text-center text-sm font-medium text-emerald-600">
+          <p className="rounded-xl bg-emerald-50 px-4 py-5 text-center text-sm font-medium text-emerald-600 border border-emerald-200/50">
             All clear — no active alerts
           </p>
         )}
@@ -39,8 +39,12 @@ export default function ActiveAlertsPanel({ alerts }: { alerts: Alert[] }) {
           const meta = severityMeta(alert.severity);
           const Icon = meta.icon;
           return (
-            <div key={alert.id} className="flex gap-3">
-              <span className={clsx('mt-0.5 rounded-lg p-1.5 h-fit', meta.chip)}>
+            <div
+              key={alert.id}
+              onClick={() => navigate('/operations')}
+              className="group flex cursor-pointer gap-3 rounded-xl p-1.5 -mx-1.5 transition-colors hover:bg-slate-50"
+            >
+              <span className={clsx('mt-0.5 rounded-lg p-1.5 h-fit transition-transform duration-300 group-hover:scale-110', meta.chip)}>
                 <Icon size={14} />
               </span>
               <div className="min-w-0 flex-1">
@@ -55,7 +59,9 @@ export default function ActiveAlertsPanel({ alerts }: { alerts: Alert[] }) {
                     })}
                   </span>
                 </div>
-                <p className="mt-0.5 truncate text-[13px] font-semibold text-slate-800">{alert.title}</p>
+                <p className="mt-0.5 truncate text-[13px] font-semibold text-slate-800 group-hover:text-blue-600 transition-colors">
+                  {alert.title}
+                </p>
                 <p className="truncate text-xs text-slate-400">{alert.message}</p>
               </div>
             </div>
@@ -65,3 +71,4 @@ export default function ActiveAlertsPanel({ alerts }: { alerts: Alert[] }) {
     </section>
   );
 }
+

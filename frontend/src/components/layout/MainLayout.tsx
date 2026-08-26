@@ -1,11 +1,31 @@
-import { Outlet } from 'react-router-dom';
+import { useRef, useEffect } from 'react';
+import { Outlet, useLocation } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import TopBar from './TopBar';
 import EmergencyModeHUD from '../emergency/EmergencyModeHUD';
 import { useStation } from '../../context/StationContext';
+import { useLenisScroll } from '../../hooks/useLenisScroll';
 
 export const MainLayout = () => {
   const { dashboard, emergencyModeActive } = useStation();
+  const location = useLocation();
+  const mainRef = useRef<HTMLElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
+
+  const lenisRef = useLenisScroll({
+    wrapperRef: mainRef,
+    contentRef: contentRef,
+    lerp: 0.1,
+    wheelMultiplier: 1.1,
+  });
+
+  useEffect(() => {
+    if (lenisRef.current) {
+      lenisRef.current.scrollTo(0, { immediate: true });
+    } else if (mainRef.current) {
+      mainRef.current.scrollTop = 0;
+    }
+  }, [location.pathname, lenisRef]);
 
   const gridEmergency =
     dashboard?.energy?.grid_status?.toUpperCase() === 'EMERGENCY' ||
@@ -28,9 +48,14 @@ export const MainLayout = () => {
       <div className="relative z-10 flex min-w-0 flex-1 flex-col">
         <TopBar />
 
-        <main className="custom-scrollbar relative flex-1 overflow-y-auto px-6 pb-6 pt-5 lg:px-8">
-          {/* Main content injected here by router */}
-          <Outlet />
+        <main
+          ref={mainRef}
+          className="custom-scrollbar relative flex-1 overflow-y-auto px-6 pb-6 pt-5 lg:px-8"
+        >
+          <div ref={contentRef}>
+            {/* Main content injected here by router */}
+            <Outlet />
+          </div>
         </main>
       </div>
 
