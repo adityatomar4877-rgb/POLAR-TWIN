@@ -82,6 +82,7 @@ def seed_database():
             ("Water Treatment System", "WATER_TREATMENT", 24.0, 97.0, 96.0, 3200.0, 50, 130),
             ("Communications System", "COMMUNICATIONS", 28.0, 99.0, 98.0, 8760.0, 20, 160),
             ("Solar Array", "SOLAR_ARRAY", -5.0, 94.0, 92.0, 5200.0, 90, 90),
+            ("Wind Turbine", "WIND_TURBINE", -10.0, 93.0, 91.0, 3800.0, 75, 105),
         ]
 
         for st in stations:
@@ -160,6 +161,12 @@ def seed_database():
                 pressure = round((985.0 if is_maitri else 992.0) + 5.0 * math.cos(hour_offset / 24.0) + random.uniform(-1.0, 1.0), 1)
                 humidity = round(max(35.0, min(85.0, 62.0 + random.uniform(-8.0, 8.0))), 1)
 
+                # Solar irradiance from hour of day
+                if 7 <= hour_val <= 17:
+                    solar_irr = round(max(0.0, 1000.0 * (math.sin((hour_val - 7) / 10.0 * math.pi) ** 1.2)), 1)
+                else:
+                    solar_irr = 0.0
+
                 sensor_rec = SensorTelemetry(
                     station_id=st.id,
                     timestamp=t_point,
@@ -170,6 +177,7 @@ def seed_database():
                     humidity=humidity,
                     precipitation=0.0 if humidity < 75.0 else round(random.uniform(0.1, 0.5), 1),
                     visibility=10.0 if wind < 55.0 else 4.5,
+                    solar_irradiance_wm2=solar_irr,
                     source="historical_record",
                     is_simulated=True,
                 )
@@ -188,9 +196,18 @@ def seed_database():
                 else:
                     solar_kw = 0.0
 
-                diesel_needed = max(0.0, consumption - solar_kw + 5.0)
+                # Wind turbine power (cubic ramp: cut-in 12 km/h, rated 45 km/h)
+                if wind >= 12.0 and wind <= 90.0:
+                    if wind < 45.0:
+                        wind_kw = round(45.0 * ((wind - 12.0) / 33.0) ** 3, 1)
+                    else:
+                        wind_kw = round(45.0 + random.uniform(-1.0, 1.0), 1)
+                else:
+                    wind_kw = 0.0
+
+                diesel_needed = max(0.0, consumption - solar_kw - wind_kw + 5.0)
                 diesel_kw = round(min(120.0, diesel_needed), 1)
-                generation = round(solar_kw + diesel_kw, 1)
+                generation = round(solar_kw + diesel_kw + wind_kw, 1)
                 balance = calculate_energy_balance(generation, consumption)
 
                 # Battery and fuel decrement
@@ -209,6 +226,7 @@ def seed_database():
                     battery_power_kw=round(battery_power, 1),
                     diesel_generation_kw=diesel_kw,
                     solar_generation_kw=solar_kw,
+                    wind_generation_kw=wind_kw,
                     fuel_percentage=round(fuel_level, 1),
                     grid_status="ONLINE",
                     source="historical_record",

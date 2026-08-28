@@ -1,6 +1,6 @@
 import logging
 from datetime import datetime, timedelta, timezone
-from typing import Optional
+from typing import Optional, Tuple
 from sqlalchemy.orm import Session
 from app.models.energy import EnergyTelemetry
 from app.models.logistics import LogisticsItem
@@ -8,8 +8,84 @@ from app.schemas.prediction import FuelDepletionForecastResponse
 
 logger = logging.getLogger(__name__)
 
+# Window of recent telemetry used to learn the actual fuel burn rate.
+BURN_LEARNING_WINDOW_HOURS = 168  # 7 days
+FALLBACK_DAILY_BURN_LITERS = 1150.0
+
 
 class PredictionService:
+
+    @staticmethod
+    def _estimate_daily_fuel_burn(
+        db: Session,
+        station_id: int,
+        total_capacity_liters: float,
+        fuel_item: Optional[LogisticsItem],
+    ) -> Tuple[float, str]:
+        """
+        Learn the current daily fuel burn rate from observed telemetry rather
+        than a hardcoded constant. Falls back gracefully through:
+
+            1. Direct measurement: fuel-level drop over the last 7 days (reflects
+               cold snaps / high-demand periods automatically). Skipped when the
+               tank is clamped at a floor/ceiling and shows no observable drop.
+            2. Diesel-inferred: average diesel generation over the last 7 days
+               times the brake specific fuel consumption (~0.255 L/kWh). Works
+               even when the fuel level is clamped, since generation is still
+               active and physically drives consumption.
+            3. The logistics item's nominal ``daily_consumption``.
+            4. A conservative hardcoded fallback.
+
+        Returns (liters_per_day, source_label).
+        """
+        # Brake Specific Fuel Consumption for Antarctic diesel generators
+        # (~0.255 L/kWh), matching the value used by EnergySimulator.
+        BSFC_L_PER_KWH = 0.255
+
+        window = (
+            db.query(EnergyTelemetry)
+            .filter(EnergyTelemetry.station_id == station_id)
+            .order_by(EnergyTelemetry.timestamp.desc())
+            .limit(BURN_LEARNING_WINDOW_HOURS)
+            .all()
+        )
+
+        if len(window) >= 2:
+            window_chrono = list(reversed(window))  # oldest -> newest
+            oldest = window_chrono[0]
+            newest = window_chrono[-1]
+            t_old = oldest.timestamp
+            t_new = newest.timestamp
+            if t_old.tzinfo is None:
+                t_old = t_old.replace(tzinfo=timezone.utc)
+            if t_new.tzinfo is None:
+                t_new = t_new.replace(tzinfo=timezone.utc)
+            span_days = (t_new - t_old).total_seconds() / 86400.0
+
+            # Tier 1: direct fuel-level measurement (only when tank is actively
+            # draining — not clamped at a floor/ceiling).
+            pct_drop = float(oldest.fuel_percentage) - float(newest.fuel_percentage)
+            if span_days > 0.5 and pct_drop > 0.01:
+                liters_burned = (pct_drop / 100.0) * total_capacity_liters
+                learned = liters_burned / span_days
+                if learned > 0:
+                    return round(learned, 1), "telemetry_learned"
+
+            # Tier 2: infer from actual diesel generation (active even when the
+            # fuel level is clamped). daily_burn = avg_diesel_kw * 24h * BSFC.
+            diesel_values = [
+                float(r.diesel_generation_kw or 0.0) for r in window_chrono
+            ]
+            avg_diesel_kw = sum(diesel_values) / len(diesel_values) if diesel_values else 0.0
+            if avg_diesel_kw > 1.0:
+                inferred = avg_diesel_kw * 24.0 * BSFC_L_PER_KWH
+                if inferred > 0:
+                    return round(inferred, 1), "telemetry_diesel_inferred"
+
+        if fuel_item and fuel_item.daily_consumption and fuel_item.daily_consumption > 0:
+            return float(fuel_item.daily_consumption), "logistics_nominal"
+
+        return FALLBACK_DAILY_BURN_LITERS, "fallback_constant"
 
     @staticmethod
     def forecast_fuel_depletion(
@@ -20,6 +96,10 @@ class PredictionService:
         """
         Fuel depletion & critical threshold forecast service.
         Predicts days remaining until critical (10%) and complete depletion.
+
+        The daily burn rate is learned from recent telemetry so the projection
+        reacts to current operating conditions (e.g. cold-snap-driven heating
+        surges) instead of a flat hardcoded constant.
         """
         now = datetime.now(timezone.utc)
 
@@ -30,7 +110,7 @@ class PredictionService:
             .order_by(EnergyTelemetry.timestamp.desc())
             .first()
         )
-        
+
         # Get fuel logistics item
         fuel_item = (
             db.query(LogisticsItem)
@@ -42,7 +122,9 @@ class PredictionService:
         # Typical Antarctic station fuel storage: ~60,000 Liters (Bharati) / 80,000 Liters (Maitri)
         total_capacity_liters = 75000.0 if "MAITRI" in station_code.upper() else 60000.0
         current_liters = fuel_item.quantity if fuel_item else (total_capacity_liters * current_percentage / 100.0)
-        daily_burn_liters = fuel_item.daily_consumption if fuel_item else 1150.0
+        daily_burn_liters, burn_source = PredictionService._estimate_daily_fuel_burn(
+            db, station_id, total_capacity_liters, fuel_item
+        )
 
         critical_threshold_percent = 10.0
         critical_liters = total_capacity_liters * (critical_threshold_percent / 100.0)
@@ -86,6 +168,7 @@ class PredictionService:
             recommended_resupply=recommended_resupply,
             status=status,
             advisory_notes=notes,
+            burn_rate_source=burn_source,
         )
 
 

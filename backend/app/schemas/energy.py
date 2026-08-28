@@ -11,6 +11,7 @@ class EnergyTelemetryBase(BaseModel):
     battery_power_kw: float = Field(default=0.0, description="Battery net power (+ charging, - discharging)", json_schema_extra={"example": -15.0})
     diesel_generation_kw: float = Field(default=0.0, ge=0.0, description="Diesel generator output (kW)", json_schema_extra={"example": 120.0})
     solar_generation_kw: float = Field(default=0.0, ge=0.0, description="Solar PV output (kW)", json_schema_extra={"example": 60.0})
+    wind_generation_kw: float = Field(default=0.0, ge=0.0, description="Wind turbine output (kW)", json_schema_extra={"example": 15.0})
     fuel_percentage: float = Field(..., ge=0.0, le=100.0, description="Available fuel tank level (%)", json_schema_extra={"example": 72.5})
     grid_status: str = Field(default="ONLINE", description="Microgrid operational mode", json_schema_extra={"example": "ONLINE"})
     source: str = Field(default="simulation", description="Data provenance", json_schema_extra={"example": "simulation"})

@@ -17,6 +17,7 @@ class SensorTelemetry(Base):
     humidity = Column(Float, nullable=False)           # %
     precipitation = Column(Float, default=0.0, nullable=False)  # mm
     visibility = Column(Float, default=10.0, nullable=False)    # km
+    solar_irradiance_wm2 = Column(Float, default=0.0, nullable=False)  # W/m²
     source = Column(String(100), default="simulation", nullable=False)
     is_simulated = Column(Boolean, default=True, nullable=False)
 

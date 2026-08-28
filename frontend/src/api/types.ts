@@ -14,17 +14,15 @@ export interface SensorTelemetry {
   id: number;
   station_id: number;
   timestamp: string;
-  temperature_c: number;
-  humidity_percent: number;
-  pressure_hpa: number;
-  wind_speed_kmh: number;
-  wind_direction_deg: number;
+  temperature: number;
+  wind_speed: number;
+  wind_direction: number;
+  pressure: number;
+  humidity: number;
+  precipitation: number;
+  visibility: number;
   solar_irradiance_wm2: number;
-  visibility_km: number;
-  blizzard_warning: boolean;
-  extreme_cold_alert: boolean;
-  high_wind_alert: boolean;
-  data_source: string;
+  source: string;
   is_simulated: boolean;
 }
 
@@ -39,6 +37,7 @@ export interface EnergyTelemetry {
   battery_power_kw: number;
   diesel_generation_kw: number;
   solar_generation_kw: number;
+  wind_generation_kw: number;
   fuel_percentage: number;
   grid_status: string;
   source: string;

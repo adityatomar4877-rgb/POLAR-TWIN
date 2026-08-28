@@ -1,7 +1,9 @@
+import json
 import logging
 import math
 import random
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any, Dict, Optional
 import httpx
 from app.core.config import settings
@@ -21,7 +23,29 @@ class FallbackWeatherProvider(WeatherProvider):
     - Latitude & Elevation (Lapse rate ~ 0.0098 °C/m)
     - Solar elevation / Hour of day (Diurnal cycle)
     - Season of year (Polar day / Polar night dynamics)
+
+    Per-station base constants are calibrated to dataset climatology via
+    ``app/ml/weather_calibration.json`` (produced by ``calibrate_weather.py``).
+    Stations without a calibration entry fall back to sensible hardcoded
+    Antarctic defaults.
     """
+
+    _calibration: Optional[Dict[str, Any]] = None
+
+    @classmethod
+    def _load_calibration(cls) -> Dict[str, Any]:
+        if cls._calibration is not None:
+            return cls._calibration
+        calib_path = Path(__file__).resolve().parent.parent / "ml" / "weather_calibration.json"
+        try:
+            if calib_path.exists():
+                cls._calibration = json.loads(calib_path.read_text(encoding="utf-8"))
+            else:
+                cls._calibration = {}
+        except Exception as e:
+            logger.debug("Could not load weather calibration: %s", e)
+            cls._calibration = {}
+        return cls._calibration
 
     async def get_weather(self, station_code: str, lat: float, lon: float, elevation: float) -> Dict[str, Any]:
         now = datetime.now(timezone.utc)
@@ -33,49 +57,54 @@ class FallbackWeatherProvider(WeatherProvider):
         season_phase = (day_of_year - 15) / 365.25 * 2 * math.pi
         seasonal_temp_offset = -12.0 * (1 - math.cos(season_phase)) # 0 in summer, -24 in winter
 
-        # Station-specific baseline
-        if "MAITRI" in station_code.upper():
-            # Schirmacher Oasis: Continental-edge climate, elevated
-            base_temp = -8.0 + seasonal_temp_offset - (elevation * 0.006)
-            wind_base = 35.0
-            pressure_base = 985.0
-        else:
-            # Bharati: Larsemann Hills coastal promontory
-            base_temp = -5.0 + seasonal_temp_offset - (elevation * 0.006)
-            wind_base = 28.0
-            pressure_base = 992.0
+        code_upper = station_code.upper()
+        calib = self._load_calibration().get(code_upper, {})
 
-        # Diurnal fluctuation (~4-6°C variation)
+        # Station-specific baseline (calibrated constants take precedence)
+        if "MAITRI" in code_upper:
+            base_temp_const = calib.get("base_temp_constant", -8.0)
+            wind_base = calib.get("wind_base", 35.0)
+            pressure_base = calib.get("pressure_base", 985.0)
+            elev = calib.get("elevation_m", elevation)
+        else:
+            base_temp_const = calib.get("base_temp_constant", -5.0)
+            wind_base = calib.get("wind_base", 28.0)
+            pressure_base = calib.get("pressure_base", 992.0)
+            elev = calib.get("elevation_m", elevation)
+
+        base_temp = base_temp_const + seasonal_temp_offset - (elev * 0.006)
+
+        # Diurnal fluctuation (~4-6°C variation) — physical forcing
         diurnal_rad = (hour - 14) / 24.0 * 2 * math.pi
         diurnal_temp = 3.5 * math.cos(diurnal_rad)
 
-        # Micro-fluctuations / noise
-        temp_noise = random.uniform(-0.8, 0.8)
-        temperature = round(base_temp + diurnal_temp + temp_noise, 1)
+        # ── Realistic sensor simulation ──
+        # Instead of flat ``random.uniform()`` noise, use a persistent
+        # Ornstein-Uhlenbeck sensor array that produces autocorrelated,
+        # Gaussian, mean-reverting readings — exactly what real sensors
+        # produce. The seasonal/diurnal physics above sets the mean;
+        # the sensor model adds realistic drift + measurement noise.
+        from app.utils.sensor_noise import get_sensor_array
+        sensor_array = get_sensor_array(station_code)
 
-        # Wind dynamics: katabatic bursts
-        wind_gust = random.uniform(-5.0, 15.0)
-        wind_speed = round(max(5.0, wind_base + wind_gust), 1)
-        wind_direction = round((160.0 + random.uniform(-30.0, 30.0)) % 360, 1) # Prevailing S/SE katabatic
+        # Dynamically adjust the sensor means to track the current
+        # seasonal + diurnal physical baseline.
+        sensor_array.adjust_mean(
+            temperature=base_temp + diurnal_temp,
+            wind=wind_base,
+            pressure=pressure_base,
+        )
 
-        pressure = round(pressure_base + random.uniform(-4.0, 4.0), 1)
-        humidity = round(max(30.0, min(90.0, 65.0 + random.uniform(-10.0, 10.0))), 1)
-        precipitation = 0.0
-        if humidity > 80.0 and random.random() < 0.2:
-            precipitation = round(random.uniform(0.1, 1.5), 1)
-
-        visibility = 10.0
-        if wind_speed > 60.0:
-            visibility = max(0.5, round(10.0 - (wind_speed - 60.0) * 0.2, 1)) # Blowing snow
+        readings = sensor_array.step(dt=10.0)
 
         return {
-            "temperature": temperature,
-            "wind_speed": wind_speed,
-            "wind_direction": wind_direction,
-            "pressure": pressure,
-            "humidity": humidity,
-            "precipitation": precipitation,
-            "visibility": visibility,
+            "temperature": readings["temperature"],
+            "wind_speed": readings["wind_speed"],
+            "wind_direction": readings["wind_direction"],
+            "pressure": readings["pressure"],
+            "humidity": readings["humidity"],
+            "precipitation": readings["precipitation"],
+            "visibility": readings["visibility"],
             "source": "simulation",
             "is_simulated": True,
             "timestamp": now.isoformat(),
@@ -145,12 +174,54 @@ class WeatherService:
         self.fallback_provider = FallbackWeatherProvider()
 
     async def get_current_weather(self, station_code: str, lat: float, lon: float, elevation: float) -> Dict[str, Any]:
-        """Tries external provider first; seamlessly defaults to realistic fallback model if external API fails."""
+        """
+        Gets the weather baseline (external API or physics fallback), then
+        ALWAYS passes it through the realistic sensor array to produce
+        autocorrelated, Gaussian readings — exactly like real sensors
+        reading actual conditions. This means every tick produces slightly
+        different values even when the external API is cached.
+        """
+        from app.utils.sensor_noise import get_sensor_array
+
+        # 1. Get the baseline from external API or fallback
+        source_tag = "external_weather_api"
+        is_simulated = False
         try:
-            return await self.external_provider.get_weather(station_code, lat, lon, elevation)
+            baseline = await self.external_provider.get_weather(station_code, lat, lon, elevation)
+            source_tag = baseline.get("source", "external_weather_api")
+            is_simulated = baseline.get("is_simulated", False)
         except Exception as e:
             logger.debug(f"External weather fetch failed for {station_code} ({e}). Using Antarctic climate fallback.")
-            return await self.fallback_provider.get_weather(station_code, lat, lon, elevation)
+            baseline = await self.fallback_provider.get_weather(station_code, lat, lon, elevation)
+            source_tag = baseline.get("source", "simulation")
+            is_simulated = True
+
+        # 2. Always apply realistic sensor noise on top of the baseline.
+        # Real sensors at the station would read slightly different values
+        # than the regional API model (microclimate, sensor electronics noise,
+        # thermal mass). The sensor array produces autocorrelated, Gaussian,
+        # mean-reverting readings around the baseline.
+        sensor_array = get_sensor_array(station_code)
+        sensor_array.adjust_mean(
+            temperature=baseline["temperature"],
+            wind=baseline["wind_speed"],
+            pressure=baseline["pressure"],
+            humidity=baseline["humidity"],
+        )
+        readings = sensor_array.step(dt=10.0)
+
+        return {
+            "temperature": readings["temperature"],
+            "wind_speed": readings["wind_speed"],
+            "wind_direction": readings["wind_direction"],
+            "pressure": readings["pressure"],
+            "humidity": readings["humidity"],
+            "precipitation": readings["precipitation"],
+            "visibility": readings["visibility"],
+            "source": source_tag,
+            "is_simulated": is_simulated,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        }
 
     def clear_cache(self):
         self.external_provider.clear_cache()

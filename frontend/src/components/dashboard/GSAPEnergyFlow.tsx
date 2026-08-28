@@ -8,10 +8,7 @@ export default function GSAPEnergyFlow({ energy }: { energy?: EnergyTelemetry })
   const containerRef = useRef<HTMLDivElement>(null);
   const genKw = energy?.diesel_generation_kw ?? (energy?.generation_kw ? energy.generation_kw * 0.6 : 24.5);
   const solarKw = energy?.solar_generation_kw ?? (energy?.generation_kw ? energy.generation_kw * 0.25 : 8.2);
-  const windKw =
-    energy?.generation_kw !== undefined
-      ? Math.max(0, energy.generation_kw - (energy.diesel_generation_kw ?? 0) - (energy.solar_generation_kw ?? 0))
-      : 4.1;
+  const windKw = (energy as any)?.wind_generation_kw ?? 0;
   const totalGen = energy?.generation_kw ?? 36.8;
   const loadKw = energy?.consumption_kw ?? 29.4;
   const battKw = energy?.battery_power_kw ?? 4.2;

@@ -22,7 +22,7 @@ export const CommsPage = () => {
     return () => ctx.revert();
   }, []);
 
-  const dataSource = dashboard?.environment?.data_source ?? 'UNKNOWN';
+  const dataSource = dashboard?.environment?.source ?? 'UNKNOWN';
   const simulated = dashboard?.environment?.is_simulated ?? false;
 
   const cards = [

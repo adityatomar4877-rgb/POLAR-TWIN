@@ -164,8 +164,8 @@ export default function GSAPShipTransit({
     let iceRisk = 'LOW';
     let seaState = 'Moderate';
 
-    const windSpeed = env?.wind_speed_kmh ?? 18.6;
-    const tempC = env?.temperature_c ?? -21.8;
+    const windSpeed = env?.wind_speed ?? 18.6;
+    const tempC = env?.temperature ?? -21.8;
 
     if (activeScenario === 'SUPPLY_DELAY') {
       speed = 8.4;
@@ -173,7 +173,7 @@ export default function GSAPShipTransit({
       etaSub = '+4.5d Severe Sea Ice Delay';
       iceRisk = 'HIGH';
       seaState = 'Heavy Pack Ice (8/10)';
-    } else if (env?.blizzard_warning || activeScenario === 'EXTREME_COLD') {
+    } else if ((env?.wind_speed ?? 0) > 65 || activeScenario === 'EXTREME_COLD') {
       speed = 10.1;
       etaDays = 16.0;
       etaSub = '+2.0d Storm Throttling';
@@ -193,7 +193,7 @@ export default function GSAPShipTransit({
       iceRisk,
       seaState,
       windSpeed: windSpeed.toFixed(1),
-      windDir: env?.wind_direction_deg ? `${Math.round(env.wind_direction_deg)}° SW` : '195° SW',
+      windDir: env?.wind_direction ? `${Math.round(env.wind_direction)}° SW` : '195° SW',
       temperature: tempC.toFixed(1),
       cargoUtilized: 82,
     };

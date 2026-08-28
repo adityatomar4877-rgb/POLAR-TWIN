@@ -182,6 +182,9 @@ def test_predictions_change_when_telemetry_changes(db):
         )
     db.commit()
 
+    # Clear the prediction cache so the second call recomputes with the new telemetry
+    energy_forecast_service.clear_prediction_cache(station_id=1)
+
     updated = energy_forecast_service.predict(db, station_id=1, station_code="MAITRI")
     updated_6h = updated["forecast"]["6h"]["average_consumption_kw"]
 

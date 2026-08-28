@@ -18,7 +18,7 @@ const LOAD_ICONS = [HeartPulse, Snowflake, FlaskConical, Utensils];
 export default function EnergyFlowDiagram({ energy, loads }: Props) {
   const dieselKw = energy?.diesel_generation_kw ?? 0;
   const solarKw = energy?.solar_generation_kw ?? 0;
-  const windKw = 0; // wind turbines standby in current plant config
+  const windKw = (energy as any)?.wind_generation_kw ?? 0;
   const balance = energy?.energy_balance ?? 0;
   const batteryPct = energy?.battery_percentage ?? 0;
   const batteryFlow = energy?.battery_power_kw ?? 0;
@@ -56,9 +56,9 @@ export default function EnergyFlowDiagram({ energy, loads }: Props) {
             <Sun size={13} /> SOLAR PV
             <span className="ml-auto font-bold">{solarKw.toFixed(1)} kW</span>
           </div>
-          <div className={clsx(nodeLabel, windKw > 0 ? 'border-teal-300 bg-teal-50 text-teal-200' : 'border-slate-200 bg-white/60 text-slate-500')}>
+          <div className={clsx(nodeLabel, windKw > 0 ? 'border-teal-300 bg-teal-50 text-teal-700' : 'border-slate-200 bg-white/60 text-slate-500')}>
             <Wind size={13} /> WIND
-            <span className="ml-auto font-bold">STANDBY</span>
+            <span className="ml-auto font-bold">{windKw > 0 ? `${windKw.toFixed(1)} kW` : 'STANDBY'}</span>
           </div>
         </div>
 

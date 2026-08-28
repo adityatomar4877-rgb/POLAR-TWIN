@@ -79,7 +79,7 @@ export default function AntarcticStoryScroller({ onEnterCommandCenter }: Props) 
   const snowWrapRef = useRef<HTMLDivElement>(null);
   const [activeScene, setActiveScene] = useState(0);
 
-  const windSpeed = dashboard?.environment?.wind_speed_kmh ?? 24;
+  const windSpeed = dashboard?.environment?.wind_speed ?? 24;
 
   const { data: recommendations } = useQuery<OperationalRecommendation[]>({
     queryKey: ['recommendations', selectedStationId],
@@ -323,8 +323,8 @@ export default function AntarcticStoryScroller({ onEnterCommandCenter }: Props) 
                 { icon: Zap, label: 'GENERATION', value: `${(energy?.generation_kw ?? 0).toFixed(1)} kW`, tone: 'text-cyan-300' },
                 { icon: BatteryCharging, label: 'BATTERY BANK', value: `${(energy?.battery_percentage ?? 0).toFixed(0)} %`, tone: energy && energy.battery_percentage < 20 ? 'text-red-400' : 'text-emerald-300' },
                 { icon: Radio, label: 'GRID STATUS', value: (energy?.grid_status ?? 'NOMINAL').toUpperCase(), tone: energy && energy.grid_status === 'EMERGENCY' ? 'text-red-400' : 'text-emerald-300' },
-                { icon: Thermometer, label: 'SURFACE TEMP', value: `${env?.temperature_c != null ? env.temperature_c.toFixed(1) : '—'} °C`, tone: 'text-sky-300' },
-                { icon: Wind, label: 'WIND SPEED', value: `${env?.wind_speed_kmh != null ? env.wind_speed_kmh.toFixed(0) : '—'} km/h`, tone: 'text-sky-300' },
+                { icon: Thermometer, label: 'SURFACE TEMP', value: `${env?.temperature != null ? env.temperature.toFixed(1) : '—'} °C`, tone: 'text-sky-300' },
+                { icon: Wind, label: 'WIND SPEED', value: `${env?.wind_speed != null ? env.wind_speed.toFixed(0) : '—'} km/h`, tone: 'text-sky-300' },
                 { icon: Users, label: 'POPULATION', value: `${dashboard?.station?.current_population ?? '—'}`, tone: 'text-slate-200' },
               ].map(({ icon: Icon, label, value, tone }) => (
                 <div key={label} className="glass-panel rounded-xl p-5 text-left">

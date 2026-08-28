@@ -146,6 +146,16 @@ export const CommandPreviewModal = ({ isOpen, onClose, stationId, request }: Pro
     },
   });
 
+  // Compute energyDelta early so the hook order is stable across renders.
+  // This must be called unconditionally (Rules of Hooks).
+  const _energyDelta =
+    num(preview?.impact?.energy_delta_kw) ??
+    num(preview?.impact?.generation_change_kw) ??
+    num(preview?.impact?.consumption_reduction_kw) ??
+    num(preview?.impact?.energy_balance_change_kw) ??
+    0;
+  const energyCountRef = useCountUp(_energyDelta, 1);
+
   if (!request) return null;
 
   const handleAuthorize = () => {
@@ -160,12 +170,7 @@ export const CommandPreviewModal = ({ isOpen, onClose, stationId, request }: Pro
   };
 
   const isSafe = preview ? preview.safe : false;
-  const energyDelta =
-    num(preview?.impact?.energy_delta_kw) ??
-    num(preview?.impact?.generation_change_kw) ??
-    num(preview?.impact?.consumption_reduction_kw) ??
-    num(preview?.impact?.energy_balance_change_kw) ??
-    0;
+  const energyDelta = _energyDelta;
   const batteryDelta = num(preview?.impact?.battery_drop_percent);
   const riskLevel = preview?.impact?.risk_level || (isSafe ? 'LOW' : 'HIGH');
 
@@ -182,8 +187,6 @@ export const CommandPreviewModal = ({ isOpen, onClose, stationId, request }: Pro
     if (request.target_type === 'LOAD_GROUP') return '[NON_CRITICAL]';
     return '[STATION]';
   })();
-
-  const energyCountRef = useCountUp(energyDelta, 1);
 
   return (
     <AnimatePresence>

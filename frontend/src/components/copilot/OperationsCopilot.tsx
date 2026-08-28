@@ -64,7 +64,7 @@ export default function OperationsCopilot({ compact = false }: Props) {
         `energy deficit ${Math.abs(energy.energy_balance).toFixed(1)} kW, battery ${energy.battery_power_kw < 0 ? 'discharging' : 'stable'}`
       );
     }
-    if (env?.blizzard_warning) parts.push('blizzard conditions outside');
+    if ((env?.wind_speed ?? 0) > 65) parts.push('blizzard conditions outside');
     if (parts.length === 0) return 'All subsystems within nominal envelope. No anomalies detected.';
     return `${parts.join('; ')}.`;
   }, [energy, env, offlineEquipment]);
@@ -90,11 +90,11 @@ export default function OperationsCopilot({ compact = false }: Props) {
           }`
         : 'Energy telemetry unavailable.';
     } else {
-      const wind = env?.wind_speed_kmh ?? 0;
-      const tempC = env?.temperature_c ?? -20;
+      const wind = env?.wind_speed ?? 0;
+      const tempC = env?.temperature ?? -20;
       const chill = tempC - wind * 0.15;
       text =
-        env?.blizzard_warning
+        (env?.wind_speed ?? 0) > 65
           ? `DANGER — blizzard warning active. Wind ${wind.toFixed(0)} km/h, wind chill ≈ ${chill.toFixed(0)}°C. All outdoor EVA suspended.`
           : chill < -45 || wind > 80
             ? `CAUTION — wind chill ≈ ${chill.toFixed(0)}°C at ${wind.toFixed(0)} km/h winds. Outdoor exposure limited to 15 min with full gear.`

@@ -585,7 +585,7 @@ export const DigitalTwinScene = ({
     staleTime: 10000,
   });
 
-  const windKmh = Math.round(dashboard?.environment?.wind_speed_kmh ?? 24);
+  const windKmh = Math.round(dashboard?.environment?.wind_speed ?? 24);
   const energy = dashboard?.energy;
   const batteryCharging = (energy?.battery_power_kw ?? 0) > 0;
   const consumptionKw = energy?.consumption_kw ?? 1;

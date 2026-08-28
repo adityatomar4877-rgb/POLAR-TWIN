@@ -4,6 +4,8 @@ from app.core.database import get_db
 from app.schemas.prediction import (
     EnergyForecastResponse,
     FuelDepletionForecastResponse,
+    ModelInfoResponse,
+    PredictionAccuracyResponse,
     PredictionSummaryOut,
 )
 from app.services.station_service import station_service
@@ -34,7 +36,8 @@ def get_energy_prediction(station_id: str, db: Session = Depends(get_db)):
 
     Uses pre-trained RandomForestRegressor models with 63 engineered features
     derived from the station's latest energy and sensor telemetry history.
-    Models are read-only and never retrained via the API.
+    Models are read-only at inference time; retraining is done offline via
+    ``train_models.py``. Each forecast is persisted for live accuracy tracking.
     """
     station = station_service.get_station_by_id_or_code(db, station_id)
     return energy_forecast_service.predict(db, station.id, station.code)
@@ -42,6 +45,25 @@ def get_energy_prediction(station_id: str, db: Session = Depends(get_db)):
 
 @router.get("/fuel", response_model=FuelDepletionForecastResponse)
 def get_fuel_prediction(station_id: str, db: Session = Depends(get_db)):
-    """Predicts fuel reserve depletion trajectories and threshold advisory."""
+    """Predicts fuel reserve depletion trajectories and threshold advisory.
+
+    The daily burn rate is learned from recent telemetry so the projection
+    reacts to current operating conditions instead of a flat constant.
+    """
     station = station_service.get_station_by_id_or_code(db, station_id)
     return prediction_service.forecast_fuel_depletion(db, station.id, station.code)
+
+
+@router.get("/models/info", response_model=ModelInfoResponse)
+def get_model_info():
+    """Returns deployed model metadata and offline evaluation metrics
+    (MAE / RMSE / MAPE / R^2 per horizon) from the training pipeline."""
+    return energy_forecast_service.get_model_info()
+
+
+@router.get("/accuracy", response_model=PredictionAccuracyResponse)
+def get_prediction_accuracy(station_id: str, db: Session = Depends(get_db)):
+    """Computes live forecast-vs-actual accuracy from persisted predictions
+    whose target windows have fully elapsed."""
+    station = station_service.get_station_by_id_or_code(db, station_id)
+    return energy_forecast_service.compute_accuracy(db, station.id, station.code)

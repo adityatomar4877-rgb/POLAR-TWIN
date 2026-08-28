@@ -20,6 +20,7 @@ class EnergyTelemetry(Base):
     
     diesel_generation_kw = Column(Float, default=0.0, nullable=False)
     solar_generation_kw = Column(Float, default=0.0, nullable=False)
+    wind_generation_kw = Column(Float, default=0.0, nullable=False)
     
     fuel_percentage = Column(Float, nullable=False)     # 0 - 100
     grid_status = Column(String(50), default="ONLINE", nullable=False)  # ONLINE, ISLANDED, DEGRADED, EMERGENCY

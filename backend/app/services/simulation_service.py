@@ -128,6 +128,12 @@ class SimulationService:
 
         db.commit()
         logger.info("Simulation state reset to deterministic NORMAL_OPERATION for all stations.")
+        # Clear prediction cache so forecasts revert immediately.
+        try:
+            from app.services.energy_forecast_service import energy_forecast_service
+            energy_forecast_service.clear_prediction_cache()
+        except Exception:
+            pass
         return {"status": "SUCCESS", "message": "All station simulations reset to NORMAL_OPERATION."}
 
     def get_status(self) -> SimulationStatusOut:
@@ -157,6 +163,19 @@ class SimulationService:
         scenario_upper = scenario.upper()
         now = datetime.now(timezone.utc)
         active_until = now + timedelta(minutes=duration_minutes)
+
+        # Compute dynamic scenario parameters from actual station state
+        from app.simulation.telemetry_engine import compute_scenario_dynamics
+        from app.models.energy import EnergyTelemetry
+        from app.models.sensor import SensorTelemetry
+        latest_e = db.query(EnergyTelemetry).filter(EnergyTelemetry.station_id == station.id).order_by(EnergyTelemetry.timestamp.desc()).first()
+        latest_s = db.query(SensorTelemetry).filter(SensorTelemetry.station_id == station.id).order_by(SensorTelemetry.timestamp.desc()).first()
+        _cur_t = float(latest_s.temperature) if latest_s else (-18.0 if is_maitri else -14.0)
+        _cur_w = float(latest_s.wind_speed) if latest_s else 30.0
+        _cur_c = float(latest_e.consumption_kw) if latest_e else 100.0
+        _cur_d = float(latest_e.diesel_generation_kw) if latest_e else 80.0
+        _cur_f = float(latest_e.fuel_percentage) if latest_e else 75.0
+        sd = compute_scenario_dynamics(db, station, scenario_upper, _cur_t, _cur_w, _cur_c, _cur_d, _cur_f)
 
         target_eq_name = None
         if equipment_id:
@@ -260,7 +279,8 @@ class SimulationService:
                 recommendations.append("Recommendation: Conditions are within design tolerances. Continue autonomous monitoring.")
 
         elif scenario_upper == "GENERATOR_FAILURE":
-            thermal_calc = calculate_building_thermal_load(station.code, -18.0 if is_maitri else -14.0, 30.0)
+            # Dynamic: use actual current temperature, not hardcoded
+            thermal_calc = calculate_building_thermal_load(station.code, _cur_t, _cur_w)
             flow_calc = calculate_microgrid_power_flow(
                 station_code=station.code,
                 consumption_kw=thermal_calc["total_consumption_kw"],
@@ -287,7 +307,10 @@ class SimulationService:
             ]
 
         elif scenario_upper == "EXTREME_COLD":
-            thermal_calc = calculate_building_thermal_load(station.code, -54.0, 95.0)
+            # Dynamic: target temp/wind from historical distribution
+            target_t = sd.get("extreme_cold_target_temp", -45.0)
+            target_w = sd.get("extreme_cold_target_wind", 90.0)
+            thermal_calc = calculate_building_thermal_load(station.code, target_t, target_w)
             flow_calc = calculate_microgrid_power_flow(
                 station_code=station.code,
                 consumption_kw=thermal_calc["total_consumption_kw"],
@@ -296,14 +319,18 @@ class SimulationService:
                 generator_2_online=False,
                 duration_minutes=float(duration_minutes),
             )
+            # Dynamic fuel multiplier from actual thermal load increase
+            cold_delta = sd.get("extreme_cold_consumption_delta_kw", 20.0)
+            base_con = max(1.0, _cur_c)
+            fuel_mult = round(1.0 + (cold_delta / base_con) * 0.8, 2)
             impact = {
-                "temperature_drop_celsius": -22.0,
+                "temperature_drop_celsius": round(target_t - _cur_t, 1),
                 "projected_consumption_kw": flow_calc["consumption_kw"],
                 "projected_generation_kw": flow_calc["total_generation_kw"],
                 "energy_deficit_kw": flow_calc["energy_deficit_kw"],
                 "battery_drop_percent": flow_calc["battery_drop_pct"],
                 "projected_final_battery_percent": flow_calc["final_battery_pct"],
-                "fuel_burn_multiplier": 1.45,
+                "fuel_burn_multiplier": fuel_mult,
                 "fuel_reserve_percent": flow_calc["projected_final_fuel_pct"],
                 "grid_stability_risk": flow_calc["grid_risk"],
             }
@@ -315,7 +342,9 @@ class SimulationService:
             ]
 
         elif scenario_upper == "HIGH_ENERGY_DEMAND":
-            thermal_calc = calculate_building_thermal_load(station.code, -18.0 if is_maitri else -14.0, 30.0, load_modifier_kw=55.0)
+            # Dynamic: extra load from actual sheddable loads
+            extra_load = sd.get("high_demand_extra_load_kw", 55.0)
+            thermal_calc = calculate_building_thermal_load(station.code, _cur_t, _cur_w, load_modifier_kw=extra_load)
             flow_calc = calculate_microgrid_power_flow(
                 station_code=station.code,
                 consumption_kw=thermal_calc["total_consumption_kw"],
@@ -324,13 +353,15 @@ class SimulationService:
                 generator_2_online=False,
                 duration_minutes=float(duration_minutes),
             )
+            # Dynamic fuel multiplier from actual extra demand
+            fuel_mult = round(1.0 + (extra_load / max(1.0, _cur_c)) * 0.5, 2)
             impact = {
                 "projected_consumption_kw": flow_calc["consumption_kw"],
                 "projected_generation_kw": flow_calc["total_generation_kw"],
                 "energy_deficit_kw": flow_calc["energy_deficit_kw"],
                 "battery_drop_percent": flow_calc["battery_drop_pct"],
                 "projected_final_battery_percent": flow_calc["final_battery_pct"],
-                "fuel_burn_multiplier": 1.25,
+                "fuel_burn_multiplier": fuel_mult,
                 "fuel_reserve_percent": flow_calc["projected_final_fuel_pct"],
                 "grid_stability_risk": flow_calc["grid_risk"],
             }
@@ -341,14 +372,16 @@ class SimulationService:
             ]
 
         elif scenario_upper == "FUEL_SHORTAGE":
-            thermal_calc = calculate_building_thermal_load(station.code, -18.0 if is_maitri else -14.0, 30.0)
+            # Dynamic: target fuel from actual burn rate and logistics
+            fuel_target = sd.get("fuel_shortage_target_pct", 12.0)
+            thermal_calc = calculate_building_thermal_load(station.code, _cur_t, _cur_w)
             flow_calc = calculate_microgrid_power_flow(
                 station_code=station.code,
                 consumption_kw=thermal_calc["total_consumption_kw"],
                 solar_factor=0.3,
                 generator_1_online=True,
                 generator_2_online=False,
-                fuel_pct=12.0,
+                fuel_pct=fuel_target,
                 duration_minutes=float(duration_minutes),
             )
             impact = {
@@ -358,7 +391,7 @@ class SimulationService:
                 "battery_drop_percent": flow_calc["battery_drop_pct"],
                 "projected_final_battery_percent": flow_calc["final_battery_pct"],
                 "fuel_burn_multiplier": 1.0,
-                "fuel_reserve_percent": 12.0,
+                "fuel_reserve_percent": fuel_target,
                 "grid_stability_risk": "HIGH RISK",
             }
             affected_systems = ["Diesel Fuel Reserves & Winter Supply", "Thermal Life Support", "Diesel Power Generation"]
@@ -369,22 +402,27 @@ class SimulationService:
             ]
 
         elif scenario_upper == "EQUIPMENT_DEGRADATION":
-            thermal_calc = calculate_building_thermal_load(station.code, -18.0 if is_maitri else -14.0, 30.0)
+            # Dynamic: consumption multiplier from actual efficiency loss
+            deg_mult = sd.get("equipment_degradation_consumption_mult", 1.08)
+            thermal_calc = calculate_building_thermal_load(station.code, _cur_t, _cur_w)
+            adjusted_con = thermal_calc["total_consumption_kw"] * deg_mult
             flow_calc = calculate_microgrid_power_flow(
                 station_code=station.code,
-                consumption_kw=thermal_calc["total_consumption_kw"],
+                consumption_kw=adjusted_con,
                 solar_factor=0.3,
                 generator_1_online=True,
                 generator_2_online=False,
                 duration_minutes=float(duration_minutes),
             )
+            # Dynamic fuel multiplier from efficiency loss
+            fuel_mult = round(1.0 + (deg_mult - 1.0) * 2.0, 2)
             impact = {
                 "projected_consumption_kw": flow_calc["consumption_kw"],
                 "projected_generation_kw": flow_calc["total_generation_kw"],
                 "energy_deficit_kw": flow_calc["energy_deficit_kw"],
                 "battery_drop_percent": flow_calc["battery_drop_pct"],
                 "projected_final_battery_percent": flow_calc["final_battery_pct"],
-                "fuel_burn_multiplier": 1.15,
+                "fuel_burn_multiplier": fuel_mult,
                 "fuel_reserve_percent": flow_calc["projected_final_fuel_pct"],
                 "grid_stability_risk": "ELEVATED",
             }
@@ -395,10 +433,28 @@ class SimulationService:
             ]
 
         elif scenario_upper == "SUPPLY_DELAY":
+            # Dynamic: compute conservation consumption and logistics impact
+            conserv_mult = sd.get("supply_delay_consumption_mult", 0.95)
+            thermal_calc = calculate_building_thermal_load(station.code, _cur_t, _cur_w)
+            adjusted_con = thermal_calc["total_consumption_kw"] * conserv_mult
+            flow_calc = calculate_microgrid_power_flow(
+                station_code=station.code,
+                consumption_kw=adjusted_con,
+                solar_factor=0.3,
+                generator_1_online=True,
+                generator_2_online=False,
+                duration_minutes=float(duration_minutes),
+            )
             impact = {
+                "projected_consumption_kw": flow_calc["consumption_kw"],
+                "projected_generation_kw": flow_calc["total_generation_kw"],
+                "energy_deficit_kw": flow_calc["energy_deficit_kw"],
                 "resupply_delay_days": 45,
                 "critical_shortage_risk": "ELEVATED",
                 "ration_adjustment_required": True,
+                "fuel_burn_multiplier": sd.get("supply_delay_fuel_mult", 0.7),
+                "fuel_reserve_percent": flow_calc["projected_final_fuel_pct"],
+                "grid_stability_risk": flow_calc["grid_risk"],
             }
             affected_systems = ["Logistics Inventory", "Food Rations", "Spare Parts"]
             recommendations = [
@@ -414,6 +470,24 @@ class SimulationService:
             }
             affected_systems = ["All Station Subsystems Nominal"]
             recommendations = ["Recommendation: Continue standard autonomous monitoring and scheduled maintenance."]
+
+        # ── Attach ML-adjusted forecast so the what-if response shows how the
+        # predictive model expects consumption to change under this scenario.
+        # Uses scenario_override so this works even for tests (apply_to_live=false).
+        try:
+            from app.services.energy_forecast_service import energy_forecast_service
+            ml_result = energy_forecast_service.predict(
+                db, station.id, station.code,
+                scenario_override=scenario_upper,
+            )
+            fc = ml_result.get("forecast", {})
+            impact["ml_forecast_6h_kw"] = fc.get("6h", {}).get("average_consumption_kw", 0.0)
+            impact["ml_forecast_12h_kw"] = fc.get("12h", {}).get("average_consumption_kw", 0.0)
+            impact["ml_forecast_24h_kw"] = fc.get("24h", {}).get("average_consumption_kw", 0.0)
+            impact["ml_current_consumption_kw"] = ml_result.get("current_consumption_kw", 0.0)
+            impact["ml_scenario_adjusted"] = ml_result.get("scenario_adjusted", False)
+        except Exception as e:
+            logger.debug(f"ML forecast in what-if response skipped: {e}")
 
         return ScenarioResponse(
             station_id=station.id,
@@ -460,6 +534,13 @@ class SimulationService:
             logger.info(
                 f"Applied scenario '{scenario_req.scenario}' to Station {station_code} until {response.active_until}"
             )
+            # Clear the prediction cache so the next dashboard/prediction
+            # fetch immediately reflects the new scenario.
+            try:
+                from app.services.energy_forecast_service import energy_forecast_service
+                energy_forecast_service.clear_prediction_cache(station.id)
+            except Exception:
+                pass
 
         return response
 
@@ -485,6 +566,12 @@ class SimulationService:
                     self.active_conditions[code] = None
                     self.scenario_expiries[code] = None
                     self.target_equipment_ids[code] = None
+                    # Clear prediction cache so forecasts revert immediately.
+                    try:
+                        from app.services.energy_forecast_service import energy_forecast_service
+                        energy_forecast_service.clear_prediction_cache(st.id)
+                    except Exception:
+                        pass
 
             scenario = self.active_scenarios.get(code, "NORMAL_OPERATION")
             target_eq = self.target_equipment_ids.get(code, None)

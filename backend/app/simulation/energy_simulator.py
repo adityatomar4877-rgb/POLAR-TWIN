@@ -25,12 +25,14 @@ class EnergySimulator:
         generator_1_online: Optional[bool] = None,
         generator_2_online: Optional[bool] = None,
         dt_seconds: float = 10.0,
+        scenario_dynamics: Optional[Dict] = None,
     ) -> Dict:
         now = datetime.now(timezone.utc)
         # Continuous time in seconds for smooth harmonic cycling
         time_sec = now.timestamp()
         hour = now.hour + (now.minute / 60.0) + (now.second / 3600.0)
         conds = custom_conditions or scenario_params or {}
+        sd = scenario_dynamics or {}
 
         # 1. Base station life support & living quarters load + Thermodynamic heat loss
         is_maitri = "MAITRI" in station_code.upper()
@@ -48,8 +50,9 @@ class EnergySimulator:
         # Scientific equipment & water desalination pump duty cycle (~5 minute period)
         lab_duty_cycle = 1.6 * math.sin((time_sec / 300.0 * 2 * math.pi) + 1.2)
         
-        # Natural sub-circuit electrical noise
-        electrical_jitter = random.uniform(-0.5, 0.5)
+        # Realistic electrical noise: Gaussian (not uniform) — real power
+        # meters observe normally-distributed switching noise from loads cycling.
+        electrical_jitter = random.gauss(0.0, 0.35)
 
         total_consumption = max(10.0, base_physics_consumption + hvac_cycling + lab_duty_cycle + electrical_jitter)
 
@@ -58,8 +61,9 @@ class EnergySimulator:
         if 6.5 <= hour <= 17.5:
             # Solar zenith angle curve
             solar_elevation_factor = math.sin((hour - 6.5) / 11.0 * math.pi)
-            # Atmospheric cloud optical density factor (slight natural drift)
-            cloud_extinction = 1.0 - (0.08 * math.sin(time_sec / 240.0 * 2 * math.pi) + random.uniform(0.0, 0.04))
+            # Atmospheric cloud optical density — Gaussian cloud drift (real irradiance sensors
+            # see autocorrelated cloud shading, not flat noise)
+            cloud_extinction = 1.0 - (0.08 * math.sin(time_sec / 240.0 * 2 * math.pi) + max(0.0, random.gauss(0.02, 0.03)))
             solar_gen = max(0.0, solar_capacity * (solar_elevation_factor ** 1.2) * cloud_extinction)
         else:
             solar_gen = 0.0
@@ -67,6 +71,27 @@ class EnergySimulator:
         # Apply custom solar factor override (e.g. 0.0 for Polar Night)
         if conds.get("solar_factor") is not None:
             solar_gen = max(0.0, solar_gen * float(conds["solar_factor"]))
+
+        # 3b. Wind Turbine Generation Model
+        # Polar-rated vertical-axis turbines: cut-in ~12 km/h, rated ~45 km/h, cut-out ~90 km/h.
+        # Power curve: cubic ramp between cut-in and rated, constant above rated until cut-out.
+        wind_capacity = 45.0  # kW rated
+        cut_in = 12.0          # km/h
+        rated = 45.0           # km/h
+        cut_out = 90.0         # km/h
+        wind_gust_noise = random.gauss(0.0, 1.5)
+        effective_wind = max(0.0, wind_speed + wind_gust_noise)
+
+        if effective_wind < cut_in or effective_wind > cut_out:
+            wind_gen = 0.0
+        elif effective_wind < rated:
+            # Cubic power curve: P = P_rated × ((v - v_cut_in) / (v_rated - v_cut_in))^3
+            ramp = (effective_wind - cut_in) / (rated - cut_in)
+            wind_gen = wind_capacity * (ramp ** 3)
+        else:
+            # Rated power plateau (with small Gaussian variation for turbulence)
+            wind_gen = wind_capacity + random.gauss(0.0, 0.8)
+            wind_gen = min(wind_capacity * 1.05, max(0.0, wind_gen))
 
         # 4. Generator Online Statuses & Scenario Modifiers
         g1_online = True if generator_1_online is None else generator_1_online
@@ -78,14 +103,24 @@ class EnergySimulator:
             g2_online = bool(conds["generator_2_online"])
 
         if active_scenario == "EXTREME_COLD":
-            total_consumption *= 1.55 # Thermal heating surge
+            # Dynamic: add the computed thermal load delta (from actual conditions)
+            total_consumption += sd.get("extreme_cold_consumption_delta_kw", 0.0)
         elif active_scenario == "HIGH_ENERGY_DEMAND":
-            total_consumption += (55.0 + 5.0 * math.sin(time_sec / 120.0))
+            # Dynamic: extra load computed from actual sheddable loads + science duty
+            extra = sd.get("high_demand_extra_load_kw", 55.0)
+            total_consumption += (extra + 5.0 * math.sin(time_sec / 120.0))
             g2_online = True # Parallel generator synchronization
         elif active_scenario == "GENERATOR_FAILURE":
             g1_online = False # Primary generator failure trip
         elif active_scenario == "FUEL_SHORTAGE":
-            prev_fuel_pct = min(prev_fuel_pct, 12.5)
+            # Dynamic: force fuel to computed target from actual burn rate
+            prev_fuel_pct = min(prev_fuel_pct, sd.get("fuel_shortage_target_pct", 12.0))
+        elif active_scenario == "EQUIPMENT_DEGRADATION":
+            # Dynamic: multiplier from actual average efficiency loss
+            total_consumption *= sd.get("equipment_degradation_consumption_mult", 1.08)
+        elif active_scenario == "SUPPLY_DELAY":
+            # Dynamic: conservation from actual non-critical load fraction
+            total_consumption *= sd.get("supply_delay_consumption_mult", 0.95)
 
         # Custom battery & fuel overrides from conditions
         if conds.get("battery_percentage") is not None:
@@ -107,12 +142,13 @@ class EnergySimulator:
         # If battery is low (<75%), governor commands higher charging headroom (+12 to +18 kW)
         # If battery is nominal (75-90%), governor commands moderate trickle (+3 to +8 kW)
         # If battery is high (>90%), governor commands near-unity (+1 to +4 kW)
+        # Using Gaussian noise (real governor controllers have normally-distributed jitter)
         if prev_battery_pct < 75.0:
-            target_buffer = random.uniform(10.0, 15.0)
+            target_buffer = 12.5 + random.gauss(0.0, 1.5)
         elif prev_battery_pct < 90.0:
-            target_buffer = 4.5 + 2.0 * math.sin(time_sec / 90.0) + random.uniform(-0.7, 0.7)
+            target_buffer = 4.5 + 2.0 * math.sin(time_sec / 90.0) + random.gauss(0.0, 0.5)
         else:
-            target_buffer = 2.0 + 1.2 * math.sin(time_sec / 90.0) + random.uniform(-0.4, 0.4)
+            target_buffer = 2.0 + 1.2 * math.sin(time_sec / 90.0) + random.gauss(0.0, 0.3)
 
         if net_load_required > 0:
             if g1_online and g2_online:
@@ -125,13 +161,13 @@ class EnergySimulator:
             elif g2_online:
                 # Backup generator carrying microgrid
                 # When backup is dispatched during failure, it modulates around base demand
-                backup_buffer = 1.5 + 1.8 * math.sin(time_sec / 60.0) + random.uniform(-0.5, 0.5)
+                backup_buffer = 1.5 + 1.8 * math.sin(time_sec / 60.0) + random.gauss(0.0, 0.4)
                 diesel_gen = min(gen2_max, net_load_required + backup_buffer)
             else:
                 # Both generators offline -> zero generation, battery buffers total station demand
                 diesel_gen = 0.0
 
-        total_generation = round(solar_gen + diesel_gen, 2)
+        total_generation = round(solar_gen + diesel_gen + wind_gen, 2)
         total_consumption = round(max(20.0, total_consumption), 2)
         energy_balance = round(total_generation - total_consumption, 2)
 
@@ -184,6 +220,7 @@ class EnergySimulator:
             "battery_power_kw": round(battery_power_kw, 2),
             "diesel_generation_kw": round(diesel_gen, 2),
             "solar_generation_kw": round(solar_gen, 2),
+            "wind_generation_kw": round(wind_gen, 2),
             "fuel_percentage": new_fuel_pct,
             "grid_status": grid_status,
         }

@@ -18,8 +18,11 @@ export interface WsTelemetryTick {
   timestamp?: string;
   environment?: Record<string, unknown>;
   energy?: Record<string, unknown>;
+  prediction?: Record<string, unknown>;
+  fuel_forecast?: Record<string, unknown>;
   equipment_count?: number;
   new_alerts_triggered?: number;
+  active_scenario?: string;
 }
 
 export interface WsCommandEvent {
@@ -54,6 +57,7 @@ export function useWebSocket(stationId: number | null) {
       if (now - lastTickHandled < TICK_THROTTLE_MS) return;
       lastTickHandled = now;
       queryClient.invalidateQueries({ queryKey: ['dashboard', stationId] });
+      queryClient.invalidateQueries({ queryKey: ['predictions', stationId] });
     };
 
     const handleMessage = (message: WsMessage) => {
@@ -71,7 +75,7 @@ export function useWebSocket(stationId: number | null) {
 
       // Shape (b): command event envelope { event, data } — always immediate
       if (message.event === 'COMMAND_COMPLETED') {
-        ['equipment', 'dashboard', 'alerts', 'operations-history', 'loads', 'recommendations'].forEach(
+        ['equipment', 'dashboard', 'alerts', 'operations-history', 'loads', 'recommendations', 'predictions'].forEach(
           (key) => queryClient.invalidateQueries({ queryKey: [key, stationId] })
         );
         return;

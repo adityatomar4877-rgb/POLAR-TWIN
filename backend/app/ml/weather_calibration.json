@@ -1,0 +1,9 @@
+{
+  "BHARATI": {
+    "base_temp_constant": 2.241,
+    "wind_base": 25.41,
+    "pressure_base": 983.8,
+    "elevation_m": 35.0,
+    "calibration_records": 2208
+  }
+}

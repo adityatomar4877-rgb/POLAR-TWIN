@@ -81,10 +81,10 @@ export default function WeatherKpiRow({ dashboard }: { dashboard: StationDashboa
   const env = dashboard.environment;
   const energy = dashboard.energy;
 
-  const temp = env?.temperature_c ?? -21.8;
-  const wind = env?.wind_speed_kmh ?? 14.7;
-  const humidity = env?.humidity_percent ?? 68;
-  const pressure = env?.pressure_hpa ?? 978;
+  const temp = env?.temperature ?? -21.8;
+  const wind = env?.wind_speed ?? 14.7;
+  const humidity = env?.humidity ?? 68;
+  const pressure = env?.pressure ?? 978;
   const feelsLike = temp - wind * 0.15;
 
   const equipment = dashboard.equipment ?? [];
@@ -116,7 +116,7 @@ export default function WeatherKpiRow({ dashboard }: { dashboard: StationDashboa
         value={wind}
         decimals={1}
         unit="km/h"
-        sub={`${compass(env?.wind_direction_deg ?? 231)} ${Math.round(env?.wind_direction_deg ?? 231)}°`}
+        sub={`${compass(env?.wind_direction ?? 231)} ${Math.round(env?.wind_direction ?? 231)}°`}
         onClick={() => navigate('/environment')}
       />
       <KpiCard
