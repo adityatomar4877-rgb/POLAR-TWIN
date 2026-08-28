@@ -168,28 +168,99 @@ export const PredictionsPage = ({ stationId }: { stationId: number }) => {
       </div>
 
       {/* Horizon Comparison Chart */}
-      <div className="gsap-predict-item rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="flex items-center gap-2 text-[13px] font-extrabold uppercase tracking-wider text-slate-900">
-            <Activity size={16} className="text-blue-500" /> Multi-Horizon Demand Forecast (kW)
-          </h2>
-          <span className="text-xs text-slate-400 font-medium">
-            Trained on 168h lags & rolling thermodynamics
-          </span>
+      <div className="gsap-predict-item rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition-all hover:shadow-md">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-6">
+          <div>
+            <h2 className="flex items-center gap-2 text-[14px] font-extrabold uppercase tracking-wider text-slate-900">
+              <Activity size={16} className="text-blue-500" /> Multi-Horizon Demand Forecast (kW)
+            </h2>
+            <p className="text-xs text-slate-400 font-medium mt-0.5">
+              Trained on 168h lags & rolling thermodynamics
+            </p>
+          </div>
+          {pred24h != null && energy?.current_consumption_kw != null && (
+            <div className="flex items-center gap-1.5 self-start sm:self-auto rounded-lg bg-blue-50 border border-blue-100 px-2.5 py-1 text-xs font-semibold text-blue-700">
+              {pred24h >= energy.current_consumption_kw ? (
+                <>
+                  <TrendingUp size={13} className="text-blue-600" />
+                  <span>+{(pred24h - energy.current_consumption_kw).toFixed(1)} kW projected shift</span>
+                </>
+              ) : (
+                <>
+                  <TrendingUp size={13} className="text-emerald-600 rotate-180" />
+                  <span>-{(energy.current_consumption_kw - pred24h).toFixed(1)} kW projected reduction</span>
+                </>
+              )}
+            </div>
+          )}
         </div>
-        <div className="h-72">
+
+        <div className="h-72 w-full">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={horizonChartData} margin={{ top: 10, right: 20, left: -10, bottom: 5 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-              <XAxis dataKey="horizon" tick={{ fontSize: 11, fill: '#64748b' }} />
-              <YAxis tick={{ fontSize: 11, fill: '#64748b' }} domain={[0, 'auto']} />
-              <Tooltip
-                contentStyle={{ borderRadius: 12, border: '1px solid #e2e8f0', fontSize: 12 }}
-                formatter={(value: any) => [`${value} kW`, 'Demand']}
+            <BarChart
+              data={horizonChartData}
+              margin={{ top: 10, right: 20, left: -10, bottom: 5 }}
+            >
+              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+              <XAxis
+                dataKey="horizon"
+                tickLine={false}
+                axisLine={{ stroke: '#e2e8f0' }}
+                tickMargin={10}
+                tick={{ fontSize: 11, fill: '#64748b', fontWeight: 500 }}
               />
-              <Bar dataKey="demand" name="Demand (kW)" radius={[8, 8, 0, 0]} maxBarSize={60}>
+              <YAxis
+                tickLine={false}
+                axisLine={false}
+                tickMargin={8}
+                tick={{ fontSize: 11, fill: '#94a3b8' }}
+                domain={[0, 'auto']}
+              />
+              <Tooltip
+                cursor={{ fill: 'rgba(241, 245, 249, 0.65)', radius: 8 }}
+                content={({ active, payload, label }) => {
+                  if (!active || !payload || !payload.length) return null;
+                  const item = payload[0].payload;
+                  return (
+                    <div className="rounded-xl border border-slate-200 bg-white/95 px-3 py-2.5 shadow-xl backdrop-blur-md text-xs font-sans">
+                      <div className="flex items-center gap-2 font-bold text-slate-800 border-b border-slate-100 pb-1.5 mb-2">
+                        <span className="h-2 w-2 rounded-full" style={{ backgroundColor: item.color }} />
+                        <span>{label}</span>
+                      </div>
+                      <div className="flex items-center gap-2.5">
+                        {/* Line indicator */}
+                        <div
+                          className="w-1 h-7 rounded-full shrink-0"
+                          style={{ backgroundColor: item.color }}
+                        />
+                        <div className="flex flex-col">
+                          <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">
+                            Demand Forecast
+                          </span>
+                          <span className="font-mono text-base font-extrabold text-slate-900 leading-tight">
+                            {Number(item.demand).toFixed(1)} <span className="text-xs font-semibold text-slate-500">kW</span>
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                }}
+              />
+              <Bar
+                dataKey="demand"
+                name="Demand"
+                radius={[8, 8, 0, 0]}
+                maxBarSize={52}
+                isAnimationActive={true}
+                animationDuration={850}
+                animationEasing="ease-out"
+              >
                 {horizonChartData.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={entry.color} />
+                  <Cell
+                    key={`cell-${index}`}
+                    fill={entry.color}
+                    className="transition-all duration-300 hover:opacity-85 cursor-pointer"
+                  />
                 ))}
               </Bar>
             </BarChart>

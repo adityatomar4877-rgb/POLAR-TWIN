@@ -1,4 +1,3 @@
-import { memo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { BatteryCharging, Fuel } from 'lucide-react';
@@ -6,59 +5,9 @@ import { getFuelPrediction } from '../../api/predictions';
 import type { EnergyTelemetry } from '../../api/types';
 import { useStation } from '../../context/StationContext';
 import GSAPNumberTicker from './GSAPNumberTicker';
+import EnergyBalancePieChart from './EnergyBalancePieChart';
 
 const SEGMENT_COLORS = ['#10b981', '#3b82f6', '#8b5cf6'];
-
-const Donut = memo(function Donut({
-  segments,
-  centerVal,
-  centerSub,
-}: {
-  segments: Array<{ value: number; color: string }>;
-  centerVal: number;
-  centerSub: string;
-}) {
-  const total = segments.reduce((s, x) => s + Math.max(x.value, 0), 0) || 1;
-  const r = 40;
-  const c = 2 * Math.PI * r;
-
-  const arcs = segments.map((seg, i) => {
-    const startFrac = segments.slice(0, i).reduce((s, x) => s + Math.max(x.value, 0), 0) / total;
-    const frac = Math.max(seg.value, 0) / total;
-    return { ...seg, dash: Math.max(frac * c - 2, 0), offset: -startFrac * c };
-  });
-
-  return (
-    <div className="relative h-[110px] w-[110px] shrink-0">
-      <svg viewBox="0 0 110 110" className="h-full w-full -rotate-90">
-        <circle cx="55" cy="55" r={r} fill="none" stroke="#f1f5f9" strokeWidth="12" />
-        {arcs.map((arc, i) => (
-          <circle
-            key={i}
-            cx="55"
-            cy="55"
-            r={r}
-            fill="none"
-            stroke={arc.color}
-            strokeWidth="12"
-            strokeLinecap="butt"
-            strokeDasharray={`${arc.dash} ${c - arc.dash}`}
-            strokeDashoffset={arc.offset}
-            className="transition-all duration-700"
-          />
-        ))}
-      </svg>
-      <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-1">
-        <span className="text-lg font-extrabold text-slate-900 leading-tight">
-          <GSAPNumberTicker value={centerVal} decimals={0} suffix="%" />
-        </span>
-        <span className="text-[8px] font-bold uppercase tracking-tight text-slate-400 leading-none mt-0.5">
-          {centerSub}
-        </span>
-      </div>
-    </div>
-  );
-});
 
 export default function EnergyOverviewCard({ energy }: { energy?: EnergyTelemetry }) {
   const navigate = useNavigate();
@@ -78,6 +27,9 @@ export default function EnergyOverviewCard({ energy }: { energy?: EnergyTelemetr
   const fuelPct = energy?.fuel_percentage ?? fuelForecast?.current_fuel_percentage ?? 0;
   const fuelDays = Math.max(0, Math.round(fuelForecast?.days_until_critical ?? 0));
 
+  // Compute energy balance % (or fallback to 84% nominal baseline)
+  const balancePercentage = Math.min(100, Math.max(0, Math.round(energy?.battery_percentage ?? 84)));
+
   const legend = [
     { label: 'Generated', val: generated, color: SEGMENT_COLORS[0] },
     { label: 'Consumed', val: consumed, color: SEGMENT_COLORS[1] },
@@ -92,16 +44,15 @@ export default function EnergyOverviewCard({ energy }: { energy?: EnergyTelemetr
         </h2>
       </div>
 
-      {/* Donut Balance + Legend */}
+      {/* Recharts Pie / Donut Balance + Legend */}
       <div className="flex items-center justify-between gap-4 py-1">
-        <Donut
-          segments={[
-            { value: generated, color: SEGMENT_COLORS[0] },
-            { value: consumed, color: SEGMENT_COLORS[1] },
-            { value: stored, color: SEGMENT_COLORS[2] },
-          ]}
-          centerVal={84}
-          centerSub="Energy Balance"
+        <EnergyBalancePieChart
+          generated={generated}
+          consumed={consumed}
+          stored={stored}
+          balancePercentage={balancePercentage}
+          label="ENERGY BALANCE"
+          size={115}
         />
 
         <div className="flex-1 space-y-2 text-xs">

@@ -64,8 +64,16 @@ export const Logistics = ({ stationId }: { stationId: number }) => {
     const ctx = gsap.context(() => {
       gsap.fromTo(
         '.gsap-logistics-item',
-        { y: 16, opacity: 0 },
-        { y: 0, opacity: 1, duration: 0.5, stagger: 0.07, ease: 'power2.out' }
+        { y: 24, opacity: 0, scale: 0.97 },
+        {
+          y: 0,
+          opacity: 1,
+          scale: 1,
+          duration: 0.55,
+          stagger: 0.06,
+          ease: 'power3.out',
+          clearProps: 'scale',
+        }
       );
     }, containerRef);
 
@@ -296,9 +304,8 @@ export const Logistics = ({ stationId }: { stationId: number }) => {
                   {/* Stock Progress Bar */}
                   <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-slate-100">
                     <div
-                      className={`h-full rounded-full transition-all duration-700 ${
-                        pct < 30 ? 'bg-red-500' : pct < 55 ? 'bg-amber-500' : 'bg-emerald-500'
-                      }`}
+                      className={`h-full rounded-full transition-all duration-700 ${pct < 30 ? 'bg-red-500' : pct < 55 ? 'bg-amber-500' : 'bg-emerald-500'
+                        }`}
                       style={{ width: `${Math.min(100, pct)}%` }}
                     />
                   </div>
@@ -310,9 +317,8 @@ export const Logistics = ({ stationId }: { stationId: number }) => {
                     Burn: <strong className="text-slate-700">~{item.burnRatePerDay} {item.unit}/d</strong>
                   </span>
                   <span
-                    className={`font-mono font-bold ${
-                      item.runwayDays < 60 ? 'text-amber-600' : 'text-emerald-700'
-                    }`}
+                    className={`font-mono font-bold ${item.runwayDays < 60 ? 'text-amber-600' : 'text-emerald-700'
+                      }`}
                   >
                     {item.runwayDays} Days Runway
                   </span>
@@ -396,13 +402,12 @@ function ResupplyLedger({
                 {r.quantity.toLocaleString()} {r.unit}
               </span>
               <span
-                className={`rounded-full px-2.5 py-0.5 font-mono text-[9px] font-bold tracking-widest ${
-                  r.priority === 'HIGH' || r.priority === 'CRITICAL'
+                className={`rounded-full px-2.5 py-0.5 font-mono text-[9px] font-bold tracking-widest ${r.priority === 'HIGH' || r.priority === 'CRITICAL'
                     ? 'bg-red-50 text-red-600 border border-red-200'
                     : r.priority === 'MEDIUM'
-                    ? 'bg-amber-50 text-amber-700 border border-amber-200'
-                    : 'bg-slate-100 text-slate-600'
-                }`}
+                      ? 'bg-amber-50 text-amber-700 border border-amber-200'
+                      : 'bg-slate-100 text-slate-600'
+                  }`}
               >
                 {r.priority}
               </span>

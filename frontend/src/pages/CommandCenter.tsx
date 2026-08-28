@@ -1,9 +1,10 @@
 import { useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import gsap from 'gsap';
+import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import { motion } from 'framer-motion';
 import { getStationDashboard, getStationRecommendations } from '../api/stations';
 import { getEnergyPrediction, getFuelPrediction } from '../api/predictions';
-import { Activity } from 'lucide-react';
 import WeatherKpiRow from '../components/dashboard/WeatherKpiRow';
 import TwinOverviewCard from '../components/dashboard/TwinOverviewCard';
 import ActiveAlertsPanel from '../components/dashboard/ActiveAlertsPanel';
@@ -12,7 +13,10 @@ import CopilotInsightsCard from '../components/dashboard/CopilotInsightsCard';
 import PredictiveInsightsRow from '../components/dashboard/PredictiveInsightsRow';
 import RecentAutomationsCard from '../components/dashboard/RecentAutomationsCard';
 import StatusFooter from '../components/dashboard/StatusFooter';
+import { ShimmerLoader } from '../components/motion/primitives';
 import { useStation } from '../context/StationContext';
+
+gsap.registerPlugin(ScrollTrigger);
 
 export const CommandCenter = ({ stationId }: { stationId: number }) => {
   const { dashboard: ctxDashboard } = useStation();
@@ -42,28 +46,88 @@ export const CommandCenter = ({ stationId }: { stationId: number }) => {
     refetchInterval: 60000,
   });
 
+  /* Enhanced cascading card reveal with parallax stagger and subtle scale */
   useEffect(() => {
     if (!containerRef.current) return;
     const ctx = gsap.context(() => {
+      // Initial cascade entrance
       gsap.fromTo(
         '.gsap-reveal-card',
-        { y: 12, opacity: 0 },
-        { y: 0, opacity: 1, duration: 0.4, stagger: 0.04, ease: 'power2.out' }
+        { y: 28, opacity: 0, scale: 0.97 },
+        {
+          y: 0,
+          opacity: 1,
+          scale: 1,
+          duration: 0.55,
+          stagger: 0.07,
+          ease: 'power3.out',
+          clearProps: 'scale',
+        }
       );
+
+      // Scroll-triggered reveals for below-fold cards
+      const scrollCards = containerRef.current!.querySelectorAll('.gsap-scroll-reveal');
+      scrollCards.forEach((card) => {
+        gsap.fromTo(
+          card,
+          { y: 20, opacity: 0 },
+          {
+            y: 0,
+            opacity: 1,
+            duration: 0.5,
+            ease: 'power2.out',
+            scrollTrigger: {
+              trigger: card,
+              start: 'top 92%',
+              toggleActions: 'play none none none',
+            },
+          }
+        );
+      });
     }, containerRef);
 
     return () => ctx.revert();
   }, [stationId]);
 
+  /* Shimmer skeleton loading state */
   if ((isLoading && !ctxDashboard) || (!dashboard && !ctxDashboard)) {
     return (
-      <div className="flex h-full items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-          <Activity className="h-8 w-8 animate-spin text-blue-500" />
-          <div className="animate-pulse text-sm font-medium tracking-wide text-slate-400">
-            Initializing station overview...
+      <div className="flex flex-col gap-4 max-w-[1560px] mx-auto pb-6">
+        {/* KPI row skeleton */}
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+          {[...Array(5)].map((_, i) => (
+            <ShimmerLoader key={i} height="96px" className="rounded-xl" />
+          ))}
+        </div>
+        {/* Main grid skeleton */}
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_370px]">
+          <ShimmerLoader height="380px" className="rounded-2xl" />
+          <div className="flex flex-col gap-4">
+            <ShimmerLoader height="180px" className="rounded-2xl" />
+            <ShimmerLoader height="180px" className="rounded-2xl" />
           </div>
         </div>
+        {/* Bottom row skeleton */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {[...Array(3)].map((_, i) => (
+            <ShimmerLoader key={i} height="200px" className="rounded-2xl" />
+          ))}
+        </div>
+
+        {/* Centered loading indicator overlay */}
+        <motion.div
+          className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none"
+          initial={{ opacity: 1 }}
+          animate={{ opacity: 0 }}
+          transition={{ duration: 0.5, delay: 1 }}
+        >
+          <div className="flex flex-col items-center gap-3">
+            <div className="h-8 w-8 rounded-full border-2 border-blue-500 border-t-transparent animate-spin" />
+            <p className="text-sm font-medium text-slate-400 animate-pulse">
+              Initializing station overview…
+            </p>
+          </div>
+        </motion.div>
       </div>
     );
   }
@@ -98,19 +162,19 @@ export const CommandCenter = ({ stationId }: { stationId: number }) => {
 
       {/* 3. Bottom Row: 3 Insight Cards (AI Copilot + Predictive Insights + Recent Automations) */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-        <div className="gsap-reveal-card flex">
+        <div className="gsap-reveal-card gsap-scroll-reveal flex">
           <CopilotInsightsCard dashboard={data} recommendations={recommendations} />
         </div>
-        <div className="gsap-reveal-card flex">
+        <div className="gsap-reveal-card gsap-scroll-reveal flex">
           <PredictiveInsightsRow dashboard={data} fuelForecast={fuelForecast} energyForecast={energyForecast} />
         </div>
-        <div className="gsap-reveal-card flex">
+        <div className="gsap-reveal-card gsap-scroll-reveal flex">
           <RecentAutomationsCard stationId={stationId} />
         </div>
       </div>
 
       {/* 4. Bottom Mission Status & Telemetry Dock Footer with Polar Ship */}
-      <div className="gsap-reveal-card">
+      <div className="gsap-reveal-card gsap-scroll-reveal">
         <StatusFooter />
       </div>
     </div>
