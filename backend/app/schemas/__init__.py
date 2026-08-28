@@ -18,6 +18,11 @@ from app.schemas.operations import (
     OperationalRecommendationOut, AuditLogOut, OperationsStatusOut
 )
 
+from app.schemas.energy_decision import (
+    EnergyDecisionForecast, EnergyDecisionState, EnergyDecisionMargin,
+    EnergyDecisionRisk, EnergyDecisionResponse
+)
+
 __all__ = [
     "StationBase", "StationCreate", "StationUpdate", "StationOut",
     "SensorTelemetryBase", "SensorTelemetryCreate", "SensorTelemetryOut", "HistoricalEnvironmentOut",
@@ -26,6 +31,7 @@ __all__ = [
     "LogisticsItemBase", "LogisticsItemCreate", "LogisticsItemOut", "LogisticsForecastOut",
     "AlertBase", "AlertCreate", "AlertOut", "AlertAcknowledge",
     "MLForecastHorizon", "EnergyForecastResponse", "FuelDepletionForecastResponse", "PredictionSummaryOut",
+    "EnergyDecisionForecast", "EnergyDecisionState", "EnergyDecisionMargin", "EnergyDecisionRisk", "EnergyDecisionResponse",
     "ScenarioRequest", "ScenarioResponse", "SimulationStatusOut",
     "StationDashboardOut",
     "CommandRequest", "CommandResponse", "CommandPreviewRequest", "CommandPreviewResponse", "CommandHistoryOut",
