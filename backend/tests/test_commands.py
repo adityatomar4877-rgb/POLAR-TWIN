@@ -8,7 +8,7 @@ from app.models.energy import EnergyTelemetry
 client = TestClient(app)
 
 
-def test_command_preview():
+def test_command_preview(client):
     # Preview starting generator 2 on Bharati
     response = client.post(
         "/api/stations/bharati/commands/preview",
@@ -22,7 +22,7 @@ def test_command_preview():
     assert "generation_change_kw" in data["impact"]
 
 
-def test_start_generator_lifecycle():
+def test_start_generator_lifecycle(client):
     # Discover Bharati's Generator 2
     eq_res = client.get("/api/stations/bharati/equipment").json()
     g2 = next(e for e in eq_res if e["name"] == "Generator 2")
@@ -48,15 +48,21 @@ def test_start_generator_lifecycle():
     assert "already ONLINE" in dup_data["message"]
 
 
-def test_safety_interlock_cannot_stop_sole_generator():
+def test_safety_interlock_cannot_stop_sole_generator(client):
     eq_res = client.get("/api/stations/bharati/equipment").json()
     g1 = next(e for e in eq_res if e["name"] == "Generator 1")
     g2 = next(e for e in eq_res if e["name"] == "Generator 2")
 
-    # Stop Generator 1 first (succeeds because Generator 2 was started and is online)
+    # Start Generator 2 first
     client.post(
+        f"/api/stations/bharati/commands/generators/{g2['id']}/start?requested_by=TestOperator&role=OPERATOR"
+    )
+
+    # Stop Generator 1 (succeeds because Generator 2 is online)
+    stop1_res = client.post(
         f"/api/stations/bharati/commands/generators/{g1['id']}/stop?requested_by=TestSupervisor&role=SUPERVISOR"
     )
+    assert stop1_res.status_code == 200
 
     # Now Generator 2 is the SOLE active generator. Attempting to stop it MUST trigger 409 UNSAFE_COMMAND!
     res = client.post(
@@ -67,15 +73,13 @@ def test_safety_interlock_cannot_stop_sole_generator():
     assert data["error"]["code"] == "UNSAFE_COMMAND"
 
 
-def test_safety_interlock_failed_generator_lockout():
-    db = SessionLocal()
+def test_safety_interlock_failed_generator_lockout(client, db):
     g1 = db.query(Equipment).filter(Equipment.station_id == 2, Equipment.name == "Generator 1").first()
     if g1:
         g1.status = "OFFLINE"
         g1.health_score = 20.0
         db.commit()
     g1_id = g1.id if g1 else 8
-    db.close()
 
     # Attempt to start failed generator without maintenance clearing
     res = client.post(
@@ -85,17 +89,8 @@ def test_safety_interlock_failed_generator_lockout():
     data = res.json()
     assert data["error"]["code"] == "EQUIPMENT_FAULT_LOCKOUT"
 
-    # Restore g1 for other tests
-    db = SessionLocal()
-    g1 = db.query(Equipment).filter(Equipment.station_id == 2, Equipment.name == "Generator 1").first()
-    if g1:
-        g1.status = "NORMAL"
-        g1.health_score = 92.0
-        db.commit()
-    db.close()
 
-
-def test_equipment_shutdown_and_restart():
+def test_equipment_shutdown_and_restart(client):
     # Restart HVAC System on Bharati
     eq_res = client.get("/api/stations/bharati/equipment").json()
     hvac = next(e for e in eq_res if e["name"] == "HVAC System")
@@ -107,3 +102,4 @@ def test_equipment_shutdown_and_restart():
     data = res.json()
     assert data["success"] is True
     assert data["new_state"]["status"] == "NORMAL"
+

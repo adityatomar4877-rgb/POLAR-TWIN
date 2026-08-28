@@ -3,9 +3,11 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.schemas.energy import EnergyTelemetryOut, HistoricalEnergyOut
 from app.schemas.prediction import EnergyForecastResponse
+from app.schemas.energy_decision import EnergyDecisionResponse
 from app.services.station_service import station_service
 from app.services.energy_service import energy_service
 from app.services.energy_forecast_service import energy_forecast_service
+from app.services.energy_decision_service import energy_decision_service
 from app.core.security import APIError
 
 router = APIRouter(prefix="/stations/{station_id}/energy", tags=["Energy Telemetry"])
@@ -49,4 +51,18 @@ def get_energy_forecast(
     """Generates Random Forest energy demand forecast (6h / 12h / 24h average demand)."""
     station = station_service.get_station_by_id_or_code(db, station_id)
     return energy_forecast_service.predict(db, station.id, station.code)
+
+
+@router.get("/decision", response_model=EnergyDecisionResponse)
+def get_energy_decision(
+    station_id: str,
+    db: Session = Depends(get_db),
+):
+    """
+    Energy Decision Engine — Rule-based operational decision support.
+    Interprets current station microgrid telemetry and Random Forest demand predictions
+    to evaluate generation margins, operational risk levels, and actionable recommendations.
+    """
+    station = station_service.get_station_by_id_or_code(db, station_id)
+    return energy_decision_service.evaluate_station_energy_decision(db, station)
 
