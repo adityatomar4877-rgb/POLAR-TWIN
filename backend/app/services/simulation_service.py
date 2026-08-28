@@ -120,6 +120,12 @@ class SimulationService:
                 al.acknowledged = True
                 al.resolved_at = now
 
+            # 5. Restore all electrical load circuits
+            from app.models.audit import LoadGroup
+            station_loads = db.query(LoadGroup).filter(LoadGroup.station_id == st.id).all()
+            for lg in station_loads:
+                lg.enabled = True
+
         db.commit()
         logger.info("Simulation state reset to deterministic NORMAL_OPERATION for all stations.")
         return {"status": "SUCCESS", "message": "All station simulations reset to NORMAL_OPERATION."}

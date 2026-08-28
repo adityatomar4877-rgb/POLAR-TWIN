@@ -17,10 +17,19 @@ def seed_database():
     db = SessionLocal()
 
     try:
-        # Check if stations already exist
         existing_count = db.query(Station).count()
         if existing_count > 0:
             print("Database already seeded with stations. Resetting and re-seeding demo dataset...")
+            from app.models.audit import AuditLog, LoadGroup, OperationalRecommendation
+            from app.models.command import Command
+            from app.models.maintenance import MaintenanceTask, ResupplyRequest
+
+            db.query(AuditLog).delete()
+            db.query(OperationalRecommendation).delete()
+            db.query(Command).delete()
+            db.query(MaintenanceTask).delete()
+            db.query(ResupplyRequest).delete()
+            db.query(LoadGroup).delete()
             db.query(Alert).delete()
             db.query(EnergyTelemetry).delete()
             db.query(SensorTelemetry).delete()
