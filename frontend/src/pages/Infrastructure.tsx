@@ -48,8 +48,16 @@ export const Infrastructure = ({ stationId }: { stationId: number }) => {
     const ctx = gsap.context(() => {
       gsap.fromTo(
         '.gsap-infra-item',
-        { y: 16, opacity: 0 },
-        { y: 0, opacity: 1, duration: 0.5, stagger: 0.06, ease: 'power2.out' }
+        { y: 24, opacity: 0, scale: 0.97 },
+        {
+          y: 0,
+          opacity: 1,
+          scale: 1,
+          duration: 0.55,
+          stagger: 0.06,
+          ease: 'power3.out',
+          clearProps: 'scale',
+        }
       );
     }, containerRef);
 

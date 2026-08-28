@@ -145,6 +145,170 @@ html.lenis body {
   animation: emergency-strobe 1s ease-in-out infinite;
 }
 
+/* ---------- Shimmer skeleton loading ---------- */
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+.animate-shimmer {
+  animation: shimmer 2s ease-in-out infinite;
+}
+
+/* ---------- Floating ambient decoration ---------- */
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-12px); }
+}
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+}
+
+/* ---------- Gradient border shift ---------- */
+@keyframes gradient-shift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+.animate-gradient-shift {
+  animation: gradient-shift 3s ease-in-out infinite;
+}
+
+/* ---------- Radar sweep ---------- */
+@keyframes radar-sweep {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+.animate-radar-sweep {
+  animation: radar-sweep 4s linear infinite;
+}
+
+/* ---------- Data pulse ---------- */
+@keyframes data-pulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.08); opacity: 0.85; }
+}
+.animate-data-pulse {
+  animation: data-pulse 2s ease-in-out infinite;
+}
+
+/* ---------- Horizontal scan-line ---------- */
+@keyframes scan-line {
+  0% { transform: translateY(-100%); opacity: 0; }
+  10% { opacity: 0.6; }
+  90% { opacity: 0.6; }
+  100% { transform: translateY(100%); opacity: 0; }
+}
+.animate-scan-line {
+  animation: scan-line 3.5s linear infinite;
+}
+
+/* ---------- Glow breathe ---------- */
+@keyframes glow-breathe {
+  0%, 100% { box-shadow: 0 0 8px rgba(6, 182, 212, 0.15); }
+  50% { box-shadow: 0 0 20px rgba(6, 182, 212, 0.35), 0 0 40px rgba(6, 182, 212, 0.12); }
+}
+.animate-glow-breathe {
+  animation: glow-breathe 3s ease-in-out infinite;
+}
+
+/* ---------- Aurora gradient sweep ---------- */
+@keyframes aurora {
+  0% { background-position: 0% 50%; opacity: 0.25; }
+  25% { opacity: 0.4; }
+  50% { background-position: 100% 50%; opacity: 0.3; }
+  75% { opacity: 0.45; }
+  100% { background-position: 0% 50%; opacity: 0.25; }
+}
+.animate-aurora {
+  background: linear-gradient(
+    90deg,
+    rgba(34,211,238,0.12),
+    rgba(45,212,191,0.15),
+    rgba(167,139,250,0.12),
+    rgba(56,189,248,0.15),
+    rgba(34,211,238,0.12)
+  );
+  background-size: 300% 100%;
+  animation: aurora 12s ease-in-out infinite;
+}
+
+/* ---------- Contour line stroke draw ---------- */
+@keyframes contour-draw {
+  0% { stroke-dashoffset: 600; }
+  100% { stroke-dashoffset: 0; }
+}
+.animate-contour-draw {
+  stroke-dasharray: 600;
+  animation: contour-draw 4s ease-out forwards;
+}
+
+/* ---------- Icon wobble (bell notification) ---------- */
+@keyframes wobble {
+  0% { transform: rotate(0deg); }
+  15% { transform: rotate(12deg); }
+  30% { transform: rotate(-10deg); }
+  45% { transform: rotate(6deg); }
+  60% { transform: rotate(-4deg); }
+  75% { transform: rotate(2deg); }
+  100% { transform: rotate(0deg); }
+}
+.animate-wobble {
+  animation: wobble 0.6s ease-in-out;
+}
+
+/* ---------- Live badge gradient ---------- */
+@keyframes live-gradient {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+.animate-live-gradient {
+  background: linear-gradient(90deg, #3b82f6, #06b6d4, #3b82f6);
+  background-size: 200% 100%;
+  animation: live-gradient 3s ease-in-out infinite;
+}
+
+/* ---------- SVG path draw (checkmark) ---------- */
+@keyframes path-draw {
+  0% { stroke-dashoffset: 100; }
+  100% { stroke-dashoffset: 0; }
+}
+.animate-path-draw {
+  stroke-dasharray: 100;
+  stroke-dashoffset: 100;
+  animation: path-draw 0.6s ease-out 0.2s forwards;
+}
+
+/* ---------- Fade in up (utility) ---------- */
+@keyframes fade-in-up {
+  0% { opacity: 0; transform: translateY(12px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-in-up {
+  animation: fade-in-up 0.5s ease-out forwards;
+}
+
+/* ---------- Scale bounce in ---------- */
+@keyframes scale-bounce-in {
+  0% { opacity: 0; transform: scale(0.8); }
+  60% { opacity: 1; transform: scale(1.04); }
+  100% { transform: scale(1); }
+}
+.animate-scale-bounce-in {
+  animation: scale-bounce-in 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+/* ---------- Blob Animation ---------- */
+@keyframes blob {
+  0% { transform: translate(0px, 0px) scale(1); }
+  33% { transform: translate(30px, -50px) scale(1.1); }
+  66% { transform: translate(-20px, 20px) scale(0.9); }
+  100% { transform: translate(0px, 0px) scale(1); }
+}
+.animate-blob {
+  animation: blob 9s infinite alternate cubic-bezier(0.4, 0, 0.2, 1);
+}
+
 /* ---------- Custom scrollbar ---------- */
 ::-webkit-scrollbar {
   width: 8px;
@@ -172,13 +336,28 @@ html.lenis body {
   background: #334155;
 }
 
-/* ---------- Blob Animation ---------- */
-@keyframes blob {
-  0% { transform: translate(0px, 0px) scale(1); }
-  33% { transform: translate(30px, -50px) scale(1.1); }
-  66% { transform: translate(-20px, 20px) scale(0.9); }
-  100% { transform: translate(0px, 0px) scale(1); }
-}
-.animate-blob {
-  animation: blob 9s infinite alternate cubic-bezier(0.4, 0, 0.2, 1);
+/* ---------- Reduced motion respect ---------- */
+@media (prefers-reduced-motion: reduce) {
+  .animate-shimmer,
+  .animate-float,
+  .animate-gradient-shift,
+  .animate-radar-sweep,
+  .animate-data-pulse,
+  .animate-scan-line,
+  .animate-glow-breathe,
+  .animate-aurora,
+  .animate-wobble,
+  .animate-live-gradient,
+  .animate-blob,
+  .animate-status-ring,
+  .animate-emergency-strobe {
+    animation: none !important;
+  }
+  .animate-contour-draw,
+  .animate-path-draw,
+  .animate-fade-in-up,
+  .animate-scale-bounce-in {
+    animation-duration: 0.01ms !important;
+    animation-fill-mode: forwards !important;
+  }
 }

@@ -3,7 +3,6 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { runSimulationScenario, resetSimulation, getActiveConditions } from '../../api/simulation';
 import { getStationEquipment } from '../../api/stations';
 import { 
-  Activity, 
   AlertOctagon, 
   CheckCircle, 
   Sliders, 
@@ -21,6 +20,7 @@ import {
   Clock
 } from 'lucide-react';
 import type { CustomConditions, ScenarioResponse } from '../../api/types';
+import InteractiveHoverButton from '../motion/InteractiveHoverButton';
 
 interface PresetOption {
   id: string;
@@ -639,33 +639,27 @@ export const ScenarioRunner = ({ stationId }: { stationId: number }) => {
 
       {/* Action Command Buttons: Dry-Run Analyze vs Live Inject */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <button
+        <InteractiveHoverButton
           type="button"
           onClick={() => simMutation.mutate({ applyToLive: false })}
           disabled={simMutation.isPending}
-          className="py-3 px-4 bg-cyan-950/50 hover:bg-cyan-900/60 text-cyan-400 hover:text-cyan-300 border border-cyan-800/60 rounded-lg font-mono font-bold text-xs tracking-wider transition-all flex items-center justify-center gap-2 hover:shadow-[0_0_15px_rgba(6,182,212,0.25)] disabled:opacity-50"
-        >
-          {simMutation.isPending && !simMutation.variables?.applyToLive ? (
-            <Activity className="w-4 h-4 animate-spin" />
-          ) : (
-            <Eye className="w-4 h-4" />
-          )}
-          ANALYZE WHAT-IF IMPACT
-        </button>
+          loading={simMutation.isPending && !simMutation.variables?.applyToLive}
+          variant="cyan"
+          icon={Eye}
+          text="ANALYZE WHAT-IF IMPACT"
+          className="w-full py-3.5 border-cyan-800/60 bg-cyan-950/50 text-cyan-400 font-bold hover:shadow-[0_0_20px_rgba(6,182,212,0.3)]"
+        />
 
-        <button
+        <InteractiveHoverButton
           type="button"
           onClick={() => simMutation.mutate({ applyToLive: true })}
           disabled={simMutation.isPending}
-          className="py-3 px-4 bg-red-950/50 hover:bg-red-900/70 text-red-400 hover:text-red-300 border border-red-800/60 rounded-lg font-mono font-bold text-xs tracking-wider transition-all flex items-center justify-center gap-2 hover:shadow-[0_0_15px_rgba(239,68,68,0.25)] disabled:opacity-50"
-        >
-          {simMutation.isPending && simMutation.variables?.applyToLive ? (
-            <Activity className="w-4 h-4 animate-spin" />
-          ) : (
-            <AlertOctagon className="w-4 h-4" />
-          )}
-          INJECT INTO LIVE TWIN
-        </button>
+          loading={simMutation.isPending && simMutation.variables?.applyToLive}
+          variant="hazard"
+          icon={AlertOctagon}
+          text="INJECT INTO LIVE TWIN"
+          className="w-full py-3.5 border-red-800/60 bg-red-950/50 text-red-400 font-bold hover:shadow-[0_0_20px_rgba(239,68,68,0.3)]"
+        />
       </div>
 
       {/* Analytical Projection / Simulation Results Display */}

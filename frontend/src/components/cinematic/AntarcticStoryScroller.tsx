@@ -13,7 +13,6 @@ import {
   Users,
   Radio,
   ShieldAlert,
-  ArrowRight,
   BrainCircuit,
 } from 'lucide-react';
 import { useStation } from '../../context/StationContext';
@@ -22,6 +21,7 @@ import AntarcticMapSelector, { STATION_GEO } from './AntarcticMapSelector';
 import DigitalTwinScene from '../3d/DigitalTwinScene';
 import { getStationRecommendations } from '../../api/stations';
 import type { OperationalRecommendation } from '../../api/types';
+import InteractiveHoverButton from '../motion/InteractiveHoverButton';
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -401,16 +401,17 @@ export default function AntarcticStoryScroller({ onEnterCommandCenter }: Props) 
               Take direct control of {geo.name}'s microgrid, issue safety-interlocked commands, and monitor
               every subsystem in real time.
             </p>
-            <button
-              onClick={() => {
-                if (onEnterCommandCenter) onEnterCommandCenter();
-                else navigate('/');
-              }}
-              className="group mt-10 inline-flex items-center gap-3 rounded-full border border-cyan-400/50 bg-cyan-400/10 px-9 py-4 font-mono text-sm font-bold tracking-[0.3em] text-cyan-200 transition-all duration-300 hover:bg-cyan-400/20 hover:border-glow-cyan hover:text-white"
-            >
-              ENTER COMMAND CENTER
-              <ArrowRight size={17} className="transition-transform duration-300 group-hover:translate-x-1.5" />
-            </button>
+            <div className="mt-10">
+              <InteractiveHoverButton
+                onClick={() => {
+                  if (onEnterCommandCenter) onEnterCommandCenter();
+                  else navigate('/');
+                }}
+                variant="cyan"
+                text="ENTER COMMAND CENTER"
+                className="px-9 py-4 font-mono text-sm font-bold tracking-[0.25em] text-cyan-200 border-cyan-400/50 bg-cyan-400/10 shadow-[0_0_25px_rgba(6,182,212,0.25)]"
+              />
+            </div>
           </div>
         </section>
 

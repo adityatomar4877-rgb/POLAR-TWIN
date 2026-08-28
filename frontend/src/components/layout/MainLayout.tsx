@@ -1,6 +1,7 @@
 import { useRef, useEffect } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, motion, useReducedMotion, type Variants } from 'framer-motion';
+import gsap from 'gsap';
 import { Sidebar } from './Sidebar';
 import TopBar from './TopBar';
 import StationAmbientBackground from './StationAmbientBackground';
@@ -8,11 +9,42 @@ import EmergencyModeHUD from '../emergency/EmergencyModeHUD';
 import { useStation } from '../../context/StationContext';
 import { useLenisScroll } from '../../hooks/useLenisScroll';
 
+const pageVariants: Variants = {
+  initial: {
+    opacity: 0,
+    y: 18,
+    filter: 'blur(4px)',
+    scale: 0.995,
+  },
+  animate: {
+    opacity: 1,
+    y: 0,
+    filter: 'blur(0px)',
+    scale: 1,
+    transition: {
+      duration: 0.4,
+      ease: [0.22, 1, 0.36, 1] as [number, number, number, number],
+      filter: { duration: 0.35 },
+    },
+  },
+  exit: {
+    opacity: 0,
+    y: -10,
+    filter: 'blur(3px)',
+    scale: 0.998,
+    transition: {
+      duration: 0.22,
+      ease: [0.22, 1, 0.36, 1] as [number, number, number, number],
+    },
+  },
+};
+
 export const MainLayout = () => {
   const { dashboard, emergencyModeActive } = useStation();
   const location = useLocation();
   const mainRef = useRef<HTMLElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
+  const reduced = useReducedMotion();
 
   const lenisRef = useLenisScroll({
     wrapperRef: mainRef,
@@ -21,11 +53,12 @@ export const MainLayout = () => {
     wheelMultiplier: 0.95,
   });
 
+  /* Smooth scroll-to-top on route change via GSAP */
   useEffect(() => {
     if (lenisRef.current) {
-      lenisRef.current.scrollTo(0, { immediate: true });
+      lenisRef.current.scrollTo(0, { immediate: false, duration: 0.6 });
     } else if (mainRef.current) {
-      mainRef.current.scrollTop = 0;
+      gsap.to(mainRef.current, { scrollTop: 0, duration: 0.4, ease: 'power2.out' });
     }
   }, [location.pathname, lenisRef]);
 
@@ -50,14 +83,14 @@ export const MainLayout = () => {
           className="custom-scrollbar relative flex-1 overflow-y-auto px-6 pb-6 pt-5 lg:px-8"
         >
           <div ref={contentRef}>
-            {/* Route transitions — smooth crossfade + rise between workspaces */}
+            {/* Route transitions — smooth crossfade + rise + blur between workspaces */}
             <AnimatePresence mode="wait" initial={false}>
               <motion.div
                 key={location.pathname}
-                initial={{ opacity: 0, y: 14 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -8 }}
-                transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+                variants={reduced ? undefined : pageVariants}
+                initial="initial"
+                animate="animate"
+                exit="exit"
               >
                 {/* Main content injected here by router */}
                 <Outlet />
@@ -68,7 +101,18 @@ export const MainLayout = () => {
       </div>
 
       {/* Emergency operational HUD overlay */}
-      {(emergencyModeActive || gridEmergency) && <EmergencyModeHUD />}
+      <AnimatePresence>
+        {(emergencyModeActive || gridEmergency) && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3 }}
+          >
+            <EmergencyModeHUD />
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
