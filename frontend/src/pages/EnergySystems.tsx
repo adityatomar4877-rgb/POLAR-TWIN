@@ -58,11 +58,12 @@ export const EnergySystems = ({ stationId }: { stationId: number }) => {
   const isEmergency = gridStatus === 'EMERGENCY' || gridStatus === 'CRITICAL' || netKw < 0;
 
   const handleStartBackup = () => {
-    const gen2 = dashboard.equipment?.find((e) => e.name === 'Generator 2');
+    const g2 = dashboard.equipment?.find((e: any) => e.equipment_type === 'GENERATOR' && e.name.includes('2'));
+    const targetGenId = g2?.id || (Number(stationId) === 1 ? 2 : 9);
     setActiveRequest({
       command_type: 'START_GENERATOR',
       target_type: 'EQUIPMENT',
-      target_id: gen2?.id || 9, // fallback if not found
+      target_id: targetGenId,
       requested_by: 'Operator_Demo',
       role: 'OPERATOR',
       reason: 'Dispatch backup Generator 2 to resolve microgrid deficit',

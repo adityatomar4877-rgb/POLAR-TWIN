@@ -52,7 +52,7 @@ class CommandService:
     ) -> CommandPreviewResponse:
         """
         Calculates a Digital Twin simulation preview of a command before execution.
-        Provides projected generation changes, deficit relief, and safety warnings.
+        Provides projected generation changes, deficit relief, energy deltas, and safety warnings.
         """
         cmd_type = preview_req.command_type.upper()
         station = db.query(Station).filter(Station.id == station_id).first()
@@ -65,7 +65,8 @@ class CommandService:
 
         current_gen = latest_energy.generation_kw if latest_energy else 100.0
         current_con = latest_energy.consumption_kw if latest_energy else 100.0
-        current_bal = latest_energy.energy_balance if latest_energy else 0.0
+        current_bal = latest_energy.energy_balance if latest_energy else round(current_gen - current_con, 2)
+        current_bat = latest_energy.battery_percentage if (latest_energy and latest_energy.battery_percentage is not None) else 85.0
 
         safe = True
         requires_conf = safety_service.is_high_risk(cmd_type)
@@ -74,77 +75,231 @@ class CommandService:
         projected_state: Dict[str, Any] = {}
         impact: Dict[str, Any] = {}
 
-        if cmd_type == "START_GENERATOR":
+        if cmd_type in ["START_GENERATOR", "START_EQUIPMENT"]:
             target_eq = None
             if preview_req.target_id:
                 target_eq = db.query(Equipment).filter(Equipment.id == preview_req.target_id).first()
 
-            gen_boost = 90.0
-            proj_gen = current_gen + gen_boost
-            proj_bal = round(proj_gen - current_con, 2)
+            is_gen = (target_eq is None or target_eq.equipment_type == "GENERATOR")
+            gen_boost = 90.0 if is_gen else 0.0
+            con_change = 0.0 if is_gen else 15.0
+            proj_gen = round(current_gen + gen_boost, 2)
+            proj_con = round(current_con + con_change, 2)
+            proj_bal = round(proj_gen - proj_con, 2)
+            proj_bat = min(100.0, current_bat + 5.0) if proj_bal >= 0 else current_bat
             
             projected_state = {
-                "target_equipment": target_eq.name if target_eq else "Generator",
+                "target_equipment": target_eq.name if target_eq else "Generator 2",
                 "target_status": "ONLINE",
+                "generation_kw": proj_gen,
+                "consumption_kw": proj_con,
+                "energy_balance": proj_bal,
+                "energy_balance_kw": proj_bal,
                 "projected_generation_kw": proj_gen,
                 "projected_energy_balance_kw": proj_bal,
+                "battery_percentage": proj_bat,
                 "projected_grid_status": "ONLINE" if proj_bal >= 0 else "DEGRADED",
             }
             impact = {
+                "energy_delta_kw": gen_boost if is_gen else -con_change,
                 "generation_change_kw": gen_boost,
                 "energy_balance_change_kw": round(proj_bal - current_bal, 2),
+                "battery_drop_percent": round(proj_bat - current_bat, 2),
                 "battery_discharge_reduction_kw": abs(min(0.0, current_bal)),
-                "fuel_consumption_resumption_l_per_h": round(gen_boost * 0.26, 1),
+                "fuel_consumption_resumption_l_per_h": round(gen_boost * 0.26, 1) if is_gen else 0.0,
+                "risk_level": "LOW",
+                "description": f"Startup sequence for {target_eq.name if target_eq else 'Generator'}",
             }
             recommendations.append("Starting generator will eliminate microgrid power deficit and halt battery depletion.")
 
-        elif cmd_type == "STOP_GENERATOR":
+        elif cmd_type in ["STOP_GENERATOR", "STOP_EQUIPMENT", "SHUTDOWN_EQUIPMENT"]:
             target_eq = None
             if preview_req.target_id:
                 target_eq = db.query(Equipment).filter(Equipment.id == preview_req.target_id).first()
-                try:
-                    safety_service.validate_generator_stop_safety(db, station_id, target_eq)
-                except APIError as ae:
-                    safe = False
-                    warnings.append(ae.message)
+                if target_eq and target_eq.equipment_type == "GENERATOR":
+                    try:
+                        safety_service.validate_generator_stop_safety(db, station_id, target_eq)
+                    except APIError as ae:
+                        safe = False
+                        warnings.append(ae.message)
+                elif target_eq:
+                    try:
+                        safety_service.validate_equipment_shutdown_safety(target_eq, "OPERATOR", False)
+                    except APIError as ae:
+                        safe = False
+                        warnings.append(ae.message)
 
-            gen_drop = 90.0
-            proj_gen = max(0.0, current_gen - gen_drop)
-            proj_bal = round(proj_gen - current_con, 2)
+            is_gen = (target_eq is None or target_eq.equipment_type == "GENERATOR")
+            gen_drop = min(latest_energy.diesel_generation_kw, 90.0) if (latest_energy and latest_energy.diesel_generation_kw > 0) else 90.0
+            proj_gen = max(0.0, round(current_gen - (gen_drop if is_gen else 0.0), 2))
+            proj_con = max(20.0, round(current_con - (0.0 if is_gen else 15.0), 2))
+            proj_bal = round(proj_gen - proj_con, 2)
+            proj_bat = max(10.0, current_bat - 8.0) if proj_bal < 0 else current_bat
+
             projected_state = {
                 "target_equipment": target_eq.name if target_eq else "Generator",
-                "target_status": "STANDBY",
+                "target_status": "STANDBY" if is_gen else "OFFLINE",
+                "generation_kw": proj_gen,
+                "consumption_kw": proj_con,
+                "energy_balance": proj_bal,
+                "energy_balance_kw": proj_bal,
                 "projected_generation_kw": proj_gen,
                 "projected_energy_balance_kw": proj_bal,
+                "battery_percentage": proj_bat,
+                "projected_grid_status": "ONLINE" if proj_bal >= 0 else "DEGRADED",
             }
             impact = {
-                "generation_change_kw": -gen_drop,
+                "energy_delta_kw": -gen_drop if is_gen else 15.0,
+                "generation_change_kw": -gen_drop if is_gen else 0.0,
                 "energy_balance_change_kw": round(proj_bal - current_bal, 2),
+                "battery_drop_percent": round(proj_bat - current_bat, 2),
+                "risk_level": "HIGH" if (not safe or proj_bal < 0) else "MEDIUM",
+                "description": f"Shutdown sequence for {target_eq.name if target_eq else 'Equipment'}",
             }
             if proj_bal < 0:
                 warnings.append(f"Stopping generator will create a {abs(proj_bal):.1f} kW power deficit on station battery.")
 
         elif cmd_type == "LOAD_SHED":
             from app.models.audit import LoadGroup
-            shed_loads = db.query(LoadGroup).filter(LoadGroup.station_id == station_id, LoadGroup.category == "NON_CRITICAL", LoadGroup.enabled == True).all()
-            total_shed = sum(l.current_power_kw for l in shed_loads)
-            proj_con = max(20.0, current_con - total_shed)
+            params = preview_req.parameters or {}
+            group_ident = str(params.get("load_group") or preview_req.target_id or "NON_CRITICAL").upper()
+
+            all_loads = db.query(LoadGroup).filter(LoadGroup.station_id == station_id).all()
+            if group_ident in ["NON_CRITICAL", "ALL"]:
+                target_loads = [l for l in all_loads if l.category == "NON_CRITICAL"]
+            else:
+                target_loads = [
+                    l for l in all_loads
+                    if (str(l.id) == group_ident or l.name.upper() == group_ident or l.category.upper() == group_ident)
+                ]
+
+            # Check for critical load safety
+            for l in target_loads:
+                if l.category == "CRITICAL":
+                    safe = False
+                    warnings.append(f"Safety interlock violation: {l.name} is a CRITICAL life-support system and cannot be shed.")
+
+            active_shedable = [l for l in target_loads if l.enabled]
+            nominal_shed_kw = sum(l.current_power_kw for l in target_loads)
+            actual_shed_kw = sum(l.current_power_kw for l in active_shedable)
+
+            # If all matching loads are already shed, use nominal load for projection but add warning
+            effective_shed_kw = actual_shed_kw if actual_shed_kw > 0 else nominal_shed_kw
+            proj_con = max(20.0, round(current_con - effective_shed_kw, 2))
             proj_bal = round(current_gen - proj_con, 2)
-            
+            proj_bat = min(100.0, round(current_bat + 4.0, 1)) if proj_bal >= 0 else current_bat
+
+            if actual_shed_kw == 0 and len(target_loads) > 0:
+                warnings.append("Note: Matching non-critical load circuits are currently already offline / shed.")
+                recommendations.append("All non-critical loads are currently offline. Use RESTORE_ALL_LOADS to re-enable circuits, or START_GENERATOR to boost generation.")
+            else:
+                names = ", ".join(l.name for l in active_shedable) or "Non-critical circuits"
+                recommendations.append(f"Shedding non-critical loads ({names}) will relieve station microgrid by {actual_shed_kw:.1f} kW.")
+
             projected_state = {
-                "shed_groups_count": len(shed_loads),
+                "shed_groups_count": len(active_shedable) if actual_shed_kw > 0 else len(target_loads),
+                "generation_kw": current_gen,
+                "consumption_kw": proj_con,
+                "energy_balance": proj_bal,
+                "energy_balance_kw": proj_bal,
                 "projected_consumption_kw": proj_con,
                 "projected_energy_balance_kw": proj_bal,
+                "battery_percentage": proj_bat,
             }
             impact = {
-                "consumption_reduction_kw": total_shed,
-                "deficit_reduction_kw": total_shed,
+                "energy_delta_kw": effective_shed_kw,
+                "consumption_reduction_kw": effective_shed_kw,
+                "deficit_reduction_kw": effective_shed_kw,
+                "energy_balance_change_kw": round(proj_bal - current_bal, 2),
+                "battery_drop_percent": round(proj_bat - current_bat, 2),
+                "risk_level": "LOW" if safe else "HIGH",
+                "description": f"Shed {len(active_shedable) or len(target_loads)} non-critical load group(s)",
             }
-            recommendations.append(f"Shedding non-critical loads will relieve station microgrid by {total_shed:.1f} kW.")
+
+        elif cmd_type == "LOAD_RESTORE":
+            from app.models.audit import LoadGroup
+            params = preview_req.parameters or {}
+            group_ident = str(params.get("load_group", "ALL")).upper()
+
+            all_loads = db.query(LoadGroup).filter(LoadGroup.station_id == station_id).all()
+            if group_ident in ["ALL", "NON_CRITICAL"]:
+                target_loads = [l for l in all_loads if not l.enabled]
+            else:
+                target_loads = [
+                    l for l in all_loads
+                    if not l.enabled and (str(l.id) == group_ident or l.name.upper() == group_ident or l.category.upper() == group_ident)
+                ]
+
+            restore_kw = sum(l.current_power_kw for l in target_loads)
+            proj_con = round(current_con + restore_kw, 2)
+            proj_bal = round(current_gen - proj_con, 2)
+            proj_bat = max(10.0, current_bat - 5.0) if proj_bal < 0 else current_bat
+
+            if len(target_loads) == 0:
+                warnings.append("All electrical load circuits are currently energized and online.")
+                recommendations.append("All circuits are currently active. No disabled loads to restore.")
+            else:
+                names = ", ".join(l.name for l in target_loads)
+                recommendations.append(f"Restoring {len(target_loads)} circuit(s) ({names}) will resume full operations (+{restore_kw:.1f} kW).")
+                if proj_bal < 0:
+                    warnings.append(f"Restoring loads will create a {abs(proj_bal):.1f} kW power deficit on station battery.")
+
+            projected_state = {
+                "restored_groups_count": len(target_loads),
+                "generation_kw": current_gen,
+                "consumption_kw": proj_con,
+                "energy_balance": proj_bal,
+                "energy_balance_kw": proj_bal,
+                "projected_consumption_kw": proj_con,
+                "projected_energy_balance_kw": proj_bal,
+                "battery_percentage": proj_bat,
+            }
+            impact = {
+                "energy_delta_kw": -restore_kw,
+                "consumption_increase_kw": restore_kw,
+                "energy_balance_change_kw": round(proj_bal - current_bal, 2),
+                "battery_drop_percent": round(proj_bat - current_bat, 2),
+                "risk_level": "MEDIUM" if proj_bal < 0 else "LOW",
+                "description": f"Restore {len(target_loads)} shed circuit(s)",
+            }
+
+        elif cmd_type in ["RESTART_EQUIPMENT", "ISOLATE_EQUIPMENT"]:
+            target_eq = None
+            if preview_req.target_id:
+                target_eq = db.query(Equipment).filter(Equipment.id == preview_req.target_id).first()
+
+            is_isolate = (cmd_type == "ISOLATE_EQUIPMENT")
+            projected_state = {
+                "target_equipment": target_eq.name if target_eq else "Equipment",
+                "target_status": "MAINTENANCE" if is_isolate else "NORMAL",
+                "generation_kw": current_gen,
+                "consumption_kw": current_con,
+                "energy_balance": current_bal,
+                "energy_balance_kw": current_bal,
+                "battery_percentage": current_bat,
+            }
+            impact = {
+                "energy_delta_kw": 0.0,
+                "energy_balance_change_kw": 0.0,
+                "risk_level": "LOW",
+                "description": f"{'Lock out and isolate' if is_isolate else 'Reboot sequence for'} {target_eq.name if target_eq else 'equipment'}",
+            }
+            recommendations.append(f"{'Isolate unit for scheduled maintenance lock-out.' if is_isolate else 'Restarting equipment will clear transient software faults.'}")
 
         else:
-            projected_state = {"status": "ACKNOWLEDGED"}
-            impact = {"status_change": True}
+            projected_state = {
+                "status": "ACKNOWLEDGED",
+                "generation_kw": current_gen,
+                "consumption_kw": current_con,
+                "energy_balance": current_bal,
+                "energy_balance_kw": current_bal,
+                "battery_percentage": current_bat,
+            }
+            impact = {
+                "energy_delta_kw": 0.0,
+                "status_change": True,
+                "risk_level": "LOW",
+            }
 
         return CommandPreviewResponse(
             command_type=cmd_type,
@@ -153,7 +308,9 @@ class CommandService:
             current_state={
                 "generation_kw": current_gen,
                 "consumption_kw": current_con,
+                "energy_balance": current_bal,
                 "energy_balance_kw": current_bal,
+                "battery_percentage": current_bat,
                 "grid_status": latest_energy.grid_status if latest_energy else "ONLINE",
             },
             projected_state=projected_state,

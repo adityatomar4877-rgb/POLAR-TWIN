@@ -88,16 +88,27 @@ export const CommandPreviewModal = ({ isOpen, onClose, stationId, request }: Pro
 
   const isSafe = preview ? preview.safe : false;
   const energyDelta =
-    num(preview?.impact?.energy_delta_kw) ?? num(preview?.impact?.generation_change_kw) ?? 0;
+    num(preview?.impact?.energy_delta_kw) ??
+    num(preview?.impact?.generation_change_kw) ??
+    num(preview?.impact?.consumption_reduction_kw) ??
+    num(preview?.impact?.energy_balance_change_kw) ??
+    0;
   const batteryDelta = num(preview?.impact?.battery_drop_percent);
   const riskLevel = preview?.impact?.risk_level || (isSafe ? 'LOW' : 'HIGH');
 
   /* Before/after projected state readouts */
-  const curBal = num(preview?.current_state?.energy_balance);
-  const projBal = num(preview?.projected_state?.energy_balance);
+  const curBal = num(preview?.current_state?.energy_balance) ?? num(preview?.current_state?.energy_balance_kw);
+  const projBal = num(preview?.projected_state?.energy_balance) ?? num(preview?.projected_state?.projected_energy_balance_kw) ?? num(preview?.projected_state?.energy_balance_kw);
   const curBat = num(preview?.current_state?.battery_percentage);
   const projBat = num(preview?.projected_state?.battery_percentage);
   const hasProjection = [curBal, projBal, curBat, projBat].some((v) => v != null);
+
+  const targetLabel = (() => {
+    if (request.target_id != null) return `#${request.target_id}`;
+    if (request.parameters?.load_group) return `[${request.parameters.load_group}]`;
+    if (request.target_type === 'LOAD_GROUP') return '[NON_CRITICAL]';
+    return '[STATION]';
+  })();
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm">
@@ -121,7 +132,7 @@ export const CommandPreviewModal = ({ isOpen, onClose, stationId, request }: Pro
             <div className="font-mono text-xs tracking-wider text-slate-500">REQUESTED_ACTION</div>
             <div className="text-xl font-bold text-cyan-600">{request.command_type}</div>
             <div className="font-mono text-sm text-slate-500">
-              TARGET: {request.target_type || 'EQUIPMENT'} #{request.target_id ?? 'N/A'}
+              TARGET: {request.target_type || 'EQUIPMENT'} {targetLabel}
             </div>
             {request.reason && (
               <div className="mt-1 font-mono text-xs italic text-slate-400">REASON: “{request.reason}”</div>
