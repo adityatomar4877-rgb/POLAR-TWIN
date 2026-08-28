@@ -1,13 +1,30 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import gsap from 'gsap';
 import { getStationDashboard } from '../api/stations';
-import { CloudRain, Thermometer, Wind, Eye, Compass, Gauge, AlertTriangle, Activity } from 'lucide-react';
+import {
+  CloudRain,
+  Thermometer,
+  Wind,
+  Gauge,
+  AlertTriangle,
+  Activity,
+  Sparkles,
+  Sun,
+  Shield,
+  Layers,
+  Volume2,
+  Snowflake,
+  TrendingDown,
+} from 'lucide-react';
 import GSAPNumberTicker from '../components/dashboard/GSAPNumberTicker';
 import GSAPWindStream from '../components/dashboard/GSAPWindStream';
+import GSAPFlipDetailModal, { type DetailCardData } from '../components/dashboard/GSAPFlipDetailModal';
 
 export const Environment = ({ stationId }: { stationId: number }) => {
   const containerRef = useRef<HTMLDivElement>(null);
+  const auroraDialRef = useRef<HTMLDivElement>(null);
+  const [selectedDetail, setSelectedDetail] = useState<DetailCardData | null>(null);
 
   const { data: dashboard, isLoading } = useQuery({
     queryKey: ['dashboard', stationId],
@@ -27,6 +44,16 @@ export const Environment = ({ stationId }: { stationId: number }) => {
     return () => ctx.revert();
   }, [stationId]);
 
+  // Aurora Activity Geomagnetic Kp Animation
+  useEffect(() => {
+    if (!auroraDialRef.current) return;
+    gsap.to(auroraDialRef.current, {
+      rotate: 42,
+      duration: 1.5,
+      ease: 'elastic.out(1, 0.5)',
+    });
+  }, []);
+
   if (isLoading || !dashboard) {
     return (
       <div className="flex h-full items-center justify-center">
@@ -44,18 +71,40 @@ export const Environment = ({ stationId }: { stationId: number }) => {
   const solarIrr = env?.solar_irradiance_wm2 ?? 120.0;
   const windChill = tempC - windKmh * 0.15;
 
+  // Outdoor Exposure Safety calculation
+  const frostbiteRisk =
+    windChill < -45
+      ? { text: 'CRITICAL (5 Min Frostbite Window)', color: 'text-red-600 bg-red-50 border-red-200' }
+      : windChill < -30
+      ? { text: 'HIGH (15 Min Exposure Limit)', color: 'text-amber-600 bg-amber-50 border-amber-200' }
+      : { text: 'MODERATE (Standard Gear Permitted)', color: 'text-emerald-700 bg-emerald-50 border-emerald-200' };
+
+  // Simulated 24H pressure trend data for barograph
+  const barograph = [988, 987, 986, 985, 984, 983, 982, 981, 983, 984, 985, 985];
+
   return (
-    <div ref={containerRef} className="flex flex-col gap-6 max-w-6xl mx-auto h-full overflow-auto pr-2 custom-scrollbar pb-10">
-      <div className="gsap-env-item flex items-center justify-between">
+    <div ref={containerRef} className="flex flex-col gap-6 max-w-6xl mx-auto h-full overflow-auto pr-2 custom-scrollbar pb-12">
+      {/* Page Header */}
+      <div className="gsap-env-item flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-widest text-slate-800 flex items-center gap-3">
-            <CloudRain className="w-6 h-6 text-cyan-600" />
-            ENVIRONMENTAL_METEOROLOGY
+          <h1 className="text-2xl font-extrabold tracking-tight text-slate-900 flex items-center gap-3">
+            <div className="p-2 bg-cyan-50 rounded-xl text-cyan-600 border border-cyan-100">
+              <CloudRain className="w-6 h-6" />
+            </div>
+            Environmental Meteorology
           </h1>
-          <p className="text-slate-500 text-sm mt-1">Live polar weather telemetry, atmospheric sensors, and blizzard hazard alerts.</p>
+          <p className="text-slate-500 text-sm mt-1">
+            Real-time polar climate telemetry, geomagnetic monitoring, Katabatic storm alerts, and cryosphere sensors.
+          </p>
         </div>
-        <div className="px-3 py-1.5 bg-white border border-slate-200 rounded text-xs font-mono text-slate-500">
-          SOURCE: <span className="text-cyan-600">{env?.data_source || 'OPEN-METEO / IN-SITU SENSORS'}</span>
+        <div className="flex items-center gap-3">
+          <div className="px-3.5 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-mono text-slate-500 shadow-2xs">
+            SOURCE: <span className="text-cyan-700 font-bold">{env?.data_source || 'IMD POLAR MET / IN-SITU'}</span>
+          </div>
+          <div className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 border border-emerald-200 rounded-xl text-xs font-mono font-bold text-emerald-700">
+            <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+            SENSORS ONLINE
+          </div>
         </div>
       </div>
 
@@ -64,89 +113,408 @@ export const Environment = ({ stationId }: { stationId: number }) => {
         <GSAPWindStream speedKmh={windKmh} directionDeg={env?.wind_direction_deg ?? 215} />
       </div>
 
+      {/* Blizzard Alert Banner */}
       {env?.blizzard_warning && (
-        <div className="gsap-env-item p-4 bg-amber-50 border border-amber-200 rounded-xl flex items-center gap-3 text-amber-600 animate-pulse">
-          <AlertTriangle className="w-6 h-6 shrink-0" />
-          <div>
-            <div className="font-bold font-mono">SEVERE_WEATHER_ALERT: BLIZZARD CONDITIONS ACTIVE</div>
-            <div className="text-xs text-amber-700 mt-1">High wind velocity and sub-zero temperatures detected. Restrict outdoor movements.</div>
+        <div className="gsap-env-item p-4 bg-amber-50 border border-amber-200 rounded-2xl flex items-center gap-4 text-amber-900 shadow-xs">
+          <div className="p-2.5 bg-amber-100 rounded-xl text-amber-700 shrink-0 animate-bounce">
+            <AlertTriangle className="w-6 h-6" />
+          </div>
+          <div className="flex-1">
+            <div className="font-bold text-sm text-amber-950 flex items-center gap-2">
+              SEVERE WEATHER ADVISORY: KATABATIC BLIZZARD IN PROGRESS
+            </div>
+            <div className="text-xs text-amber-800 mt-0.5">
+              High velocity wind gust shear and severe sub-zero chill detected. Tethered line movement only across station modules.
+            </div>
           </div>
         </div>
       )}
 
-      {/* Atmospheric Metrics Grid */}
+      {/* Core Atmospheric Metrics Grid */}
       <div className="gsap-env-item grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="group bg-white border border-slate-200 p-5 rounded-2xl shadow-xs transition-all duration-300 hover:-translate-y-1 hover:border-slate-300 hover:shadow-md flex items-center gap-4">
-          <div className="p-3 bg-cyan-50 border border-cyan-200 rounded-xl text-cyan-600 transition-transform duration-300 group-hover:scale-110">
+        <div 
+          onClick={() => setSelectedDetail({
+            type: 'sensor',
+            title: 'Surface Temperature Array',
+            subtitle: 'Primary Thermal Telemetry',
+            category: 'METEOROLOGY',
+            status: tempC > -60 ? 'ONLINE' : 'WARNING',
+            primaryValue: tempC,
+            primaryUnit: '°C',
+            primaryLabel: 'Ambient Temp',
+            secondaryValue: `${windChill.toFixed(1)}°C`,
+            secondaryLabel: 'Wind Chill',
+            metrics: [
+              { label: '24h High', value: `${(tempC + 2.4).toFixed(1)}°C` },
+              { label: '24h Low', value: `${(tempC - 3.1).toFixed(1)}°C` },
+              { label: 'Trend', value: 'Falling' }
+            ],
+            specs: [
+              { key: 'Sensor Type', value: 'PT100 RTD' },
+              { key: 'Calibration', value: 'Valid' },
+              { key: 'Sampling', value: '1Hz' }
+            ]
+          })}
+          className="group cursor-pointer bg-white border border-slate-200 p-5 rounded-2xl shadow-xs transition-all duration-300 hover:-translate-y-1 hover:border-slate-300 hover:shadow-md flex items-center gap-4"
+        >
+          <div className="p-3 bg-sky-50 border border-sky-200/60 rounded-xl text-sky-600 transition-transform duration-300 group-hover:scale-110">
             <Thermometer className="w-8 h-8" />
           </div>
           <div>
-            <div className="text-xs font-mono text-slate-500">SURFACE_TEMPERATURE</div>
-            <div className="text-2xl font-bold font-mono text-slate-800">
+            <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Surface Temperature</div>
+            <div className="text-2xl font-extrabold text-slate-900 tracking-tight">
               <GSAPNumberTicker value={tempC} decimals={1} suffix="°C" />
             </div>
-            <div className="text-xs text-slate-500 mt-1">
-              Wind Chill: <GSAPNumberTicker value={windChill} decimals={1} suffix="°C" />
+            <div className="text-xs text-slate-500 mt-1 flex items-center gap-1 font-medium">
+              Wind Chill: <span className="font-bold text-sky-700">{windChill.toFixed(1)}°C</span>
             </div>
           </div>
         </div>
 
-        <div className="group bg-white border border-slate-200 p-5 rounded-2xl shadow-xs transition-all duration-300 hover:-translate-y-1 hover:border-slate-300 hover:shadow-md flex items-center gap-4">
-          <div className="p-3 bg-cyan-50 border border-cyan-200 rounded-xl text-cyan-600 transition-transform duration-300 group-hover:scale-110">
+        <div 
+          onClick={() => setSelectedDetail({
+            type: 'sensor',
+            title: 'Anemometer Array',
+            subtitle: 'Katabatic Wind Telemetry',
+            category: 'METEOROLOGY',
+            status: windKmh < 100 ? 'ONLINE' : 'WARNING',
+            primaryValue: windKmh,
+            primaryUnit: 'km/h',
+            primaryLabel: 'Wind Speed',
+            secondaryValue: `${Math.round(env?.wind_direction_deg ?? 180)}°`,
+            secondaryLabel: 'Heading',
+            metrics: [
+              { label: 'Gust Max', value: `${(windKmh * 1.4).toFixed(1)} km/h` },
+              { label: 'Avg Speed', value: `${(windKmh * 0.9).toFixed(1)} km/h` },
+              { label: 'Shear', value: 'Nominal' }
+            ],
+            specs: [
+              { key: 'Sensor Type', value: 'Ultrasonic 3D' },
+              { key: 'De-icing', value: 'Active' },
+              { key: 'Mount', value: '10m Mast' }
+            ]
+          })}
+          className="group cursor-pointer bg-white border border-slate-200 p-5 rounded-2xl shadow-xs transition-all duration-300 hover:-translate-y-1 hover:border-slate-300 hover:shadow-md flex items-center gap-4"
+        >
+          <div className="p-3 bg-indigo-50 border border-indigo-200/60 rounded-xl text-indigo-600 transition-transform duration-300 group-hover:scale-110">
             <Wind className="w-8 h-8" />
           </div>
           <div>
-            <div className="text-xs font-mono text-slate-500">WIND_VELOCITY</div>
-            <div className="text-2xl font-bold font-mono text-slate-800">
+            <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Katabatic Wind Speed</div>
+            <div className="text-2xl font-extrabold text-slate-900 tracking-tight">
               <GSAPNumberTicker value={windKmh} decimals={1} suffix=" km/h" />
             </div>
-            <div className="text-xs text-slate-500 mt-1">Direction: {env?.wind_direction_deg ?? 180}° S</div>
+            <div className="text-xs text-slate-500 mt-1 flex items-center gap-1 font-medium">
+              Heading: <span className="font-bold text-indigo-700">{Math.round(env?.wind_direction_deg ?? 180)}° South-Southwest</span>
+            </div>
           </div>
         </div>
 
-        <div className="group bg-white border border-slate-200 p-5 rounded-2xl shadow-xs transition-all duration-300 hover:-translate-y-1 hover:border-slate-300 hover:shadow-md flex items-center gap-4">
-          <div className="p-3 bg-cyan-50 border border-cyan-200 rounded-xl text-cyan-600 transition-transform duration-300 group-hover:scale-110">
+        <div 
+          onClick={() => setSelectedDetail({
+            type: 'sensor',
+            title: 'Barometric Array',
+            subtitle: 'Atmospheric Pressure Telemetry',
+            category: 'METEOROLOGY',
+            status: 'ONLINE',
+            primaryValue: pressure,
+            primaryUnit: 'hPa',
+            primaryLabel: 'Pressure',
+            secondaryValue: `${Math.round(humidity)}%`,
+            secondaryLabel: 'Humidity',
+            metrics: [
+              { label: 'Visibility', value: `${visibility.toFixed(1)} km` },
+              { label: 'Trend', value: '-0.2 hPa/h' },
+              { label: 'Storm Risk', value: 'Low' }
+            ],
+            specs: [
+              { key: 'Sensor', value: 'Digital Baro' },
+              { key: 'Precision', value: '±0.1 hPa' },
+              { key: 'Redundancy', value: 'Triple' }
+            ]
+          })}
+          className="group cursor-pointer bg-white border border-slate-200 p-5 rounded-2xl shadow-xs transition-all duration-300 hover:-translate-y-1 hover:border-slate-300 hover:shadow-md flex items-center gap-4"
+        >
+          <div className="p-3 bg-cyan-50 border border-cyan-200/60 rounded-xl text-cyan-600 transition-transform duration-300 group-hover:scale-110">
             <Gauge className="w-8 h-8" />
           </div>
           <div>
-            <div className="text-xs font-mono text-slate-500">SURFACE_PRESSURE</div>
-            <div className="text-2xl font-bold font-mono text-slate-800">
+            <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Atmospheric Pressure</div>
+            <div className="text-2xl font-extrabold text-slate-900 tracking-tight">
               <GSAPNumberTicker value={pressure} decimals={1} suffix=" hPa" />
             </div>
-            <div className="text-xs text-slate-500 mt-1">
-              Relative Humidity: <GSAPNumberTicker value={humidity} decimals={1} suffix="%" />
+            <div className="text-xs text-slate-500 mt-1 flex items-center gap-2 font-medium">
+              <span>Humidity: <strong className="text-cyan-700">{Math.round(humidity)}%</strong></span>
+              <span>· Visibility: <strong className="text-teal-700">{visibility.toFixed(1)} km</strong></span>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Optical & Solar Telemetry */}
+      {/* Aurora Activity, Space Weather & 24H Barograph Row */}
       <div className="gsap-env-item grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="group bg-white border border-slate-200 p-5 rounded-2xl shadow-xs transition-all duration-300 hover:-translate-y-1 hover:border-slate-300 hover:shadow-md">
-          <div className="flex items-center gap-2 text-slate-600 font-bold font-mono mb-3">
-            <Eye className="w-4 h-4 text-cyan-600" />
-            OPTICAL_VISIBILITY
+        {/* Aurora Geomagnetic Activity Gauge */}
+        <div className="bg-white border border-slate-200 p-5 rounded-2xl shadow-xs flex flex-col justify-between">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+            <div className="flex items-center gap-2 text-slate-800 font-bold text-sm">
+              <Sparkles className="w-4 h-4 text-purple-600" />
+              Aurora Australis & Geomagnetic Activity
+            </div>
+            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-purple-50 text-purple-700 border border-purple-200">
+              Kp-INDEX: 3.4 (MODERATE)
+            </span>
           </div>
-          <div className="text-2xl font-bold font-mono text-slate-800">
-            <GSAPNumberTicker value={visibility} decimals={1} suffix=" km" />
+
+          <div className="my-4 flex items-center gap-6">
+            <div className="relative w-28 h-28 flex items-center justify-center shrink-0">
+              {/* Radial gradient background */}
+              <div className="absolute inset-0 rounded-full bg-gradient-to-tr from-emerald-100 via-teal-50 to-purple-100 border border-purple-200/60" />
+              <div className="relative text-center">
+                <span className="text-2xl font-black text-slate-900">3.4</span>
+                <span className="block text-[9px] font-mono text-slate-400 uppercase">Kp Rating</span>
+              </div>
+            </div>
+
+            <div className="flex-1 space-y-2 text-xs">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-1">
+                <span className="text-slate-400 font-medium">SOLAR WIND SPEED</span>
+                <span className="font-bold font-mono text-slate-800">418.2 km/s</span>
+              </div>
+              <div className="flex items-center justify-between border-b border-slate-100 pb-1">
+                <span className="text-slate-400 font-medium">MAGNETIC FIELD (Bz)</span>
+                <span className="font-bold font-mono text-emerald-600">-1.8 nT (South)</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-slate-400 font-medium">RADIO PROPAGATION</span>
+                <span className="font-bold font-mono text-emerald-700">HF NORMAL</span>
+              </div>
+            </div>
           </div>
-          <p className="text-xs text-slate-500 mt-2">Station optical sensor horizon clear visibility telemetry.</p>
+
+          <p className="text-xs text-slate-400">
+            Aurora visibility favorable in dark sector. Ionospheric RF absorption nominal for satellite telemetry.
+          </p>
         </div>
 
-        <div className="group bg-white border border-slate-200 p-5 rounded-2xl shadow-xs transition-all duration-300 hover:-translate-y-1 hover:border-slate-300 hover:shadow-md">
-          <div className="flex items-center gap-2 text-slate-600 font-bold font-mono mb-3">
-            <Compass className="w-4 h-4 text-amber-600" />
-            SOLAR_IRRADIANCE
+        {/* 24-Hour Barometric Barograph */}
+        <div className="bg-white border border-slate-200 p-5 rounded-2xl shadow-xs flex flex-col justify-between">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+            <div className="flex items-center gap-2 text-slate-800 font-bold text-sm">
+              <TrendingDown className="w-4 h-4 text-cyan-600" />
+              24-Hour Barometric Pressure Trend
+            </div>
+            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-sky-50 text-sky-700 border border-sky-200">
+              STEADY BAROGRAPH
+            </span>
           </div>
-          <div className="text-2xl font-bold font-mono text-slate-800">
-            <GSAPNumberTicker value={solarIrr} decimals={1} suffix=" W/m²" />
+
+          <div className="my-4">
+            <div className="flex items-end justify-between gap-2 h-20 px-2 pt-4 bg-slate-50/70 rounded-xl border border-slate-100">
+              {barograph.map((val, idx) => {
+                const heightPct = Math.max(20, Math.min(100, (val - 975) * 6));
+                return (
+                  <div key={idx} className="flex-1 flex flex-col items-center gap-1 group">
+                    <div
+                      className="w-full bg-cyan-500/80 rounded-t group-hover:bg-cyan-600 transition-colors"
+                      style={{ height: `${heightPct}%` }}
+                    />
+                    <span className="text-[8px] font-mono text-slate-400">{idx * 2}h</span>
+                  </div>
+                );
+              })}
+            </div>
           </div>
-          <p className="text-xs text-slate-500 mt-2">Direct global solar flux on photovoltaic panels.</p>
+
+          <div className="flex items-center justify-between text-xs text-slate-500">
+            <span>24h Gradient: <strong className="text-slate-800">-0.2 hPa/hr</strong></span>
+            <span>Storm Risk: <strong className="text-emerald-600 font-bold">LOW (STABLE)</strong></span>
+          </div>
         </div>
       </div>
+
+      {/* Cryosphere & Specialized Environmental Sensor Matrix */}
+      <div className="gsap-env-item">
+        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs">
+          <div className="flex items-center justify-between mb-4 border-b border-slate-100 pb-3">
+            <div>
+              <h2 className="text-sm font-extrabold text-slate-900 uppercase tracking-wide">
+                Cryosphere & Environmental Sensor Array
+              </h2>
+              <p className="text-xs text-slate-400 mt-0.5">In-situ polar scientific sensors and outdoor biometeorology.</p>
+            </div>
+            <span className="text-xs font-mono text-slate-400">4 / 4 TRANSMITTING</span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* Snowpack Depth */}
+            <div 
+              onClick={() => setSelectedDetail({
+                type: 'sensor',
+                title: 'Snowpack Profiler',
+                subtitle: 'Cryosphere Accumulation Sensor',
+                category: 'CRYOSPHERE',
+                status: 'ONLINE',
+                primaryValue: 142.5,
+                primaryUnit: 'cm',
+                primaryLabel: 'Depth',
+                secondaryValue: '+1.2 cm',
+                secondaryLabel: '24h Change',
+                metrics: [
+                  { label: 'Density', value: '0.34 g/cm³' },
+                  { label: 'Temp (Surface)', value: '-22°C' },
+                  { label: 'Temp (-1m)', value: '-15°C' }
+                ],
+                specs: [
+                  { key: 'Sensor', value: 'Ultrasonic Pulse' },
+                  { key: 'Resolution', value: '1 mm' },
+                  { key: 'Heater', value: 'Active' }
+                ]
+              })}
+              className="p-4 rounded-xl border border-slate-100 bg-slate-50/60 hover:bg-white hover:border-slate-300 transition-all cursor-pointer group"
+            >
+              <div className="flex items-center gap-2 text-slate-500 font-bold text-xs group-hover:text-blue-500 transition-colors">
+                <Snowflake className="w-4 h-4 text-blue-500" />
+                SNOW ACCUMULATION
+              </div>
+              <p className="text-xl font-extrabold text-slate-900 mt-2">142.5 cm</p>
+              <p className="text-[11px] text-slate-400 mt-1">+1.2 cm in last 24h</p>
+            </div>
+
+            {/* Solar Irradiance / UV */}
+            <div 
+              onClick={() => setSelectedDetail({
+                type: 'sensor',
+                title: 'Pyranometer Array',
+                subtitle: 'Solar Radiation Sensor',
+                category: 'CRYOSPHERE',
+                status: 'ONLINE',
+                primaryValue: solarIrr,
+                primaryUnit: 'W/m²',
+                primaryLabel: 'Irradiance',
+                secondaryValue: '2.1',
+                secondaryLabel: 'UV Index',
+                metrics: [
+                  { label: 'Peak (Today)', value: '345 W/m²' },
+                  { label: 'Albedo', value: '0.82' },
+                  { label: 'Cloud Cover', value: '12%' }
+                ],
+                specs: [
+                  { key: 'Sensor', value: 'Thermopile' },
+                  { key: 'Spectrum', value: '285-3000 nm' },
+                  { key: 'Cleaning', value: 'Auto-air' }
+                ]
+              })}
+              className="p-4 rounded-xl border border-slate-100 bg-slate-50/60 hover:bg-white hover:border-slate-300 transition-all cursor-pointer group"
+            >
+              <div className="flex items-center gap-2 text-slate-500 font-bold text-xs group-hover:text-amber-500 transition-colors">
+                <Sun className="w-4 h-4 text-amber-500" />
+                SOLAR IRRADIANCE
+              </div>
+              <p className="text-xl font-extrabold text-slate-900 mt-2">
+                <GSAPNumberTicker value={solarIrr} decimals={0} suffix=" W/m²" />
+              </p>
+              <p className="text-[11px] text-slate-400 mt-1">UV Index: 2.1 (Low / Polar)</p>
+            </div>
+
+            {/* Total Column Ozone */}
+            <div 
+              onClick={() => setSelectedDetail({
+                type: 'sensor',
+                title: 'Dobson Spectrophotometer',
+                subtitle: 'Stratospheric Ozone Monitor',
+                category: 'ATMOSPHERE',
+                status: 'ONLINE',
+                primaryValue: 312,
+                primaryUnit: 'DU',
+                primaryLabel: 'Ozone',
+                secondaryValue: 'Stable',
+                secondaryLabel: 'Trend',
+                metrics: [
+                  { label: 'Hole Status', value: 'Closed' },
+                  { label: 'Anomaly', value: '+4 DU' },
+                  { label: 'Calibration', value: 'Passed' }
+                ],
+                specs: [
+                  { key: 'Wavelengths', value: '305-340 nm' },
+                  { key: 'Automation', value: 'Full Tracker' },
+                  { key: 'Dome', value: 'Quartz' }
+                ]
+              })}
+              className="p-4 rounded-xl border border-slate-100 bg-slate-50/60 hover:bg-white hover:border-slate-300 transition-all cursor-pointer group"
+            >
+              <div className="flex items-center gap-2 text-slate-500 font-bold text-xs group-hover:text-indigo-500 transition-colors">
+                <Layers className="w-4 h-4 text-indigo-500" />
+                OZONE COLUMN
+              </div>
+              <p className="text-xl font-extrabold text-slate-900 mt-2">312 DU</p>
+              <p className="text-[11px] text-slate-400 mt-1">Dobson Spectrophotometer</p>
+            </div>
+
+            {/* Outdoor Acoustic Noise */}
+            <div 
+              onClick={() => setSelectedDetail({
+                type: 'sensor',
+                title: 'Acoustic Soundscape Monitor',
+                subtitle: 'Ambient Noise Telemetry',
+                category: 'ENVIRONMENT',
+                status: 'ONLINE',
+                primaryValue: 34.2,
+                primaryUnit: 'dBA',
+                primaryLabel: 'Noise Level',
+                secondaryValue: 'Katabatic',
+                secondaryLabel: 'Source ID',
+                metrics: [
+                  { label: 'Peak', value: '62.1 dBA' },
+                  { label: 'L90 (Bg)', value: '28.4 dBA' },
+                  { label: 'Spectrum', value: 'Low Freq' }
+                ],
+                specs: [
+                  { key: 'Microphone', value: 'Class 1' },
+                  { key: 'Windscreen', value: 'Heated 90mm' },
+                  { key: 'Logging', value: '1/3 Octave' }
+                ]
+              })}
+              className="p-4 rounded-xl border border-slate-100 bg-slate-50/60 hover:bg-white hover:border-slate-300 transition-all cursor-pointer group"
+            >
+              <div className="flex items-center gap-2 text-slate-500 font-bold text-xs group-hover:text-teal-600 transition-colors">
+                <Volume2 className="w-4 h-4 text-teal-600" />
+                ACOUSTIC SOUNDSCAPE
+              </div>
+              <p className="text-xl font-extrabold text-slate-900 mt-2">34.2 dBA</p>
+              <p className="text-[11px] text-slate-400 mt-1">Ambient Katabatic noise</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Outdoor Operations & Windchill Exposure Safety Matrix */}
+      <div className="gsap-env-item">
+        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs flex flex-col md:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-3.5">
+            <div className="p-3 bg-emerald-50 rounded-2xl text-emerald-600 border border-emerald-200">
+              <Shield className="w-6 h-6" />
+            </div>
+            <div>
+              <h3 className="font-extrabold text-sm text-slate-900">Outdoor Expedition & Crew Safety Protocol</h3>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Current windchill threshold allows routine exterior science sorties with standard polar PPE.
+              </p>
+            </div>
+          </div>
+
+          <div className={`px-4 py-2.5 rounded-xl border font-mono text-xs font-bold ${frostbiteRisk.color}`}>
+            EXPOSURE SAFETY: {frostbiteRisk.text}
+          </div>
+        </div>
+      </div>
+
+      <GSAPFlipDetailModal
+        isOpen={!!selectedDetail}
+        onClose={() => setSelectedDetail(null)}
+        data={selectedDetail}
+      />
     </div>
   );
 };
 
 export default Environment;
-

@@ -41,25 +41,28 @@ export default function LogisticsCrewCard({ station }: { station: Station }) {
         <h2 className="text-[13px] font-extrabold uppercase tracking-wider text-slate-900">Logistics & Crew</h2>
         <button
           onClick={() => navigate('/logistics')}
-          className="flex items-center gap-1 text-xs font-semibold text-blue-600 transition-colors hover:text-blue-700"
+          className="flex items-center gap-1 text-xs font-semibold text-blue-600 transition-colors hover:text-blue-700 cursor-pointer"
         >
-          View All
+          Resupply Depot
           <ArrowUpRight size={12} />
         </button>
       </div>
 
       <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
-        {/* Crew occupancy */}
-        <div className="rounded-xl border border-slate-100 bg-slate-50/60 p-4">
+        {/* Crew occupancy with inner purple-accent border */}
+        <div
+          onClick={() => navigate('/logistics')}
+          className="group text-left rounded-xl border border-purple-100 bg-gradient-to-br from-purple-50/30 via-white to-slate-50/40 p-4 transition-all hover:border-purple-300 hover:shadow-2xs cursor-pointer"
+        >
           <div className="flex items-center justify-between">
-            <span className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider text-slate-400">
-              <Users size={13} className="text-slate-400" />
+            <span className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider text-slate-400 group-hover:text-purple-600 transition-colors">
+              <Users size={13} className="text-purple-500" />
               Crew On Station
             </span>
             <span
               className={clsx(
-                'rounded-full px-2 py-0.5 text-[10px] font-bold tabular-nums',
-                occupancy >= 95 ? 'bg-red-50 text-red-600' : 'bg-emerald-50 text-emerald-600'
+                'rounded-full px-2 py-0.5 text-[10px] font-bold tabular-nums border',
+                occupancy >= 95 ? 'bg-red-50 text-red-600 border-red-200' : 'bg-emerald-50 text-emerald-600 border-emerald-200'
               )}
             >
               {occupancy}%
@@ -80,10 +83,13 @@ export default function LogisticsCrewCard({ station }: { station: Station }) {
           </div>
         </div>
 
-        {/* Next resupply */}
-        <div className="rounded-xl border border-slate-100 bg-slate-50/60 p-4">
-          <span className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider text-slate-400">
-            <Truck size={13} className="text-slate-400" />
+        {/* Next resupply with inner cyan-accent border */}
+        <div
+          onClick={() => navigate('/resupply')}
+          className="group text-left rounded-xl border border-sky-100 bg-gradient-to-br from-sky-50/30 via-white to-slate-50/40 p-4 transition-all hover:border-sky-300 hover:shadow-2xs cursor-pointer"
+        >
+          <span className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider text-slate-400 group-hover:text-cyan-600 transition-colors">
+            <Truck size={13} className="text-cyan-600" />
             Next Resupply
           </span>
           <p className="mt-2 text-xl font-extrabold tabular-nums leading-none text-slate-900">
@@ -99,21 +105,25 @@ export default function LogisticsCrewCard({ station }: { station: Station }) {
         </div>
       </div>
 
-      {/* Priority manifest */}
+      {/* Priority manifest with inner border */}
       <div className="mt-4">
         <p className="mb-1.5 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
           <Package size={11} />
           Priority Manifest
         </p>
         {pending.length === 0 ? (
-          <p className="rounded-xl bg-emerald-50 px-4 py-3 text-center text-xs font-medium text-emerald-600">
+          <p className="rounded-xl border border-emerald-100 bg-emerald-50/60 px-4 py-3 text-center text-xs font-medium text-emerald-600">
             Manifest clear — no pending resupply requests
           </p>
         ) : (
-          <div className="divide-y divide-slate-100">
+          <div className="space-y-1.5">
             {pending.slice(0, 3).map((r) => (
-              <div key={r.id} className="flex items-center gap-3 py-2">
-                <span className="min-w-0 flex-1 truncate text-[13px] font-medium capitalize text-slate-700">
+              <div
+                key={r.id}
+                onClick={() => navigate('/resupply')}
+                className="group flex w-full items-center gap-3 py-2 text-left rounded-xl border border-slate-100 bg-slate-50/50 hover:bg-white hover:border-sky-200 hover:shadow-2xs px-2.5 transition-all cursor-pointer"
+              >
+                <span className="min-w-0 flex-1 truncate text-[13px] font-medium capitalize text-slate-700 group-hover:text-purple-700">
                   {r.item.toLowerCase()}
                 </span>
                 <span className="shrink-0 text-xs font-semibold tabular-nums text-slate-500">
@@ -121,7 +131,7 @@ export default function LogisticsCrewCard({ station }: { station: Station }) {
                 </span>
                 <span
                   className={clsx(
-                    'shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase',
+                    'shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase border',
                     priorityChip(r.priority)
                   )}
                 >
@@ -131,8 +141,8 @@ export default function LogisticsCrewCard({ station }: { station: Station }) {
             ))}
             {pending.length > 3 && (
               <button
-                onClick={() => navigate('/logistics')}
-                className="w-full pt-2 text-center text-[11px] font-semibold text-blue-600 hover:text-blue-700"
+                onClick={() => navigate('/resupply')}
+                className="w-full pt-2 text-center text-[11px] font-semibold text-blue-600 hover:text-blue-700 cursor-pointer"
               >
                 +{pending.length - 3} more in manifest
               </button>

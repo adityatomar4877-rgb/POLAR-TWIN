@@ -11,13 +11,23 @@ gsap.registerPlugin(ScrollTrigger);
  */
 export function useLenisScroll(options?: {
   lerp?: number;
+  duration?: number;
   wheelMultiplier?: number;
+  touchMultiplier?: number;
   enabled?: boolean;
   wrapperRef?: RefObject<HTMLElement | null>;
   contentRef?: RefObject<HTMLElement | null>;
 }) {
   const lenisRef = useRef<Lenis | null>(null);
-  const { lerp = 0.09, wheelMultiplier = 1, enabled = true, wrapperRef, contentRef } = options ?? {};
+  const {
+    lerp = 0.045,
+    duration = 1.2,
+    wheelMultiplier = 0.95,
+    touchMultiplier = 1.5,
+    enabled = true,
+    wrapperRef,
+    contentRef,
+  } = options ?? {};
 
   useEffect(() => {
     if (!enabled) return;
@@ -29,8 +39,12 @@ export function useLenisScroll(options?: {
       wrapper,
       content,
       lerp,
+      duration,
       wheelMultiplier,
+      touchMultiplier,
       smoothWheel: true,
+      syncTouch: true,
+      easing: (t: number) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
     });
     lenisRef.current = lenis;
 
@@ -48,7 +62,7 @@ export function useLenisScroll(options?: {
       lenis.destroy();
       lenisRef.current = null;
     };
-  }, [lerp, wheelMultiplier, enabled, wrapperRef, contentRef]);
+  }, [lerp, duration, wheelMultiplier, touchMultiplier, enabled, wrapperRef, contentRef]);
 
   return lenisRef;
 }
