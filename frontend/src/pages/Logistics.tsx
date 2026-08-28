@@ -193,7 +193,7 @@ export const Logistics = ({ stationId }: { stationId: number }) => {
         { label: 'EST. RUNWAY', value: `${item.runwayDays} Days` },
         { label: 'DAILY DEPLETION', value: `~${item.burnRatePerDay} ${item.unit}/day` },
         { label: 'DEPOT LOCATION', value: item.storageBay },
-        { label: 'INSPECTION STATUS', value: 'VERIFIED NOMINAL' },
+        { label: 'INSPECTION STATUS', value: 'N/A' },
       ],
       specs: [
         { key: 'COMMODITY', value: item.name },
@@ -203,12 +203,12 @@ export const Logistics = ({ stationId }: { stationId: number }) => {
       ],
       diagnosticCodes: [
         `INVENTORY_NODE: 0x${item.id.slice(0, 4).toUpperCase()}`,
-        'BARCODE_AUDIT: RECONCILED',
+        'BARCODE_AUDIT: N/A',
       ],
       recommendedAction: isLow
         ? 'Stock runway under 60 days. Early requisition recommended for upcoming vessel transit.'
         : 'Stock level is healthy for station wintering crew operations.',
-      lastServiceDate: '15-Feb-2026',
+      lastServiceDate: 'N/A',
       actions: [
         {
           label: 'FILE RESUPPLY ORDER',

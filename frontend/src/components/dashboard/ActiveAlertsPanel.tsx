@@ -1,40 +1,8 @@
+import { ShieldAlert, AlertTriangle, AlertCircle } from 'lucide-react';
 import clsx from 'clsx';
 import { AnimatePresence, motion } from 'framer-motion';
-import { AlertTriangle, ShieldAlert, AlertCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import type { Alert } from '../../api/types';
-
-interface DemoAlert {
-  id: number;
-  severity: 'CRITICAL' | 'MAJOR' | 'MINOR';
-  title: string;
-  message: string;
-  time: string;
-}
-
-const DEFAULT_ALERTS: DemoAlert[] = [
-  {
-    id: 1,
-    severity: 'CRITICAL',
-    title: 'Generator 1 Offline',
-    message: 'Primary diesel generator tripped offline.',
-    time: '16:41',
-  },
-  {
-    id: 2,
-    severity: 'MAJOR',
-    title: 'Energy Deficit Detected',
-    message: 'Power deficit of 84.9 kW. Battery discharging.',
-    time: '16:41',
-  },
-  {
-    id: 3,
-    severity: 'MINOR',
-    title: 'High Energy Consumption',
-    message: 'Current consumption 95% above baseline.',
-    time: '16:41',
-  },
-];
 
 const severityMeta = (severity: string) => {
   const s = severity.toUpperCase();
@@ -48,22 +16,18 @@ const severityMeta = (severity: string) => {
 export default function ActiveAlertsPanel({ alerts }: { alerts: Alert[] }) {
   const navigate = useNavigate();
 
-  // If live alerts from backend exist, use them, otherwise use demo alerts matching screenshot
-  const displayAlerts =
-    alerts.length > 0
-      ? alerts.slice(0, 3).map((a, i) => ({
-          id: a.id,
-          severity: (a.severity?.toUpperCase() || (i === 0 ? 'CRITICAL' : i === 1 ? 'MAJOR' : 'MINOR')) as any,
-          title: a.title,
-          message: a.message,
-          time: new Date(a.created_at).toLocaleTimeString('en-IN', {
-            timeZone: 'Asia/Kolkata',
-            hour: '2-digit',
-            minute: '2-digit',
-            hour12: false,
-          }),
-        }))
-      : DEFAULT_ALERTS;
+  const displayAlerts = alerts.slice(0, 3).map((a, i) => ({
+    id: a.id,
+    severity: (a.severity?.toUpperCase() || (i === 0 ? 'CRITICAL' : i === 1 ? 'MAJOR' : 'MINOR')) as any,
+    title: a.title,
+    message: a.message,
+    time: new Date(a.created_at).toLocaleTimeString('en-IN', {
+      timeZone: 'Asia/Kolkata',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    }),
+  }));
 
   return (
     <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-xs transition-all hover:shadow-md">
@@ -80,44 +44,53 @@ export default function ActiveAlertsPanel({ alerts }: { alerts: Alert[] }) {
       </div>
 
       <div className="space-y-2 mt-3">
-        <AnimatePresence initial={false}>
-          {displayAlerts.map((alert, idx) => {
-            const meta = severityMeta(alert.severity);
-            const Icon = meta.icon;
-            return (
-              <motion.div
-                key={alert.id}
-                layout
-                initial={{ opacity: 0, x: -8 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: 8 }}
-                transition={{ duration: 0.25, delay: idx * 0.04 }}
-                onClick={() => navigate('/operations')}
-                className="group flex cursor-pointer items-start gap-2.5 rounded-xl border border-slate-100 bg-slate-50/40 p-2.5 transition-all hover:border-slate-300 hover:bg-white"
-              >
-                <span className={clsx('mt-0.5 shrink-0', meta.chip)}>
-                  <Icon size={16} />
-                </span>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className={clsx('text-[10px] tracking-wider uppercase', meta.cls)}>
-                      {meta.label}
-                    </span>
-                    <span className="font-mono text-[11px] font-semibold text-slate-400">
-                      {alert.time}
-                    </span>
+        {displayAlerts.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-6 text-center">
+            <ShieldAlert className="h-8 w-8 text-slate-300 mb-2" />
+            <p className="text-[11px] font-extrabold tracking-widest text-slate-400">
+              NO ACTIVE ALERTS
+            </p>
+          </div>
+        ) : (
+          <AnimatePresence initial={false}>
+            {displayAlerts.map((alert, idx) => {
+              const meta = severityMeta(alert.severity);
+              const Icon = meta.icon;
+              return (
+                <motion.div
+                  key={alert.id}
+                  layout
+                  initial={{ opacity: 0, x: -8 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: 8 }}
+                  transition={{ duration: 0.25, delay: idx * 0.04 }}
+                  onClick={() => navigate('/operations')}
+                  className="group flex cursor-pointer items-start gap-2.5 rounded-xl border border-slate-100 bg-slate-50/40 p-2.5 transition-all hover:border-slate-300 hover:bg-white"
+                >
+                  <span className={clsx('mt-0.5 shrink-0', meta.chip)}>
+                    <Icon size={16} />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className={clsx('text-[10px] tracking-wider uppercase', meta.cls)}>
+                        {meta.label}
+                      </span>
+                      <span className="font-mono text-[11px] font-semibold text-slate-400">
+                        {alert.time}
+                      </span>
+                    </div>
+                    <p className="text-[12px] font-bold text-slate-800 leading-snug group-hover:text-blue-600 transition-colors mt-0.5">
+                      {alert.title}
+                    </p>
+                    <p className="truncate text-[11px] text-slate-500 font-medium">
+                      {alert.message}
+                    </p>
                   </div>
-                  <p className="text-[12px] font-bold text-slate-800 leading-snug group-hover:text-blue-600 transition-colors mt-0.5">
-                    {alert.title}
-                  </p>
-                  <p className="truncate text-[11px] text-slate-500 font-medium">
-                    {alert.message}
-                  </p>
-                </div>
-              </motion.div>
-            );
-          })}
-        </AnimatePresence>
+                </motion.div>
+              );
+            })}
+          </AnimatePresence>
+        )}
       </div>
     </section>
   );

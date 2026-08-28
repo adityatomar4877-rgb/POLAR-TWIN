@@ -50,6 +50,9 @@ export const EnergySystems = ({ stationId }: { stationId: number }) => {
   }
 
   const energy = dashboard.energy;
+  const equipment = dashboard.equipment || [];
+  const gen1 = equipment.find((e: any) => e.name === 'Generator 1');
+  const gen2 = equipment.find((e: any) => e.name === 'Generator 2');
   const genKw = energy?.generation_kw ?? 0;
   const consKw = energy?.consumption_kw ?? 0;
   const netKw = energy?.energy_balance ?? (genKw - consKw);
@@ -99,44 +102,36 @@ export const EnergySystems = ({ stationId }: { stationId: number }) => {
 
   // Inspect generator card
   const inspectDieselGenerators = () => {
+    const gen = gen1 || gen2;
     setDetailItem({
       type: 'generator',
       title: 'Primary Diesel Genset-1 & Genset-2',
       subtitle: 'Synchronized Arctic Diesel Microgrid Generators',
       category: 'PRIMARY POWER ASSET',
       status: dieselKw > 0 ? 'RUNNING' : 'STANDBY',
-      healthScore: 92,
+      healthScore: gen?.health_score ?? 100,
       primaryValue: dieselKw,
       primaryUnit: 'kW',
       primaryLabel: 'CURRENT OUTPUT',
-      secondaryValue: '1,500 RPM',
-      secondaryLabel: 'ROTATIONAL SPEED',
+      secondaryValue: gen?.efficiency ? `${gen.efficiency}%` : 'N/A',
+      secondaryLabel: 'EFFICIENCY',
       metrics: [
-        { label: 'FREQUENCY', value: '50.02 Hz' },
-        { label: 'VOLTAGE', value: '415 V 3-Phase' },
-        { label: 'OIL TEMP', value: '82.4 °C' },
-        { label: 'COOLANT', value: '78.1 °C' },
-        { label: 'FUEL FLOW', value: '18.4 L/h' },
-        { label: 'EXHAUST', value: '340 °C' },
+        { label: 'TEMP', value: gen?.temperature != null ? `${gen.temperature} °C` : 'N/A' },
+        { label: 'RUNTIME', value: gen?.runtime_hours != null ? `${gen.runtime_hours} hrs` : 'N/A' },
       ],
       specs: [
         { key: 'MANUFACTURER', value: 'Cummins Polar Power 250kVA' },
         { key: 'FUEL GRADE', value: 'Arctic Kerosene / Low-Pour Diesel' },
-        { key: 'ALTERNATOR', value: 'Stamford Brushless Synch' },
-        { key: 'EMISSION SYSTEM', value: 'Zero-Smoke High-Altitude Catalyst' },
-        { key: 'MAX CONT. LOAD', value: '180.0 kW' },
-        { key: 'START MODE', value: 'Auto-Transfer Switch + Pneumatic' },
+        { key: 'LAST MAINT.', value: gen?.last_maintenance || 'Unknown' },
       ],
       diagnosticCodes: [
-        'DTC-00: NORMAL RUNNING',
-        'MODBUS_ADDR: 0x12 OK',
-        'VIBRATION: 1.2 mm/s (NORMAL)',
+        gen?.status === 'RUNNING' ? 'DTC-00: NORMAL RUNNING' : 'DTC-01: STANDBY',
       ],
       recommendedAction:
         dieselKw === 0
           ? 'Generator is in standby. In microgrid deficit, click START_BACKUP_GEN to synchronize.'
-          : 'Genset load distribution optimal. Routine lube oil check scheduled in 14 days.',
-      lastServiceDate: '12-Feb-2026',
+          : 'Genset load distribution optimal.',
+      lastServiceDate: gen?.last_maintenance || 'N/A',
       actions: [
         {
           label: dieselKw > 0 ? 'INITIATE ROUTINE DIAGNOSTIC' : 'DISPATCH BACKUP GEN-2',
@@ -149,80 +144,72 @@ export const EnergySystems = ({ stationId }: { stationId: number }) => {
 
   // Inspect solar PV
   const inspectSolarPV = () => {
+    const eq = equipment.find((e: any) => e.name.includes('Solar'));
     setDetailItem({
       type: 'generator',
       title: 'Bifacial Polar Photovoltaic Array',
       subtitle: 'Albedo-Enhanced Solar Tracking System',
       category: 'RENEWABLE GENERATION',
       status: solarKw > 0 ? 'ACTIVE' : 'STANDBY',
-      healthScore: 98,
+      healthScore: eq?.health_score ?? 100,
       primaryValue: solarKw,
       primaryUnit: 'kW',
       primaryLabel: 'SOLAR POWER',
-      secondaryValue: '720 W/m²',
-      secondaryLabel: 'IRRADIANCE',
+      secondaryValue: eq?.efficiency ? `${eq.efficiency}%` : 'N/A',
+      secondaryLabel: 'EFFICIENCY',
       metrics: [
-        { label: 'PANEL TEMP', value: '-8.5 °C' },
-        { label: 'MPPT EFFICIENCY', value: '98.4 %' },
-        { label: 'SNOW CLEARANCE', value: 'HEATED AUTO' },
-        { label: 'ALBEDO BOOST', value: '+34 %' },
-        { label: 'DC BUS VOLTS', value: '650.2 V' },
-        { label: 'INVERTER THD', value: '< 1.8 %' },
+        { label: 'PANEL TEMP', value: eq?.temperature != null ? `${eq.temperature} °C` : 'N/A' },
       ],
       specs: [
         { key: 'ARRAY CAPACITY', value: '60.0 kW Peak' },
         { key: 'PANEL TYPE', value: 'N-Type TOPCon Dual-Glass' },
-        { key: 'TRACKER', value: 'Single-Axis Solar Altitude Tracking' },
-        { key: 'ANTI-ICE', value: 'Integrated Pulse Heating Element' },
+        { key: 'LAST MAINT.', value: eq?.last_maintenance || 'Unknown' },
       ],
-      diagnosticCodes: ['MPPT_STATUS: PEAK_TRACKING', 'GROUND_FAULT: NONE', 'TEMP_COEFF: +0.28%'],
-      recommendedAction: 'Solar flux tracking aligned. High albedo off snowpack contributing +34% output.',
-      lastServiceDate: '18-Jan-2026',
+      diagnosticCodes: ['MPPT_STATUS: PEAK_TRACKING', 'GROUND_FAULT: NONE'],
+      recommendedAction: 'Solar array tracking active.',
+      lastServiceDate: eq?.last_maintenance || 'N/A',
     });
   };
 
   // Inspect wind turbines
   const inspectWindTurbines = () => {
+    const eq = equipment.find((e: any) => e.name.includes('Wind'));
     setDetailItem({
       type: 'generator',
       title: 'Katabatic Polar Wind Turbine Array',
       subtitle: 'Ruggedized Vertical-Axis High-Wind Turbines',
       category: 'RENEWABLE GENERATION',
-      status: 'STANDBY',
-      healthScore: 89,
+      status: (eq?.status as any) || 'STANDBY',
+      healthScore: eq?.health_score ?? 100,
       primaryValue: 0.0,
       primaryUnit: 'kW',
       primaryLabel: 'WIND POWER',
-      secondaryValue: '14.7 km/h',
-      secondaryLabel: 'LOCAL WIND SPEED',
+      secondaryValue: eq?.efficiency ? `${eq.efficiency}%` : 'N/A',
+      secondaryLabel: 'EFFICIENCY',
       metrics: [
-        { label: 'CUT-IN SPEED', value: '18.0 km/h' },
-        { label: 'SURVIVAL SPEED', value: '250.0 km/h' },
-        { label: 'BLADE HEATING', value: 'ACTIVE' },
-        { label: 'BRAKE STATUS', value: 'DISENGAGED' },
-        { label: 'YAW ANGLE', value: '231° SSW' },
-        { label: 'BEARING TEMP', value: '-4.2 °C' },
+        { label: 'TEMP', value: eq?.temperature != null ? `${eq.temperature} °C` : 'N/A' },
       ],
       specs: [
         { key: 'RATED POWER', value: '45.0 kW (at 45 km/h)' },
         { key: 'TURBINE DESIGN', value: 'Omnidirectional Polar Darrieus' },
-        { key: 'MATERIAL', value: 'Carbon-Fiber Cryo-Resistant Composite' },
+        { key: 'LAST MAINT.', value: eq?.last_maintenance || 'Unknown' },
       ],
-      diagnosticCodes: ['STANDBY: WIND BELOW CUT-IN', 'HEATING: NOMINAL', 'BRAKES: RELEASED'],
-      recommendedAction: 'Current wind is 14.7 km/h, below 18 km/h cut-in. Will automatically engage as Katabatic winds rise tonight.',
-      lastServiceDate: '05-Feb-2026',
+      diagnosticCodes: ['STANDBY: WIND BELOW CUT-IN'],
+      recommendedAction: 'Will automatically engage as Katabatic winds rise.',
+      lastServiceDate: eq?.last_maintenance || 'N/A',
     });
   };
 
   // Inspect battery storage
   const inspectBattery = () => {
+    const eq = equipment.find((e: any) => e.name.includes('Battery') || e.equipment_type === 'STORAGE');
     setDetailItem({
       type: 'generator',
       title: 'Microgrid LiFePO4 Energy Storage Bank',
       subtitle: 'Containerized Thermal-Regulated Battery Energy Storage (BESS)',
       category: 'ENERGY STORAGE SYSTEM',
       status: batteryPct > 20 ? 'ONLINE' : 'WARNING',
-      healthScore: Math.round(batteryPct),
+      healthScore: eq?.health_score ?? Math.round(batteryPct),
       primaryValue: batteryPct,
       primaryUnit: '%',
       primaryLabel: 'STATE OF CHARGE',
@@ -231,23 +218,18 @@ export const EnergySystems = ({ stationId }: { stationId: number }) => {
       metrics: [
         { label: 'NOMINAL CAP', value: '400 kWh' },
         { label: 'AVAILABLE', value: `${((batteryPct / 100) * 400).toFixed(0)} kWh` },
-        { label: 'CELL TEMP', value: '21.5 °C' },
-        { label: 'HVAC ENCLOSURE', value: 'STABLE' },
-        { label: 'CYCLE COUNT', value: '482 Cycles' },
-        { label: 'SOH', value: '96.2 %' },
+        { label: 'TEMP', value: eq?.temperature != null ? `${eq.temperature} °C` : 'N/A' },
       ],
       specs: [
         { key: 'CHEMISTRY', value: 'Lithium Iron Phosphate (LiFePO4)' },
-        { key: 'BMS PROTOCOL', value: 'Dual-Canbus Redundant Controller' },
-        { key: 'HEATER SYSTEM', value: 'Waste-Heat Glycol + Electric' },
-        { key: 'INVERTER', value: 'Grid-Forming 150 kVA Smart Inverter' },
+        { key: 'LAST MAINT.', value: eq?.last_maintenance || 'Unknown' },
       ],
-      diagnosticCodes: ['BMS: NOMINAL', 'CELL_DELTA_V: 8 mV (EXCELLENT)', 'THERMAL_LOOP: BALANCED'],
+      diagnosticCodes: ['BMS: NOMINAL'],
       recommendedAction:
         batteryPct < 30
           ? 'Battery reserves below 30%. Start auxiliary diesel generator to recharge buffer.'
           : 'State of charge optimal. Battery buffer ready to absorb load swings.',
-      lastServiceDate: '28-Jan-2026',
+      lastServiceDate: eq?.last_maintenance || 'N/A',
     });
   };
 
@@ -269,19 +251,14 @@ export const EnergySystems = ({ stationId }: { stationId: number }) => {
       metrics: [
         { label: 'TOTAL VOLUME', value: '120,000 L' },
         { label: 'CURRENT LEVEL', value: `${Math.round((fuelPct / 100) * 120000).toLocaleString()} L` },
-        { label: 'DAILY BURN', value: '~380 L/day' },
-        { label: 'TANK TEMP', value: '-12.0 °C' },
-        { label: 'LEAK DETECT', value: 'ALL CLEAR' },
-        { label: 'FUEL VISCOSITY', value: '4.1 cSt' },
       ],
       specs: [
         { key: 'FUEL TYPE', value: 'Jet A-1 / Arctic Grade-A Diesel' },
         { key: 'STORAGE CELLS', value: '4 x 30,000L Insulated Tanks' },
-        { key: 'HEATING LOOP', value: 'Waste Heat Glycol Trace Line' },
       ],
-      diagnosticCodes: ['LEAK_SENSORS: 0x00 OK', 'HYDROSTATIC_LEVEL: CALIBRATED'],
+      diagnosticCodes: ['LEAK_SENSORS: 0x00 OK'],
       recommendedAction: 'Reserves sufficient for wintering mission. Scheduled inspection before April blizzard season.',
-      lastServiceDate: '10-Feb-2026',
+      lastServiceDate: 'Unknown',
       actions: [
         {
           label: 'FILE RESUPPLY NOTIFICATION',
@@ -291,6 +268,9 @@ export const EnergySystems = ({ stationId }: { stationId: number }) => {
       ],
     });
   };
+
+  const nonCriticalLoad = dashboard.loads?.filter(l => l.category === 'NON_CRITICAL' && l.enabled).reduce((acc, l) => acc + l.current_power_kw, 0) || 0;
+  const highPriorityLoad = dashboard.loads?.filter(l => l.category === 'HIGH_PRIORITY' && l.enabled).reduce((acc, l) => acc + l.current_power_kw, 0) || 0;
 
   return (
     <div ref={containerRef} className="flex flex-col gap-6 max-w-6xl mx-auto h-full overflow-auto pr-2 custom-scrollbar pb-10">
@@ -518,7 +498,7 @@ export const EnergySystems = ({ stationId }: { stationId: number }) => {
           >
             <div className="text-left">
               <div className="text-xs font-bold font-mono text-slate-700 group-hover:text-amber-600">SHED NON-CRITICAL</div>
-              <div className="text-[10px] text-slate-500">Sauna, Galley & Workshops (-29 kW)</div>
+              <div className="text-[10px] text-slate-500">Selected Groups (-{nonCriticalLoad.toFixed(1)} kW)</div>
             </div>
             <ArrowDownToLine className="w-4 h-4 text-slate-500 group-hover:text-amber-600" />
           </button>
@@ -528,8 +508,8 @@ export const EnergySystems = ({ stationId }: { stationId: number }) => {
             className="p-3 bg-slate-50 hover:bg-slate-100/80 border border-slate-200 hover:border-red-300 rounded-xl flex items-center justify-between transition-all group"
           >
             <div className="text-left">
-              <div className="text-xs font-bold font-mono text-slate-700 group-hover:text-red-600">SHED LABS & LIDAR</div>
-              <div className="text-[10px] text-slate-500">Science Freezers & Radar (-30 kW)</div>
+              <div className="text-xs font-bold font-mono text-slate-700 group-hover:text-red-600">SHED HIGH PRIORITY</div>
+              <div className="text-[10px] text-slate-500">Selected Groups (-{highPriorityLoad.toFixed(1)} kW)</div>
             </div>
             <ArrowDownToLine className="w-4 h-4 text-slate-500 group-hover:text-red-600" />
           </button>

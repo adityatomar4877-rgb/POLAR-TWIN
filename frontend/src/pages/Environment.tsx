@@ -87,8 +87,8 @@ export const Environment = ({ stationId }: { stationId: number }) => {
       ? { text: 'HIGH (15 Min Exposure Limit)', color: 'text-amber-600 bg-amber-50 border-amber-200' }
       : { text: 'MODERATE (Standard Gear Permitted)', color: 'text-emerald-700 bg-emerald-50 border-emerald-200' };
 
-  // Simulated 24H pressure trend data for barograph
-  const barograph = [988, 987, 986, 985, 984, 983, 982, 981, 983, 984, 985, 985];
+  // Simulated 24H pressure trend data for barograph - fallback to current pressure
+  const barograph = Array(12).fill(pressure);
 
   return (
     <div ref={containerRef} className="flex flex-col gap-6 max-w-6xl mx-auto h-full overflow-auto pr-2 custom-scrollbar pb-12">
@@ -153,9 +153,9 @@ export const Environment = ({ stationId }: { stationId: number }) => {
             secondaryValue: `${windChill.toFixed(1)}°C`,
             secondaryLabel: 'Wind Chill',
             metrics: [
-              { label: '24h High', value: `${(tempC + 2.4).toFixed(1)}°C` },
-              { label: '24h Low', value: `${(tempC - 3.1).toFixed(1)}°C` },
-              { label: 'Trend', value: 'Falling' }
+              { label: '24h High', value: 'N/A' },
+              { label: '24h Low', value: 'N/A' },
+              { label: 'Trend', value: 'N/A' }
             ],
             specs: [
               { key: 'Sensor Type', value: 'PT100 RTD' },
@@ -192,9 +192,9 @@ export const Environment = ({ stationId }: { stationId: number }) => {
             secondaryValue: `${Math.round(env?.wind_direction_deg ?? 180)}°`,
             secondaryLabel: 'Heading',
             metrics: [
-              { label: 'Gust Max', value: `${(windKmh * 1.4).toFixed(1)} km/h` },
-              { label: 'Avg Speed', value: `${(windKmh * 0.9).toFixed(1)} km/h` },
-              { label: 'Shear', value: 'Nominal' }
+              { label: 'Gust Max', value: 'N/A' },
+              { label: 'Avg Speed', value: 'N/A' },
+              { label: 'Shear', value: 'N/A' }
             ],
             specs: [
               { key: 'Sensor Type', value: 'Ultrasonic 3D' },
@@ -232,8 +232,8 @@ export const Environment = ({ stationId }: { stationId: number }) => {
             secondaryLabel: 'Humidity',
             metrics: [
               { label: 'Visibility', value: `${visibility.toFixed(1)} km` },
-              { label: 'Trend', value: '-0.2 hPa/h' },
-              { label: 'Storm Risk', value: 'Low' }
+              { label: 'Trend', value: 'N/A' },
+              { label: 'Storm Risk', value: 'N/A' }
             ],
             specs: [
               { key: 'Sensor', value: 'Digital Baro' },
@@ -276,9 +276,9 @@ export const Environment = ({ stationId }: { stationId: number }) => {
           <div className="my-4 flex items-center gap-6">
             <div className="relative w-28 h-28 flex items-center justify-center shrink-0">
               {/* Radial gradient background */}
-              <div className="absolute inset-0 rounded-full bg-gradient-to-tr from-emerald-100 via-teal-50 to-purple-100 border border-purple-200/60" />
+              <div className="absolute inset-0 rounded-full bg-gradient-to-tr from-slate-100 via-slate-50 to-slate-200 border border-slate-200/60" />
               <div className="relative text-center">
-                <span className="text-2xl font-black text-slate-900">3.4</span>
+                <span className="text-2xl font-black text-slate-900">N/A</span>
                 <span className="block text-[9px] font-mono text-slate-400 uppercase">Kp Rating</span>
               </div>
             </div>
@@ -286,15 +286,15 @@ export const Environment = ({ stationId }: { stationId: number }) => {
             <div className="flex-1 space-y-2 text-xs">
               <div className="flex items-center justify-between border-b border-slate-100 pb-1">
                 <span className="text-slate-400 font-medium">SOLAR WIND SPEED</span>
-                <span className="font-bold font-mono text-slate-800">418.2 km/s</span>
+                <span className="font-bold font-mono text-slate-800">N/A</span>
               </div>
               <div className="flex items-center justify-between border-b border-slate-100 pb-1">
                 <span className="text-slate-400 font-medium">MAGNETIC FIELD (Bz)</span>
-                <span className="font-bold font-mono text-emerald-600">-1.8 nT (South)</span>
+                <span className="font-bold font-mono text-slate-600">N/A</span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-slate-400 font-medium">RADIO PROPAGATION</span>
-                <span className="font-bold font-mono text-emerald-700">HF NORMAL</span>
+                <span className="font-bold font-mono text-slate-700">N/A</span>
               </div>
             </div>
           </div>
@@ -361,16 +361,16 @@ export const Environment = ({ stationId }: { stationId: number }) => {
                 title: 'Snowpack Profiler',
                 subtitle: 'Cryosphere Accumulation Sensor',
                 category: 'CRYOSPHERE',
-                status: 'ONLINE',
-                primaryValue: 142.5,
+                status: 'OFFLINE',
+                primaryValue: 0,
                 primaryUnit: 'cm',
                 primaryLabel: 'Depth',
-                secondaryValue: '+1.2 cm',
+                secondaryValue: 'N/A',
                 secondaryLabel: '24h Change',
                 metrics: [
-                  { label: 'Density', value: '0.34 g/cm³' },
-                  { label: 'Temp (Surface)', value: '-22°C' },
-                  { label: 'Temp (-1m)', value: '-15°C' }
+                  { label: 'Density', value: 'N/A' },
+                  { label: 'Temp (Surface)', value: 'N/A' },
+                  { label: 'Temp (-1m)', value: 'N/A' }
                 ],
                 specs: [
                   { key: 'Sensor', value: 'Ultrasonic Pulse' },
@@ -384,8 +384,8 @@ export const Environment = ({ stationId }: { stationId: number }) => {
                 <Snowflake className="w-4 h-4 text-blue-500" />
                 SNOW ACCUMULATION
               </div>
-              <p className="text-xl font-extrabold text-slate-900 mt-2">142.5 cm</p>
-              <p className="text-[11px] text-slate-400 mt-1">+1.2 cm in last 24h</p>
+              <p className="text-xl font-extrabold text-slate-900 mt-2">N/A</p>
+              <p className="text-[11px] text-slate-400 mt-1">No telemetry data</p>
             </div>
 
             {/* Solar Irradiance / UV */}
@@ -395,16 +395,16 @@ export const Environment = ({ stationId }: { stationId: number }) => {
                 title: 'Pyranometer Array',
                 subtitle: 'Solar Radiation Sensor',
                 category: 'CRYOSPHERE',
-                status: 'ONLINE',
+                status: solarIrr > 0 ? 'ONLINE' : 'OFFLINE',
                 primaryValue: solarIrr,
                 primaryUnit: 'W/m²',
                 primaryLabel: 'Irradiance',
-                secondaryValue: '2.1',
+                secondaryValue: 'N/A',
                 secondaryLabel: 'UV Index',
                 metrics: [
-                  { label: 'Peak (Today)', value: '345 W/m²' },
-                  { label: 'Albedo', value: '0.82' },
-                  { label: 'Cloud Cover', value: '12%' }
+                  { label: 'Peak (Today)', value: 'N/A' },
+                  { label: 'Albedo', value: 'N/A' },
+                  { label: 'Cloud Cover', value: 'N/A' }
                 ],
                 specs: [
                   { key: 'Sensor', value: 'Thermopile' },
@@ -421,7 +421,7 @@ export const Environment = ({ stationId }: { stationId: number }) => {
               <p className="text-xl font-extrabold text-slate-900 mt-2">
                 <GSAPNumberTicker value={solarIrr} decimals={0} suffix=" W/m²" />
               </p>
-              <p className="text-[11px] text-slate-400 mt-1">UV Index: 2.1 (Low / Polar)</p>
+              <p className="text-[11px] text-slate-400 mt-1">UV Index: N/A</p>
             </div>
 
             {/* Total Column Ozone */}
@@ -431,16 +431,16 @@ export const Environment = ({ stationId }: { stationId: number }) => {
                 title: 'Dobson Spectrophotometer',
                 subtitle: 'Stratospheric Ozone Monitor',
                 category: 'ATMOSPHERE',
-                status: 'ONLINE',
-                primaryValue: 312,
+                status: 'OFFLINE',
+                primaryValue: 0,
                 primaryUnit: 'DU',
                 primaryLabel: 'Ozone',
-                secondaryValue: 'Stable',
+                secondaryValue: 'N/A',
                 secondaryLabel: 'Trend',
                 metrics: [
-                  { label: 'Hole Status', value: 'Closed' },
-                  { label: 'Anomaly', value: '+4 DU' },
-                  { label: 'Calibration', value: 'Passed' }
+                  { label: 'Hole Status', value: 'N/A' },
+                  { label: 'Anomaly', value: 'N/A' },
+                  { label: 'Calibration', value: 'N/A' }
                 ],
                 specs: [
                   { key: 'Wavelengths', value: '305-340 nm' },
@@ -454,8 +454,8 @@ export const Environment = ({ stationId }: { stationId: number }) => {
                 <Layers className="w-4 h-4 text-indigo-500" />
                 OZONE COLUMN
               </div>
-              <p className="text-xl font-extrabold text-slate-900 mt-2">312 DU</p>
-              <p className="text-[11px] text-slate-400 mt-1">Dobson Spectrophotometer</p>
+              <p className="text-xl font-extrabold text-slate-900 mt-2">N/A</p>
+              <p className="text-[11px] text-slate-400 mt-1">No telemetry data</p>
             </div>
 
             {/* Outdoor Acoustic Noise */}
@@ -465,16 +465,16 @@ export const Environment = ({ stationId }: { stationId: number }) => {
                 title: 'Acoustic Soundscape Monitor',
                 subtitle: 'Ambient Noise Telemetry',
                 category: 'ENVIRONMENT',
-                status: 'ONLINE',
-                primaryValue: 34.2,
+                status: 'OFFLINE',
+                primaryValue: 0,
                 primaryUnit: 'dBA',
                 primaryLabel: 'Noise Level',
-                secondaryValue: 'Katabatic',
+                secondaryValue: 'N/A',
                 secondaryLabel: 'Source ID',
                 metrics: [
-                  { label: 'Peak', value: '62.1 dBA' },
-                  { label: 'L90 (Bg)', value: '28.4 dBA' },
-                  { label: 'Spectrum', value: 'Low Freq' }
+                  { label: 'Peak', value: 'N/A' },
+                  { label: 'L90 (Bg)', value: 'N/A' },
+                  { label: 'Spectrum', value: 'N/A' }
                 ],
                 specs: [
                   { key: 'Microphone', value: 'Class 1' },
@@ -488,8 +488,8 @@ export const Environment = ({ stationId }: { stationId: number }) => {
                 <Volume2 className="w-4 h-4 text-teal-600" />
                 ACOUSTIC SOUNDSCAPE
               </div>
-              <p className="text-xl font-extrabold text-slate-900 mt-2">34.2 dBA</p>
-              <p className="text-[11px] text-slate-400 mt-1">Ambient Katabatic noise</p>
+              <p className="text-xl font-extrabold text-slate-900 mt-2">N/A</p>
+              <p className="text-[11px] text-slate-400 mt-1">No telemetry data</p>
             </div>
           </div>
         </div>

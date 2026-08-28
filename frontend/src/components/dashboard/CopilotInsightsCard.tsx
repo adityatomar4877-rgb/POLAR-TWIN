@@ -12,6 +12,9 @@ export default function CopilotInsightsCard({
 }) {
   const navigate = useNavigate();
 
+  const activeRecs = _recommendations?.filter((r) => r.status !== 'EXECUTED' && r.status !== 'DISMISSED') || [];
+  const topRec = activeRecs.length > 0 ? activeRecs[0] : null;
+
   return (
     <section className="w-full rounded-xl border border-slate-200 bg-white p-4 shadow-xs transition-all hover:shadow-md flex flex-col justify-between">
       <h2 className="text-[11px] font-extrabold uppercase tracking-wider text-slate-700 mb-3">
@@ -37,13 +40,22 @@ export default function CopilotInsightsCard({
 
         {/* Text */}
         <div className="min-w-0 flex-1">
-          <p className="text-[11px] text-slate-400 font-medium">Polaris AI has analyzed</p>
+          <p className="text-[11px] text-slate-400 font-medium">Active Recommendations</p>
           <p className="text-xl font-black text-slate-900 font-mono leading-tight my-0.5">
-            <GSAPNumberTicker value={127} decimals={0} />
-            <span className="text-[11px] font-semibold text-slate-400 ml-1">data points</span>
+            <GSAPNumberTicker value={activeRecs.length} decimals={0} />
+            <span className="text-[11px] font-semibold text-slate-400 ml-1">insights</span>
           </p>
-          <p className="text-[11px] text-slate-400 font-medium mt-1">• Top Priority</p>
-          <p className="text-xs font-extrabold text-slate-800">Energy Deficit</p>
+          {topRec ? (
+            <>
+              <p className="text-[11px] text-slate-400 font-medium mt-1">• Top Priority</p>
+              <p className="text-xs font-extrabold text-slate-800 truncate">{topRec.title}</p>
+            </>
+          ) : (
+            <>
+              <p className="text-[11px] text-slate-400 font-medium mt-1">• Status</p>
+              <p className="text-xs font-extrabold text-slate-800">System Nominal</p>
+            </>
+          )}
         </div>
 
         {/* Ask Polaris — red/coral pill matching screenshot */}

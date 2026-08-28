@@ -94,17 +94,17 @@ export const Infrastructure = ({ stationId }: { stationId: number }) => {
       metrics: [
         { label: 'STATUS', value: eq.status || 'ONLINE' },
         { label: 'CRITICAL TIER', value: eq.is_critical ? 'TIER-1' : 'TIER-2' },
-        { label: 'VIBRATION', value: faulted ? '4.8 mm/s' : '0.9 mm/s' },
-        { label: 'OPERATING TEMP', value: '42.1 °C' },
-        { label: 'POWER DRAW', value: '14.2 kW' },
-        { label: 'CALIBRATION', value: 'VALID' },
+        { label: 'VIBRATION', value: 'N/A' },
+        { label: 'OPERATING TEMP', value: eq.temperature != null ? `${eq.temperature} °C` : 'N/A' },
+        { label: 'POWER DRAW', value: 'N/A' },
+        { label: 'CALIBRATION', value: 'N/A' },
       ],
       specs: [
-        { key: 'MANUFACTURER', value: 'PolarTech Subsystems & Instrumentation' },
-        { key: 'MODEL NUMBER', value: `PT-${eq.equipment_type?.slice(0, 4) || 'GEN'}-2026-X` },
-        { key: 'LOCATION', value: 'Bharati Module Core Bay B' },
-        { key: 'RATED LIFETIME', value: '50,000 Operating Hours' },
-        { key: 'SAFETY FACTOR', value: '3.5x Cold-Tolerance Design' },
+        { key: 'MANUFACTURER', value: 'PolarTech Subsystems' },
+        { key: 'MODEL NUMBER', value: `PT-${eq.equipment_type?.slice(0, 4) || 'GEN'}-X` },
+        { key: 'LOCATION', value: 'Module Core' },
+        { key: 'RATED LIFETIME', value: '50,000 Hrs' },
+        { key: 'SAFETY FACTOR', value: '3.5x Cold-Tolerance' },
       ],
       diagnosticCodes: [
         faulted ? 'DTC-41: ANOMALY FLAGGED' : 'DTC-00: SYSTEM NOMINAL',
@@ -113,8 +113,8 @@ export const Infrastructure = ({ stationId }: { stationId: number }) => {
       ],
       recommendedAction: faulted
         ? 'Condition anomaly detected. Schedule preventative maintenance inspection.'
-        : 'System operating within nominal parameters. Next scheduled overhaul in 180 days.',
-      lastServiceDate: '15-Jan-2026',
+        : 'System operating within nominal parameters.',
+      lastServiceDate: eq.last_maintenance || 'N/A',
       actions: [
         {
           label: 'SCHEDULE WORK ORDER',

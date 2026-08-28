@@ -18,13 +18,14 @@ export default function EnergyOverviewCard({ energy }: { energy?: EnergyTelemetr
     queryFn: () => getFuelPrediction(selectedStationId),
   });
 
-  const generated = energy?.generation_kw ?? 14.1;
-  const consumed = energy?.consumption_kw ?? 11.7;
-  const stored = Math.abs(energy?.battery_power_kw ?? 2.4);
-  const battery = energy?.battery_percentage ?? 84.7;
-  const discharging = (energy?.battery_power_kw ?? -84.9) < 0;
-  const fuelPct = energy?.fuel_percentage ?? fuelForecast?.current_fuel_percentage ?? 82;
-  const fuelDays = Math.max(1, Math.round(fuelForecast?.days_until_critical ?? 31));
+  const generated = energy?.generation_kw ?? 0;
+  const consumed = energy?.consumption_kw ?? 0;
+  const batteryPower = energy?.battery_power_kw ?? 0;
+  const stored = Math.abs(batteryPower);
+  const battery = energy?.battery_percentage ?? 0;
+  const discharging = batteryPower < 0;
+  const fuelPct = energy?.fuel_percentage ?? fuelForecast?.current_fuel_percentage ?? 0;
+  const fuelDays = Math.max(0, Math.round(fuelForecast?.days_until_critical ?? 0));
 
   // Compute energy balance % (or fallback to 84% nominal baseline)
   const balancePercentage = Math.min(100, Math.max(0, Math.round(energy?.battery_percentage ?? 84)));
@@ -89,7 +90,7 @@ export default function EnergyOverviewCard({ energy }: { energy?: EnergyTelemetr
             {discharging ? 'Discharging' : 'Charging'}
           </p>
           <p className="text-[10px] font-bold text-slate-600 font-mono">
-            -84.9 kW
+            {batteryPower.toFixed(1)} kW
           </p>
         </div>
 

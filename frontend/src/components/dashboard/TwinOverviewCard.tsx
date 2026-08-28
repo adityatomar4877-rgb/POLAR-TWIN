@@ -180,8 +180,8 @@ export default function TwinOverviewCard({ dashboard }: { dashboard: StationDash
           icon={Fuel}
           iconClass="bg-orange-50 text-orange-600 border border-orange-200"
           title="FUEL STORAGE"
-          status={`${Math.round(energy?.fuel_percentage ?? 82)}%`}
-          value={`${Math.max(1, Math.round(fuelForecast?.days_until_critical ?? 31))} Days Remaining`}
+          status={`${Math.round(energy?.fuel_percentage ?? 0)}%`}
+          value={`${Math.max(0, Math.round(fuelForecast?.days_until_critical ?? 0))} Days Remaining`}
           className="left-[12%] top-[34%] hidden sm:flex"
           connector="none"
           visible={view === 'all' || view === 'power'}
@@ -195,7 +195,7 @@ export default function TwinOverviewCard({ dashboard }: { dashboard: StationDash
           statusTone={powerOnline ? 'ok' : 'bad'}
           value={
             <>
-              <GSAPNumberTicker value={energy?.generation_kw ?? 14.1} decimals={1} /> kW
+              <GSAPNumberTicker value={energy?.generation_kw ?? 0} decimals={1} /> kW
             </>
           }
           className="left-[34%] top-[14%] hidden sm:flex"
@@ -230,8 +230,8 @@ export default function TwinOverviewCard({ dashboard }: { dashboard: StationDash
           icon={Droplets}
           iconClass="bg-cyan-50 text-cyan-600 border border-cyan-200"
           title="WATER STATION"
-          status="Operational"
-          value="81% Available"
+          status="No Data"
+          value="No Telemetry"
           className="left-[42%] bottom-[10%] hidden lg:flex"
           connector="above"
           visible={view === 'all' || view === 'habitat'}
