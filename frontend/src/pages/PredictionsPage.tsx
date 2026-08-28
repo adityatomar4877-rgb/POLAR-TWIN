@@ -100,9 +100,11 @@ export const PredictionsPage = ({ stationId }: { stationId: number }) => {
             <ShieldCheck size={14} className="text-emerald-600" />
             {energy?.model_name ?? 'RandomForestEnergyForecast'}
           </span>
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700 border border-slate-200">
-            {energy?.feature_count ?? 63} Features
-          </span>
+          {energy?.feature_count != null && (
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700 border border-slate-200">
+              {energy.feature_count} Features
+            </span>
+          )}
         </div>
       </div>
 
