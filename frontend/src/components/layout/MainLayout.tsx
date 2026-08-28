@@ -3,6 +3,7 @@ import { Outlet, useLocation } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Sidebar } from './Sidebar';
 import TopBar from './TopBar';
+import StationAmbientBackground from './StationAmbientBackground';
 import EmergencyModeHUD from '../emergency/EmergencyModeHUD';
 import { useStation } from '../../context/StationContext';
 import { useLenisScroll } from '../../hooks/useLenisScroll';
@@ -16,8 +17,8 @@ export const MainLayout = () => {
   const lenisRef = useLenisScroll({
     wrapperRef: mainRef,
     contentRef: contentRef,
-    lerp: 0.1,
-    wheelMultiplier: 1.1,
+    lerp: 0.075,
+    wheelMultiplier: 0.95,
   });
 
   useEffect(() => {
@@ -33,14 +34,9 @@ export const MainLayout = () => {
     dashboard?.energy?.grid_status?.toUpperCase() === 'CRITICAL';
 
   return (
-    <div className="relative flex h-screen w-full overflow-hidden bg-slate-950 text-slate-800">
-      {/* Dashboard photo background */}
-      <div
-        className="pointer-events-none fixed inset-0 z-0 bg-cover bg-center bg-no-repeat"
-        style={{ backgroundImage: "url('/polar-bg.jpg')" }}
-      >
-        <div className="absolute inset-0 bg-slate-900/25" />
-      </div>
+    <div className="relative flex h-screen w-full overflow-hidden bg-slate-100 text-slate-800">
+      {/* Clean high-tech Station Ambient Background with animated ship & telemetry */}
+      <StationAmbientBackground />
 
       <div className="relative z-10 flex h-full">
         <Sidebar />

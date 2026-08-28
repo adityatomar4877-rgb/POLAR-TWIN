@@ -70,16 +70,16 @@ export default function EquipmentHealthCard({ equipment }: { equipment: Equipmen
             </span>
           ))}
           <button
-            onClick={() => navigate('/infrastructure')}
-            className="flex items-center gap-1 text-xs font-semibold text-blue-600 transition-colors hover:text-blue-700"
+            onClick={() => navigate('/maintenance')}
+            className="flex items-center gap-1 text-xs font-semibold text-blue-600 transition-colors hover:text-blue-700 cursor-pointer"
           >
-            View All
+            Maintenance Hub
             <ArrowUpRight size={12} />
           </button>
         </div>
       </div>
 
-      <div className="mt-4 space-y-1">
+      <div className="mt-4 space-y-1.5">
         {watchlist.length === 0 && (
           <p className="rounded-xl bg-slate-50 px-4 py-6 text-center text-sm text-slate-400">
             No equipment registered for this station yet.
@@ -91,12 +91,14 @@ export default function EquipmentHealthCard({ equipment }: { equipment: Equipmen
             <button
               key={eq.id}
               type="button"
-              onClick={() => navigate('/infrastructure')}
-              className="group flex w-full items-center gap-3 rounded-xl px-2 py-2.5 text-left transition-colors hover:bg-slate-50"
+              onClick={() => navigate('/maintenance')}
+              className="group flex w-full items-center gap-3 rounded-xl border border-slate-100 bg-slate-50/50 px-3 py-2 text-left transition-all hover:border-sky-200 hover:bg-white hover:shadow-2xs cursor-pointer"
             >
               <span className={clsx('h-2 w-2 shrink-0 rounded-full', statusDot[(eq.status ?? '').toUpperCase()] ?? 'bg-slate-400')} />
               <span className="min-w-0 flex-[1.2]">
-                <span className="block truncate text-[13px] font-semibold text-slate-800">{eq.name}</span>
+                <span className="block truncate text-[13px] font-semibold text-slate-800 group-hover:text-cyan-700 transition-colors">
+                  {eq.name}
+                </span>
                 <span className="block truncate text-[11px] capitalize text-slate-400">
                   {(eq.equipment_type ?? '').toLowerCase().replaceAll('_', ' ')}
                   {eq.runtime_hours != null ? ` · ${Math.round(eq.runtime_hours)}h runtime` : ''}
@@ -104,7 +106,7 @@ export default function EquipmentHealthCard({ equipment }: { equipment: Equipmen
               </span>
 
               <span className="hidden min-w-0 flex-[1.4] items-center gap-2 sm:flex">
-                <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-slate-100">
+                <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-slate-200/70">
                   <span
                     className={clsx('block h-full rounded-full transition-all duration-700', healthBarColor(eq.health_score))}
                     style={{ width: `${Math.max(0, Math.min(100, eq.health_score))}%` }}
@@ -125,7 +127,7 @@ export default function EquipmentHealthCard({ equipment }: { equipment: Equipmen
                 {due === null ? '—' : due < 0 ? `Overdue ${Math.abs(due)}d` : due === 0 ? 'Due today' : `Service ${due}d`}
               </span>
 
-              <ChevronRight size={14} className="shrink-0 text-slate-300 transition-colors group-hover:text-slate-500" />
+              <ChevronRight size={14} className="shrink-0 text-slate-300 transition-colors group-hover:text-cyan-600" />
             </button>
           );
         })}
@@ -133,8 +135,8 @@ export default function EquipmentHealthCard({ equipment }: { equipment: Equipmen
 
       {remaining > 0 && (
         <button
-          onClick={() => navigate('/infrastructure')}
-          className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-slate-200 py-2 text-xs font-semibold text-slate-500 transition-colors hover:border-slate-300 hover:text-slate-700"
+          onClick={() => navigate('/maintenance')}
+          className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-slate-200 py-2 text-xs font-semibold text-slate-500 transition-colors hover:border-slate-300 hover:text-slate-700 cursor-pointer"
         >
           <Cog size={12} />
           {remaining} more system{remaining === 1 ? '' : 's'} under monitoring

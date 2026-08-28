@@ -2,10 +2,11 @@ import { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import gsap from 'gsap';
 import clsx from 'clsx';
-import { Cpu, Activity, Plus, CheckCircle2, Wrench } from 'lucide-react';
+import { Cpu, Activity, Plus, CheckCircle2, Wrench, Sparkles } from 'lucide-react';
 import { getStationEquipment } from '../api/stations';
 import { getMaintenanceTasks, createMaintenanceTask, completeMaintenanceTask } from '../api/maintenance';
 import GSAPNumberTicker from '../components/dashboard/GSAPNumberTicker';
+import GSAPFlipDetailModal, { type DetailCardData } from '../components/dashboard/GSAPFlipDetailModal';
 import type { MaintenanceTaskCreate } from '../api/types';
 
 const PRIORITY_TONE: Record<string, string> = {
@@ -18,6 +19,7 @@ const PRIORITY_TONE: Record<string, string> = {
 export const Infrastructure = ({ stationId }: { stationId: number }) => {
   const qc = useQueryClient();
   const [modalOpen, setModalOpen] = useState(false);
+  const [detailItem, setDetailItem] = useState<DetailCardData | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const { data: equipment, isLoading } = useQuery({
@@ -65,6 +67,56 @@ export const Infrastructure = ({ stationId }: { stationId: number }) => {
   const openTasks = (tasks ?? []).filter((t) => t.status !== 'COMPLETED');
   const doneTasks = (tasks ?? []).filter((t) => t.status === 'COMPLETED');
 
+  const inspectEquipment = (eq: any) => {
+    const faulted = eq.status === 'WARNING' || eq.status === 'CRITICAL' || eq.status === 'OFFLINE' || eq.status === 'FAILED';
+    const runtime = Math.round(eq.runtime_hours ?? 1420);
+
+    setDetailItem({
+      type: 'equipment',
+      title: eq.name,
+      subtitle: `Asset ID #${eq.id} · Type: ${eq.equipment_type || 'STATION_SUBSYSTEM'}`,
+      category: eq.is_critical ? 'TIER-1 CRITICAL ASSET' : 'STANDARD SUBSYSTEM',
+      status: faulted ? 'WARNING' : 'RUNNING',
+      healthScore: Math.round(eq.health_score ?? 90),
+      primaryValue: Math.round(eq.health_score ?? 90),
+      primaryUnit: '%',
+      primaryLabel: 'HEALTH SCORE',
+      secondaryValue: `${runtime} hrs`,
+      secondaryLabel: 'OPERATING RUNTIME',
+      metrics: [
+        { label: 'STATUS', value: eq.status || 'ONLINE' },
+        { label: 'CRITICAL TIER', value: eq.is_critical ? 'TIER-1' : 'TIER-2' },
+        { label: 'VIBRATION', value: faulted ? '4.8 mm/s' : '0.9 mm/s' },
+        { label: 'OPERATING TEMP', value: '42.1 °C' },
+        { label: 'POWER DRAW', value: '14.2 kW' },
+        { label: 'CALIBRATION', value: 'VALID' },
+      ],
+      specs: [
+        { key: 'MANUFACTURER', value: 'PolarTech Subsystems & Instrumentation' },
+        { key: 'MODEL NUMBER', value: `PT-${eq.equipment_type?.slice(0, 4) || 'GEN'}-2026-X` },
+        { key: 'LOCATION', value: 'Bharati Module Core Bay B' },
+        { key: 'RATED LIFETIME', value: '50,000 Operating Hours' },
+        { key: 'SAFETY FACTOR', value: '3.5x Cold-Tolerance Design' },
+      ],
+      diagnosticCodes: [
+        faulted ? 'DTC-41: ANOMALY FLAGGED' : 'DTC-00: SYSTEM NOMINAL',
+        `MODBUS_NODE: 0x${eq.id.toString(16).toUpperCase()}`,
+        'TELEMETRY_RATE: 1000ms',
+      ],
+      recommendedAction: faulted
+        ? 'Condition anomaly detected. Schedule preventative maintenance inspection.'
+        : 'System operating within nominal parameters. Next scheduled overhaul in 180 days.',
+      lastServiceDate: '15-Jan-2026',
+      actions: [
+        {
+          label: 'SCHEDULE WORK ORDER',
+          actionName: 'OPEN_TASK_MODAL',
+          tone: 'primary',
+        },
+      ],
+    });
+  };
+
   return (
     <div ref={containerRef} className="custom-scrollbar mx-auto flex h-full max-w-6xl flex-col gap-6 overflow-auto pb-10 pr-2">
       <div className="gsap-infra-item flex items-center justify-between">
@@ -74,27 +126,28 @@ export const Infrastructure = ({ stationId }: { stationId: number }) => {
             INFRASTRUCTURE_REGISTRY
           </h1>
           <p className="mt-1 text-sm text-slate-500">
-            Status of critical life-support, power subsystems, and research station assets.
+            Status of critical life-support, power subsystems, and research station assets. Click any equipment card to inspect 3D Flip Diagnostics.
           </p>
         </div>
         <button
           onClick={() => setModalOpen(true)}
-          className="flex items-center gap-2 rounded-xl border border-cyan-300 bg-cyan-100 px-4 py-2 font-mono text-xs tracking-widest text-cyan-700 shadow-xs transition-all hover:bg-cyan-200 hover:shadow-sm"
+          className="flex items-center gap-2 rounded-xl border border-cyan-300 bg-cyan-100 px-4 py-2 font-mono text-xs tracking-widest text-cyan-700 shadow-xs transition-all hover:bg-cyan-200 hover:shadow-sm cursor-pointer"
         >
           <Plus size={14} /> NEW MAINTENANCE TASK
         </button>
       </div>
 
-      {/* Equipment health grid */}
+      {/* Equipment health grid (Clickable with 3D Flip Card Popup) */}
       <div className="gsap-infra-item grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
         {equipment.map((eq) => {
           const faulted = eq.status === 'WARNING' || eq.status === 'CRITICAL' || eq.status === 'OFFLINE' || eq.status === 'FAILED';
           return (
-            <div
+            <button
               key={eq.id}
+              onClick={() => inspectEquipment(eq)}
               className={clsx(
-                'group relative flex flex-col justify-between rounded-2xl border p-5 shadow-xs transition-all duration-300 hover:-translate-y-1 hover:shadow-md',
-                faulted ? 'border-red-200 bg-red-50/[0.15]' : 'border-slate-200 bg-white hover:border-slate-300'
+                'group relative text-left flex flex-col justify-between rounded-2xl border p-5 shadow-xs transition-all duration-300 hover:-translate-y-1 hover:shadow-md cursor-pointer',
+                faulted ? 'border-red-200 bg-red-50/[0.15] hover:border-red-400' : 'border-slate-200 bg-white hover:border-cyan-400'
               )}
             >
               {faulted && (
@@ -126,12 +179,15 @@ export const Infrastructure = ({ stationId }: { stationId: number }) => {
                     <GSAPNumberTicker value={eq.health_score} decimals={0} suffix="%" />
                   </span>
                 </div>
-                <div className="text-right">
+                <div className="text-right flex flex-col items-end">
                   <span className="block font-mono text-[10px] text-slate-400 font-semibold">CRITICAL_TIER</span>
                   <span className="font-mono text-xs text-slate-600 font-bold">{eq.is_critical ? 'TIER-1 CRITICAL' : 'STANDARD'}</span>
+                  <span className="font-mono text-[9px] text-cyan-600 font-bold opacity-0 group-hover:opacity-100 transition-opacity mt-0.5 flex items-center gap-1">
+                    <Sparkles size={9} /> 3D FLIP
+                  </span>
                 </div>
               </div>
-            </div>
+            </button>
           );
         })}
       </div>
@@ -203,6 +259,19 @@ export const Infrastructure = ({ stationId }: { stationId: number }) => {
           onSubmit={(payload) => createMaintenanceTask(stationId, payload)}
         />
       )}
+
+      {/* GSAP 3D Flip Card Popup */}
+      <GSAPFlipDetailModal
+        data={detailItem}
+        isOpen={!!detailItem}
+        onClose={() => setDetailItem(null)}
+        onAction={(actionName) => {
+          if (actionName === 'OPEN_TASK_MODAL') {
+            setDetailItem(null);
+            setModalOpen(true);
+          }
+        }}
+      />
     </div>
   );
 };

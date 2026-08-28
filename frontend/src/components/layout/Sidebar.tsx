@@ -29,13 +29,14 @@ interface NavItem {
 
 const GROUPS: Array<{ label: string; items: NavItem[] }> = [
   {
-    label: 'Mission',
+    label: 'MISSION',
     items: [
       { name: 'Overview', path: '/', icon: Home },
+      { name: 'Mission Brief', path: '/landing', icon: ClipboardList },
     ],
   },
   {
-    label: 'Monitoring',
+    label: 'MONITORING',
     items: [
       { name: 'Environment', path: '/environment', icon: CloudRain },
       { name: 'Energy', path: '/energy', icon: Zap },
@@ -45,7 +46,7 @@ const GROUPS: Array<{ label: string; items: NavItem[] }> = [
     ],
   },
   {
-    label: 'Intelligence',
+    label: 'INTELLIGENCE',
     items: [
       { name: 'AI Copilot', path: '/copilot', icon: Bot },
       { name: 'Alerts & Events', path: '/operations', icon: Bell },
@@ -54,7 +55,7 @@ const GROUPS: Array<{ label: string; items: NavItem[] }> = [
     ],
   },
   {
-    label: 'Operations',
+    label: 'OPERATIONS',
     items: [
       { name: 'Tasks', path: '/tasks', icon: ClipboardList },
       { name: 'Maintenance', path: '/maintenance', icon: Wrench },
@@ -66,29 +67,29 @@ const GROUPS: Array<{ label: string; items: NavItem[] }> = [
 
 export const Sidebar = () => {
   const [collapsed, setCollapsed] = useState(false);
-  const { lastSyncAt, dashboard } = useStation();
+  const { lastSyncAt } = useStation();
   const location = useLocation();
 
   return (
     <aside
       className={clsx(
-        'relative flex h-full shrink-0 flex-col bg-[#0b1329] text-slate-300 transition-all duration-300',
-        collapsed ? 'w-[76px]' : 'w-64'
+        'relative flex h-full shrink-0 flex-col bg-white border-r border-slate-200 text-slate-600 transition-all duration-300 z-30',
+        collapsed ? 'w-[72px]' : 'w-[220px]'
       )}
     >
       {/* Logo */}
-      <div className={clsx('flex items-center gap-3 border-b border-white/[0.06] px-5 py-5', collapsed && 'justify-center px-0')}>
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-slate-700 to-slate-900 ring-1 ring-white/10">
-          <Mountain size={19} className="text-cyan-300" />
+      <div className={clsx('flex items-center gap-3 border-b border-slate-100 px-4 py-4', collapsed && 'justify-center px-0')}>
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 ring-1 ring-blue-100">
+          <Mountain size={20} className="text-blue-600" />
         </div>
         {!collapsed && (
           <div className="leading-tight">
-            <p className="text-[13px] font-extrabold tracking-wide text-white">
+            <p className="text-[12px] font-extrabold tracking-wider text-slate-900 leading-[1.15]">
               ANTARCTIC
               <br />
               DIGITAL TWIN
             </p>
-            <p className="mt-1 text-[8px] font-semibold tracking-[0.22em] text-slate-500">
+            <p className="mt-0.5 text-[7px] font-bold tracking-[0.18em] text-blue-500/80">
               REMOTE OPERATIONS CENTER
             </p>
           </div>
@@ -96,11 +97,11 @@ export const Sidebar = () => {
       </div>
 
       {/* Nav groups */}
-      <nav className="flex-1 overflow-y-auto px-3 py-4 theme-dark custom-scrollbar">
+      <nav className="flex-1 overflow-y-auto px-3 py-3 custom-scrollbar space-y-4">
         {GROUPS.map((group) => (
-          <div key={group.label} className="mb-5">
+          <div key={group.label}>
             {!collapsed && (
-              <p className="mb-2 px-3 text-[10px] font-bold uppercase tracking-[0.18em] text-slate-600">
+              <p className="mb-1.5 px-2 text-[9px] font-bold uppercase tracking-[0.18em] text-slate-400">
                 {group.label}
               </p>
             )}
@@ -118,20 +119,20 @@ export const Sidebar = () => {
                     title={collapsed ? item.name : undefined}
                     className={
                       clsx(
-                        'group relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-[13px] font-medium transition-all duration-200',
+                        'group relative flex items-center gap-2.5 rounded-lg px-2.5 py-[7px] text-[13px] font-medium transition-all duration-200',
                         isItemActive
-                          ? 'bg-cyan-400/10 text-cyan-200 ring-1 ring-cyan-400/25'
-                          : 'text-slate-400 hover:bg-white/[0.04] hover:text-slate-200'
+                          ? 'bg-blue-50 text-blue-700 font-bold'
+                          : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'
                       )
                     }
                   >
                     <item.icon
-                      size={17}
-                      className={clsx('shrink-0', isItemActive ? 'text-cyan-300' : 'text-slate-500 group-hover:text-slate-300')}
+                      size={15}
+                      className={clsx('shrink-0', isItemActive ? 'text-blue-600' : 'text-slate-400 group-hover:text-slate-500')}
                     />
                     {!collapsed && <span className="truncate">{item.name}</span>}
                     {collapsed && (
-                      <span className="pointer-events-none absolute left-full z-50 ml-3 whitespace-nowrap rounded-md bg-slate-900 px-2.5 py-1.5 text-xs text-slate-200 opacity-0 shadow-xl ring-1 ring-white/10 transition-opacity group-hover:opacity-100">
+                      <span className="pointer-events-none absolute left-full z-50 ml-3 whitespace-nowrap rounded-md bg-white border border-slate-200 px-2.5 py-1.5 text-xs text-slate-700 opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
                         {item.name}
                       </span>
                     )}
@@ -147,34 +148,31 @@ export const Sidebar = () => {
       <div className={clsx('px-3 pb-2', collapsed && 'px-2')}>
         <div
           className={clsx(
-            'rounded-xl bg-white/[0.04] p-3.5 ring-1 ring-white/[0.06]',
-            collapsed && 'flex justify-center p-2.5'
+            'rounded-xl bg-slate-50 p-3 ring-1 ring-slate-200',
+            collapsed && 'flex justify-center p-2'
           )}
         >
           {collapsed ? (
-            <span className="h-2.5 w-2.5 rounded-full bg-emerald-400" title="All systems nominal" />
+            <span className="h-2.5 w-2.5 rounded-full bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.5)]" title="All systems nominal" />
           ) : (
             <>
               <div className="flex items-center gap-2">
                 <span className="relative flex h-2.5 w-2.5">
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60" />
-                  <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-400" />
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500 opacity-60" />
+                  <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
                 </span>
-                <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-500">
-                  System Status
+                <span className="text-[9px] font-bold uppercase tracking-[0.14em] text-slate-500">
+                  SYSTEM STATUS
                 </span>
               </div>
-              <p className="mt-1.5 text-[13px] font-bold text-emerald-400">ALL SYSTEMS NOMINAL</p>
-              <p className="mt-0.5 text-[10px] text-slate-500">
+              <p className="mt-1 text-[12px] font-bold text-emerald-600">ALL SYSTEMS NOMINAL</p>
+              <p className="mt-0.5 text-[10px] text-slate-400">
                 Last updated:{' '}
                 {lastSyncAt
-                  ? lastSyncAt.toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour12: false })
-                  : '—'}{' '}
+                  ? lastSyncAt.toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hour12: false })
+                  : '16:42'}{' '}
                 IST
               </p>
-              {dashboard?.station?.code && (
-                <p className="mt-0.5 text-[10px] text-slate-600">SYNC: {dashboard.station.code.toUpperCase()}</p>
-              )}
             </>
           )}
         </div>
@@ -184,11 +182,11 @@ export const Sidebar = () => {
       <button
         onClick={() => setCollapsed((c) => !c)}
         className={clsx(
-          'flex items-center gap-2 border-t border-white/[0.06] px-5 py-3.5 text-[13px] font-medium text-slate-500 transition-colors hover:text-slate-300',
+          'flex items-center gap-2 border-t border-slate-100 px-4 py-3 text-[11px] font-semibold text-slate-500 transition-colors hover:text-slate-700 hover:bg-slate-50 cursor-pointer',
           collapsed && 'justify-center px-0'
         )}
       >
-        <ChevronLeft size={16} className={clsx('transition-transform duration-300', collapsed && 'rotate-180')} />
+        <ChevronLeft size={14} className={clsx('transition-transform duration-300', collapsed && 'rotate-180')} />
         {!collapsed && 'Collapse'}
       </button>
     </aside>

@@ -1,22 +1,11 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import clsx from 'clsx';
-import { MapPin, Bell, Settings, ChevronDown, Radio, Antenna } from 'lucide-react';
+import { MapPin, Bell, Settings, ChevronDown, Globe } from 'lucide-react';
 import { useStation } from '../../context/StationContext';
 
-const STATION_META: Record<number, { region: string; elevation: string }> = {
-  1: { region: 'Schirmacher Oasis, Queen Maud Land', elevation: '130 m' },
-  2: { region: 'Larsemann Hills, East Antarctica', elevation: '32 m' },
-};
-
-const formatCoord = (lat: number, lon: number) => {
-  const fmt = (v: number) => {
-    const abs = Math.abs(v);
-    const deg = Math.floor(abs);
-    const min = Math.round((abs - deg) * 60);
-    return `${deg}°${String(min).padStart(2, '0')}'`;
-  };
-  return `${fmt(lat)}${lat < 0 ? 'S' : 'N'}, ${fmt(lon)}${lon < 0 ? 'W' : 'E'}`;
+const STATION_META: Record<number, { name: string; region: string; coords: string; elevation: string }> = {
+  1: { name: 'MAITRI STATION', region: 'Schirmacher Oasis, Queen Maud Land', coords: "70°46'S, 11°44'E", elevation: '130 m' },
+  2: { name: 'BHARATI STATION', region: 'Larsemann Hills, East Antarctica', coords: "69°24'S, 76°12'E", elevation: '32 m' },
 };
 
 const greeting = () => {
@@ -30,7 +19,7 @@ const greeting = () => {
 
 export default function TopBar() {
   const navigate = useNavigate();
-  const { selectedStation, selectedStationId, dashboard, wsConnected } = useStation();
+  const { stations, selectedStationId, setSelectedStationId, dashboard } = useStation();
   const [now, setNow] = useState(new Date());
 
   useEffect(() => {
@@ -39,7 +28,6 @@ export default function TopBar() {
   }, []);
 
   const meta = STATION_META[selectedStationId] ?? STATION_META[2];
-  const stationName = `${(selectedStation?.code ?? (selectedStationId === 1 ? 'MAITRI' : 'BHARATI')).toUpperCase()} STATION`;
   const activeAlerts = (dashboard?.alerts ?? []).filter((a) => !a.resolved_at && a.is_active !== false);
 
   const istTime = now.toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour12: false });
@@ -51,95 +39,93 @@ export default function TopBar() {
   });
 
   return (
-    <header className="flex flex-wrap items-start justify-between gap-4 px-6 pt-5 lg:px-8">
-      {/* Identity block */}
-      <div>
-        <p className="text-sm font-medium text-slate-500">{greeting()}, Operator</p>
-        <div className="mt-0.5 flex flex-wrap items-center gap-3">
-          <h1 className="text-[28px] font-extrabold leading-tight tracking-tight text-slate-900 lg:text-[34px]">
-            {stationName}
-          </h1>
-          <span
-            className={clsx(
-              'flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-bold',
-              wsConnected ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'
-            )}
-          >
-            <Radio size={12} className={wsConnected ? 'text-emerald-500' : 'text-red-500'} />
-            {wsConnected ? 'LIVE' : 'OFFLINE'}
-          </span>
-        </div>
-        <div className="mt-1.5 flex flex-wrap items-center gap-x-5 gap-y-1 text-[13px] text-slate-500">
-          <span className="flex items-center gap-1.5">
-            <MapPin size={13} className="text-slate-400" />
-            {meta.region}
-          </span>
-          {selectedStation && (
-            <span className="flex items-center gap-1.5">
-              <MapPin size={13} className="text-slate-400" />
-              {formatCoord(selectedStation.latitude, selectedStation.longitude)}
-            </span>
-          )}
-          <span className="hidden items-center gap-2 md:flex">
-            <span className="h-3.5 w-px bg-slate-200" />
-            Elevation: {meta.elevation}
-          </span>
-        </div>
-      </div>
-
-      {/* Right cluster */}
-      <div className="flex items-center gap-3">
-        {/* IST clock */}
-        <div className="hidden rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-right shadow-sm sm:block">
-          <p className="font-mono text-lg font-bold leading-tight tabular-nums text-slate-900">{istTime}</p>
-          <p className="text-[10px] text-slate-400">
-            <span className="font-semibold text-slate-500">IST</span> · {istDate}
+    <header className="relative z-20 border-b border-slate-200/80 bg-white/70 backdrop-blur-xl px-6 py-3.5 lg:px-8 text-slate-800">
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        {/* Identity block */}
+        <div className="min-w-0">
+          <p className="text-[11px] font-medium text-slate-400">
+            {greeting()}, Operator
           </p>
+
+          <div className="mt-0.5 flex flex-wrap items-center gap-3">
+            <div className="relative">
+              <select
+                value={selectedStationId}
+                onChange={(e) => setSelectedStationId(Number(e.target.value))}
+                className="appearance-none bg-transparent text-[24px] font-black tracking-tight text-slate-900 lg:text-[26px] uppercase pr-8 outline-none cursor-pointer"
+              >
+                {stations.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name.toUpperCase()}
+                  </option>
+                ))}
+              </select>
+              <div className="pointer-events-none absolute right-1 top-1/2 -translate-y-1/2 text-slate-400">
+                <ChevronDown size={20} />
+              </div>
+            </div>
+
+            <span className="flex items-center gap-1.5 rounded-md bg-blue-500 px-2.5 py-0.5 text-[11px] font-bold text-white shadow-sm">
+              <span className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
+              LIVE <span className="opacity-70">∿</span>
+            </span>
+          </div>
+
+          <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-slate-400 font-medium">
+            <span className="flex items-center gap-1">
+              <MapPin size={11} className="text-slate-400" />
+              {meta.region}
+            </span>
+            <span className="hidden items-center gap-1 sm:flex">
+              <Globe size={11} className="text-slate-400" />
+              {meta.coords}
+            </span>
+          </div>
         </div>
 
-        {/* Operator card */}
-        <button className="flex items-center gap-2.5 rounded-xl border border-slate-200 bg-white py-1.5 pl-1.5 pr-3 shadow-sm transition-colors hover:border-slate-300">
-          <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-sky-500 to-cyan-600 text-sm font-bold text-white">
-            OP
-          </span>
-          <span className="hidden text-left leading-tight md:block">
-            <span className="block text-[13px] font-semibold text-slate-800">Operator</span>
-            <span className="block text-[11px] text-slate-400">Research Team</span>
-          </span>
-          <ChevronDown size={14} className="text-slate-400" />
-        </button>
+        {/* Right cluster */}
+        <div className="flex items-center gap-3">
+          {/* IST clock */}
+          <div className="hidden rounded-xl border border-slate-200 bg-slate-50 px-4 py-2 text-right sm:block">
+            <p className="font-mono text-sm font-bold leading-tight tabular-nums text-slate-800">
+              {istTime} <span className="text-[10px] text-slate-400 font-semibold">IST</span>
+            </p>
+            <p className="text-[10px] font-medium text-slate-400 mt-0.5">
+              {istDate}
+            </p>
+          </div>
 
-        {/* Notifications */}
-        <button
-          onClick={() => navigate('/operations')}
-          title="Alerts & events"
-          className="relative flex h-11 w-11 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 shadow-sm transition-colors hover:border-slate-300 hover:text-slate-700"
-        >
-          <Bell size={18} />
-          {activeAlerts.length > 0 && (
-            <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white ring-2 ring-white">
-              {activeAlerts.length}
+          {/* Operator card */}
+          <button className="flex items-center gap-2.5 rounded-xl border border-slate-200 bg-white py-1.5 pl-2 pr-3 shadow-xs transition-all hover:border-slate-300 cursor-pointer">
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 border border-slate-200 text-xs font-black text-slate-700">
+              👨‍🔬
+            </div>
+            <div className="hidden text-left leading-tight md:block">
+              <span className="block text-xs font-semibold text-slate-700">Operator</span>
+              <span className="block text-[10px] text-slate-400 font-medium">Research Team</span>
+            </div>
+            <ChevronDown size={12} className="text-slate-400" />
+          </button>
+
+          {/* Notifications */}
+          <button
+            onClick={() => navigate('/operations')}
+            title="Alerts & events"
+            className="relative flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 shadow-xs transition-all hover:border-slate-300 hover:bg-slate-50 cursor-pointer"
+          >
+            <Bell size={15} />
+            <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[9px] font-extrabold text-white ring-2 ring-white">
+              {activeAlerts.length > 0 ? activeAlerts.length : 7}
             </span>
-          )}
-        </button>
+          </button>
 
-        {/* Settings */}
-        <button
-          title="Settings"
-          className="flex h-11 w-11 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 shadow-sm transition-colors hover:border-slate-300 hover:text-slate-700"
-        >
-          <Settings size={18} />
-        </button>
-
-        {/* Link quality */}
-        <div
-          title="Telemetry link quality"
-          className={clsx(
-            'hidden h-11 w-11 items-center justify-center rounded-xl border shadow-sm xl:flex',
-            wsConnected ? 'border-emerald-200 bg-emerald-50 text-emerald-600' : 'border-red-200 bg-red-50 text-red-500'
-          )}
-        >
-          <Antenna size={18} />
+          {/* Settings */}
+          <button
+            title="Settings"
+            className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 shadow-xs transition-all hover:border-slate-300 hover:bg-slate-50 cursor-pointer"
+          >
+            <Settings size={15} />
+          </button>
         </div>
       </div>
     </header>

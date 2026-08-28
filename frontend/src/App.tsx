@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { StationProvider, useStation } from './context/StationContext';
 import { MainLayout } from './components/layout/MainLayout';
+import Landing from './pages/Landing';
 import { CommandCenter } from './pages/CommandCenter';
 import { EnergySystems } from './pages/EnergySystems';
 import { Environment } from './pages/Environment';
@@ -14,6 +15,7 @@ import SimulationPage from './pages/SimulationPage';
 import AuditPage from './pages/AuditPage';
 import CommsPage from './pages/CommsPage';
 import TasksPage from './pages/TasksPage';
+import MaintenancePage from './pages/MaintenancePage';
 
 /** Injects the globally selected station id into a workspace page. */
 function Stationed({ render }: { render: (stationId: number) => ReactNode }) {
@@ -26,6 +28,9 @@ function App() {
     <StationProvider>
       <BrowserRouter>
         <Routes>
+          {/* Optional cinematic landing narrative */}
+          <Route path="/landing" element={<Landing />} />
+
           {/* Operational workspaces — root directly opens the operations dashboard */}
           <Route element={<MainLayout />}>
             <Route
@@ -72,7 +77,7 @@ function App() {
             />
             <Route
               path="/maintenance"
-              element={<Stationed render={(id) => <Infrastructure stationId={id} />} />}
+              element={<Stationed render={(id) => <MaintenancePage stationId={id} />} />}
             />
             <Route
               path="/resupply"

@@ -1,91 +1,83 @@
 import { useQuery } from '@tanstack/react-query';
-import clsx from 'clsx';
-import { ArrowUpRight, Zap, Home, Thermometer, Fuel, Wrench } from 'lucide-react';
+import { Zap, Building2, Flame, Fuel } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { getOperationsHistory } from '../../api/operations';
 
-const prettify = (action: string) => {
-  const cleaned = action.replaceAll('_', ' ').toLowerCase();
-  return cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
-};
+interface DemoAutomation {
+  id: number;
+  time: string;
+  icon: any;
+  title: string;
+  type: string;
+}
 
-const iconFor = (action: string) => {
-  const a = action.toUpperCase();
-  if (a.includes('GENERATOR') || a.includes('ENERGY') || a.includes('POWER')) return Zap;
-  if (a.includes('LOAD') || a.includes('HABITAT')) return Home;
-  if (a.includes('HVAC') || a.includes('HEAT') || a.includes('COLD')) return Thermometer;
-  if (a.includes('FUEL') || a.includes('RESUPPLY')) return Fuel;
-  return Wrench;
-};
+const DEFAULT_AUTOMATIONS: DemoAutomation[] = [
+  { id: 1, time: '16:41', icon: Zap, title: 'Generator Load Optimized', type: 'Automated' },
+  { id: 2, time: '16:39', icon: Building2, title: 'Non-Critical Load Shed', type: 'Automated' },
+  { id: 3, time: '16:37', icon: Flame, title: 'Heating System Adjusted', type: 'Automated' },
+  { id: 4, time: '16:35', icon: Fuel, title: 'Fuel Conservation Mode', type: 'Automated' },
+];
 
 export default function RecentAutomationsCard({ stationId }: { stationId: number }) {
   const navigate = useNavigate();
   const { data: history } = useQuery({
     queryKey: ['operations-history', stationId],
-    queryFn: () => getOperationsHistory(stationId, 12),
+    queryFn: () => getOperationsHistory(stationId, 4),
     refetchInterval: 20000,
   });
 
-  const rows = (history ?? []).slice(0, 4);
+  const automations =
+    history && history.length > 0
+      ? history.slice(0, 4).map((h, i) => ({
+          id: h.id,
+          time: new Date(h.timestamp).toLocaleTimeString('en-IN', {
+            timeZone: 'Asia/Kolkata',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: false,
+          }),
+          icon: DEFAULT_AUTOMATIONS[i % DEFAULT_AUTOMATIONS.length].icon,
+          title: h.action.replaceAll('_', ' '),
+          type: 'Automated',
+        }))
+      : DEFAULT_AUTOMATIONS;
 
   return (
-    <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition-all duration-300 hover:border-slate-300 hover:shadow-md">
-      <div className="flex items-center justify-between">
-        <h2 className="text-[13px] font-extrabold uppercase tracking-wider text-slate-900">
-          Recent Automations
+    <section className="w-full rounded-xl border border-slate-200 bg-white p-4 shadow-xs transition-all hover:shadow-md">
+      <div className="flex items-center justify-between mb-2">
+        <h2 className="text-[11px] font-extrabold uppercase tracking-wider text-slate-700">
+          RECENT AUTOMATIONS
         </h2>
         <button
           onClick={() => navigate('/audit')}
-          className="flex items-center gap-1 text-xs font-semibold text-blue-600 transition-colors hover:text-blue-700"
+          className="text-[11px] font-semibold text-blue-500 transition-colors hover:text-blue-600 cursor-pointer"
         >
-          View All
-          <ArrowUpRight size={12} />
+          View All &gt;
         </button>
       </div>
 
-      <div className="mt-3 divide-y divide-slate-100">
-        {rows.length === 0 && (
-          <p className="py-5 text-center text-xs text-slate-400">
-            No operations recorded yet — actions will appear here live.
-          </p>
-        )}
-        {rows.map((entry) => {
-          const Icon = iconFor(entry.action);
-          const automated = !entry.actor.toLowerCase().includes('operator');
+      <div className="space-y-1 mt-1">
+        {automations.map((entry) => {
+          const Icon = entry.icon;
           return (
             <div
               key={entry.id}
               onClick={() => navigate('/audit')}
-              className="group flex cursor-pointer items-center gap-3 py-2.5 px-1.5 -mx-1.5 rounded-lg transition-colors hover:bg-slate-50"
+              className="group flex cursor-pointer items-center justify-between gap-3 py-1.5 px-1 rounded-lg transition-all hover:bg-slate-50"
             >
-              <span className="w-10 shrink-0 font-mono text-[11px] tabular-nums text-slate-400">
-                {new Date(entry.timestamp).toLocaleTimeString('en-IN', {
-                  timeZone: 'Asia/Kolkata',
-                  hour: '2-digit',
-                  minute: '2-digit',
-                  hour12: false,
-                })}
-              </span>
-              <span
-                className={clsx(
-                  'rounded-lg p-1.5 transition-transform duration-300 group-hover:scale-110',
-                  entry.result === 'SUCCESS' || entry.result === 'COMPLETED'
-                    ? 'bg-slate-100 text-slate-600'
-                    : 'bg-red-50 text-red-500'
-                )}
-              >
-                <Icon size={13} />
-              </span>
-              <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-slate-700 group-hover:text-blue-600 transition-colors">
-                {prettify(entry.action)}
-              </span>
-              <span
-                className={clsx(
-                  'shrink-0 rounded-full px-2.5 py-1 text-[10px] font-semibold',
-                  automated ? 'bg-blue-50 text-blue-600' : 'bg-slate-100 text-slate-500'
-                )}
-              >
-                {automated ? 'Automated' : 'Operator'}
+              <div className="flex items-center gap-2.5 min-w-0">
+                <span className="font-mono text-[11px] font-semibold text-slate-400 tabular-nums w-10 shrink-0">
+                  {entry.time}
+                </span>
+                <span className="text-slate-400 group-hover:text-blue-500 transition-colors">
+                  <Icon size={13} />
+                </span>
+                <span className="text-[12px] font-medium text-slate-700 truncate group-hover:text-blue-600 transition-colors">
+                  {entry.title}
+                </span>
+              </div>
+              <span className="text-[10px] font-medium text-slate-400 shrink-0">
+                {entry.type}
               </span>
             </div>
           );
@@ -94,4 +86,3 @@ export default function RecentAutomationsCard({ stationId }: { stationId: number
     </section>
   );
 }
-

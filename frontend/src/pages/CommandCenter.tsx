@@ -8,15 +8,10 @@ import WeatherKpiRow from '../components/dashboard/WeatherKpiRow';
 import TwinOverviewCard from '../components/dashboard/TwinOverviewCard';
 import ActiveAlertsPanel from '../components/dashboard/ActiveAlertsPanel';
 import EnergyOverviewCard from '../components/dashboard/EnergyOverviewCard';
-import EnergyForecastCard from '../components/dashboard/EnergyForecastCard';
 import CopilotInsightsCard from '../components/dashboard/CopilotInsightsCard';
 import PredictiveInsightsRow from '../components/dashboard/PredictiveInsightsRow';
-import EquipmentHealthCard from '../components/dashboard/EquipmentHealthCard';
-import LogisticsCrewCard from '../components/dashboard/LogisticsCrewCard';
-import SimulationStrip from '../components/dashboard/SimulationStrip';
 import RecentAutomationsCard from '../components/dashboard/RecentAutomationsCard';
 import StatusFooter from '../components/dashboard/StatusFooter';
-import OperationalModeSelector from '../components/dashboard/OperationalModeSelector';
 import { useStation } from '../context/StationContext';
 
 export const CommandCenter = ({ stationId }: { stationId: number }) => {
@@ -52,8 +47,8 @@ export const CommandCenter = ({ stationId }: { stationId: number }) => {
     const ctx = gsap.context(() => {
       gsap.fromTo(
         '.gsap-reveal-card',
-        { y: 16, opacity: 0 },
-        { y: 0, opacity: 1, duration: 0.5, stagger: 0.05, ease: 'power2.out' }
+        { y: 12, opacity: 0 },
+        { y: 0, opacity: 1, duration: 0.4, stagger: 0.04, ease: 'power2.out' }
       );
     }, containerRef);
 
@@ -77,65 +72,44 @@ export const CommandCenter = ({ stationId }: { stationId: number }) => {
   const alerts = dashboard?.alerts ?? ctxDashboard?.alerts ?? [];
 
   return (
-    <div ref={containerRef} className="flex flex-col gap-5">
-      {/* Interactive Command & Operational Mode selector */}
-      <div className="gsap-reveal-card">
-        <OperationalModeSelector />
-      </div>
-
-      {/* Environment — live telemetry cards */}
+    <div ref={containerRef} className="flex flex-col gap-4 max-w-[1560px] mx-auto pb-6">
+      {/* 1. Top KPI Row (5 Weather & Station Status Cards) */}
       <div className="gsap-reveal-card">
         <WeatherKpiRow dashboard={data} />
       </div>
 
-      <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_380px]">
-        {/* Left: digital twin, energy predictions, equipment, logistics */}
-        <div className="flex min-w-0 flex-col gap-5">
-          <div className="gsap-reveal-card">
-            <TwinOverviewCard dashboard={data} />
-          </div>
-
-          <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,340px)_minmax(0,1fr)]">
-            <div className="gsap-reveal-card">
-              <EnergyOverviewCard energy={data.energy} />
-            </div>
-            <div className="gsap-reveal-card">
-              <EnergyForecastCard forecast={energyForecast} />
-            </div>
-          </div>
-
-          <div className="gsap-reveal-card">
-            <EquipmentHealthCard equipment={data.equipment ?? []} />
-          </div>
-          <div className="gsap-reveal-card">
-            <LogisticsCrewCard station={data.station} />
-          </div>
+      {/* 2. Middle Main Grid: Digital Twin Overview (Left) + Active Alerts & Energy Overview (Right) */}
+      <div className="grid grid-cols-1 gap-4 items-start lg:grid-cols-[minmax(0,1fr)_340px] xl:grid-cols-[minmax(0,1fr)_370px]">
+        {/* Left: Digital Twin Overview 3D Viewport */}
+        <div className="gsap-reveal-card flex flex-col">
+          <TwinOverviewCard dashboard={data} />
         </div>
 
-        {/* Right rail: alerts + copilot + automations */}
-        <div className="flex min-w-0 flex-col gap-5">
+        {/* Right: Active Alerts & Energy Overview */}
+        <div className="flex flex-col gap-4">
           <div className="gsap-reveal-card">
             <ActiveAlertsPanel alerts={alerts} />
           </div>
           <div className="gsap-reveal-card">
-            <CopilotInsightsCard dashboard={data} recommendations={recommendations} />
-          </div>
-          <div className="gsap-reveal-card">
-            <RecentAutomationsCard stationId={stationId} />
+            <EnergyOverviewCard energy={data.energy} />
           </div>
         </div>
       </div>
 
-      {/* Simulation-driven predictive insights */}
-      <div className="gsap-reveal-card">
-        <PredictiveInsightsRow dashboard={data} fuelForecast={fuelForecast} energyForecast={energyForecast} />
+      {/* 3. Bottom Row: 3 Insight Cards (AI Copilot + Predictive Insights + Recent Automations) */}
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+        <div className="gsap-reveal-card flex">
+          <CopilotInsightsCard dashboard={data} recommendations={recommendations} />
+        </div>
+        <div className="gsap-reveal-card flex">
+          <PredictiveInsightsRow dashboard={data} fuelForecast={fuelForecast} energyForecast={energyForecast} />
+        </div>
+        <div className="gsap-reveal-card flex">
+          <RecentAutomationsCard stationId={stationId} />
+        </div>
       </div>
 
-      {/* What-if simulation quick access */}
-      <div className="gsap-reveal-card">
-        <SimulationStrip stationId={stationId} />
-      </div>
-
+      {/* 4. Bottom Mission Status & Telemetry Dock Footer with Polar Ship */}
       <div className="gsap-reveal-card">
         <StatusFooter />
       </div>
