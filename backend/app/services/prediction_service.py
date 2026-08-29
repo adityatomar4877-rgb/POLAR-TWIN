@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 from app.models.energy import EnergyTelemetry
 from app.models.logistics import LogisticsItem
 from app.schemas.prediction import FuelDepletionForecastResponse
+from app.core.station_profiles import get_station_profile
 
 logger = logging.getLogger(__name__)
 
@@ -119,8 +120,9 @@ class PredictionService:
         )
 
         current_percentage = latest_energy.fuel_percentage if latest_energy else 65.0
-        # Typical Antarctic station fuel storage: ~60,000 Liters (Bharati) / 80,000 Liters (Maitri)
-        total_capacity_liters = 75000.0 if "MAITRI" in station_code.upper() else 60000.0
+        # Typical Antarctic station fuel storage from station engineering profile
+        profile = get_station_profile(station_code)
+        total_capacity_liters = profile.fuel_tank_capacity_liters
         current_liters = fuel_item.quantity if fuel_item else (total_capacity_liters * current_percentage / 100.0)
         daily_burn_liters, burn_source = PredictionService._estimate_daily_fuel_burn(
             db, station_id, total_capacity_liters, fuel_item

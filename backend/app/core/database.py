@@ -31,7 +31,7 @@ else:
         logger.warning(
             f"Could not connect to PostgreSQL ({db_url}): {e}. Falling back to local SQLite database."
         )
-        sqlite_fallback = "sqlite:///./polar_twin.db"
+        sqlite_fallback = settings.DATABASE_URL if settings.DATABASE_URL.startswith("sqlite") else "sqlite:///./polar_twin.db"
         engine = create_engine(sqlite_fallback, connect_args={"check_same_thread": False}, echo=False, poolclass=NullPool)
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

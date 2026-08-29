@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 class AlertService:
     @staticmethod
     def _is_duplicate_active_alert(
-        db: Session, station_id: int, alert_type: str, title: str, window_minutes: int = 15
+        db: Session, station_id: int, alert_type: str, title: str, window_minutes: int = settings.ALERT_DEDUP_WINDOW_MINUTES
     ) -> bool:
         """Checks if a matching unacknowledged alert already exists within recent window to prevent spam."""
         cutoff = datetime.now(timezone.utc) - timedelta(minutes=window_minutes)
@@ -114,7 +114,7 @@ class AlertService:
                 if a: new_alerts.append(a)
 
             # Sustained Energy Deficit
-            if energy.energy_balance < -20.0 and energy.battery_percentage < 30.0:
+            if energy.energy_balance < settings.ENERGY_DEFICIT_ALERT_KW and energy.battery_percentage < settings.ENERGY_DEFICIT_BATTERY_THRESHOLD:
                 a = AlertService.create_alert(
                     db, station_id, "ENERGY", "WARNING",
                     "Severe Energy Deficit",
@@ -125,14 +125,14 @@ class AlertService:
 
         # 2. Environmental Checks
         if weather:
-            if weather.wind_speed >= 90.0:
+            if weather.wind_speed >= settings.WIND_CRITICAL_THRESHOLD:
                 a = AlertService.create_alert(
                     db, station_id, "ENVIRONMENT", "CRITICAL",
                     "Severe Blizzard / Katabatic Storm",
                     f"Violent katabatic winds recorded at {weather.wind_speed:.1f} km/h. Outdoor movements suspended.",
                 )
                 if a: new_alerts.append(a)
-            elif weather.wind_speed >= 65.0:
+            elif weather.wind_speed >= settings.WIND_WARNING_THRESHOLD:
                 a = AlertService.create_alert(
                     db, station_id, "ENVIRONMENT", "WARNING",
                     "High Wind Speed Advisory",
@@ -140,7 +140,7 @@ class AlertService:
                 )
                 if a: new_alerts.append(a)
 
-            if weather.temperature <= -42.0:
+            if weather.temperature <= settings.TEMP_EXTREME_THRESHOLD:
                 a = AlertService.create_alert(
                     db, station_id, "ENVIRONMENT", "WARNING",
                     "Extreme Deep Freeze Alert",

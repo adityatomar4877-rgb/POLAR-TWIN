@@ -20,7 +20,11 @@ import {
   type TelemetryChannel,
 } from '../../lib/3d/stationSystems';
 import { useStationStore } from '../../lib/3d/stationStore';
+import { useStation } from '../../context/StationContext';
+import type { StationDashboardOut } from '../../api/types';
 import clsx from 'clsx';
+
+const clamp = (v: number, min: number, max: number) => (v < min ? min : v > max ? max : v);
 
 const STATUS_DOT: Record<SystemStatus, string> = {
   nominal: 'bg-emerald-500',
@@ -49,6 +53,8 @@ interface Reading {
   channel: TelemetryChannel;
   value: number;
   history: number[];
+  /** True when the value is bound to a live backend field (not simulated). */
+  live: boolean;
 }
 
 /** Format a numeric reading according to the channel's decimals. */
@@ -75,10 +81,58 @@ function seedHistory(ch: TelemetryChannel): number[] {
   return arr;
 }
 
-/** Self-contained 1 Hz telemetry simulator driven by the channel catalog. */
-function useSimulatedTelemetry(systemId: string | null): Reading[] {
+/**
+ * Resolve a channel value from live backend telemetry when a direct mapping
+ * exists, otherwise return null so the simulator fills the gap. This is the
+ * single source of truth for "which 3D channels are synced to the backend".
+ */
+function liveChannelValue(
+  systemId: string,
+  channelKey: string,
+  dashboard: StationDashboardOut | undefined,
+): number | null {
+  const energy = dashboard?.energy;
+  const env = dashboard?.environment;
+  const equipment = dashboard?.equipment;
+  switch (systemId) {
+    case 'BharatiFuelFarm':
+    case 'MaitriFuelFarm':
+      if (channelKey === 'tankLevel' && energy) return energy.fuel_percentage;
+      break;
+    case 'BharatiUtilityArea':
+    case 'MaitriUtilityArea':
+      if (channelKey === 'genOutput' && energy)
+        return energy.diesel_generation_kw || energy.generation_kw;
+      if (channelKey === 'exhaustTemp') {
+        const gen = equipment?.find(
+          (e) => e.equipment_type === 'GENERATOR' && e.temperature != null,
+        );
+        if (gen) return gen.temperature;
+      }
+      break;
+    case 'BharatiMainBuilding':
+    case 'MaitriMainBuilding':
+      if (channelKey === 'hullStrain' && env)
+        return 26 + Math.pow(env.wind_speed / 1.852, 1.62) * 0.85;
+      break;
+    case 'BharatiContainerModules':
+      if (channelKey === 'zoneTemp' && env) return env.temperature * 0.62 + 2;
+      break;
+  }
+  return null;
+}
+
+/** 1 Hz telemetry: live backend values where mapped, simulated random-walk otherwise. */
+function useHybridTelemetry(
+  systemId: string | null,
+  dashboard: StationDashboardOut | undefined,
+): Reading[] {
   const [readings, setReadings] = useState<Record<string, Reading[]>>({});
   const buf = useRef<Record<string, Record<string, number[]>>>({});
+  const dashRef = useRef(dashboard);
+  useEffect(() => {
+    dashRef.current = dashboard;
+  }, [dashboard]);
 
   useEffect(() => {
     if (!systemId) return;
@@ -99,10 +153,11 @@ function useSimulatedTelemetry(systemId: string | null): Reading[] {
       for (const ch of system.channels) {
         const hist = store[ch.key];
         const last = hist[hist.length - 1] ?? ch.base;
-        const nv = step(last, ch);
+        const live = liveChannelValue(systemId, ch.key, dashRef.current);
+        const nv = live != null ? clamp(live, ch.min, ch.max) : step(last, ch);
         const updated = [...hist.slice(1), nv];
         store[ch.key] = updated;
-        next.push({ channel: ch, value: nv, history: updated });
+        next.push({ channel: ch, value: nv, history: updated, live: live != null });
       }
       setReadings((r) => ({ ...r, [systemId]: next }));
     };
@@ -207,7 +262,8 @@ export function SystemDetailPanel() {
   const [tab, setTab] = useState<'telemetry' | 'ai' | 'sop'>('telemetry');
   const [sopDone, setSopDone] = useState<Record<string, boolean>>({});
 
-  const readings = useSimulatedTelemetry(selectedSystemId);
+  const { dashboard } = useStation();
+  const readings = useHybridTelemetry(selectedSystemId, dashboard);
   const rul = useRulInsight(selectedSystemId, status);
 
   // reset SOP checkboxes when system changes
@@ -310,6 +366,11 @@ export function SystemDetailPanel() {
                 >
                   <div className="truncate font-mono text-[8px] font-bold uppercase tracking-wider text-slate-400">
                     {r.channel.label}
+                    {r.live && (
+                      <span className="ml-1 rounded bg-emerald-100 px-1 py-px text-[7px] font-bold uppercase text-emerald-600">
+                        Live
+                      </span>
+                    )}
                   </div>
                   <div className="mt-0.5 font-mono text-sm font-extrabold text-slate-800">
                     {fmt(r.value, r.channel)}

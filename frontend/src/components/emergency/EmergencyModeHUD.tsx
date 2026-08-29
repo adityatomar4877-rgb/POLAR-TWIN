@@ -69,6 +69,17 @@ export default function EmergencyModeHUD() {
     setStepStatus({ GEN2: 'PENDING', SHED: 'PENDING', PROTOCOL: 'PENDING' });
   }
 
+  // If gen 2 is already online/running, auto-satisfy the GEN2 step so the
+  // checklist doesn't re-prompt to start an already-running generator.
+  const gen2Running = (() => {
+    if (!gen2) return false;
+    const s = (gen2.status ?? '').toUpperCase();
+    return s === 'RUNNING' || s === 'ONLINE' || s === 'STARTING';
+  })();
+  if (gen2Running && stepStatus.GEN2 === 'PENDING') {
+    setStepStatus((s) => ({ ...s, GEN2: 'DONE' }));
+  }
+
   const invalidateAll = () => {
     ['equipment', 'dashboard', 'alerts', 'loads', 'recommendations'].forEach((key) =>
       qc.invalidateQueries({ queryKey: [key, selectedStationId] })

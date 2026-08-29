@@ -13,6 +13,8 @@ interface Props {
   onClose: () => void;
   stationId: number | string;
   request: CommandRequest | null;
+  /** Fired when a command executes successfully (command_type + target_id). */
+  onCommandSuccess?: (commandType: string, targetId?: number) => void;
 }
 
 const num = (v: unknown): number | null =>
@@ -84,7 +86,7 @@ function useCountUp(target: number, duration = 0.8) {
   return ref;
 }
 
-export const CommandPreviewModal = ({ isOpen, onClose, stationId, request }: Props) => {
+export const CommandPreviewModal = ({ isOpen, onClose, stationId, request, onCommandSuccess }: Props) => {
   const queryClient = useQueryClient();
   const [step, setStep] = useState<'PREVIEW' | 'EXECUTING' | 'RESULT'>('PREVIEW');
   const [executionMessage, setExecutionMessage] = useState<string>('');
@@ -137,6 +139,7 @@ export const CommandPreviewModal = ({ isOpen, onClose, stationId, request }: Pro
       ['equipment', 'dashboard', 'alerts', 'operations-history', 'recommendations', 'loads'].forEach((key) =>
         queryClient.invalidateQueries({ queryKey: [key, stationId] })
       );
+      onCommandSuccess?.(data.command_type, request?.target_id);
     },
     onError: (err: any) => {
       setExecutionMessage(

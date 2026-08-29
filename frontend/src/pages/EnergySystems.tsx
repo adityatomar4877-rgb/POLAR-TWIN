@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import gsap from 'gsap';
 import { getStationDashboard } from '../api/stations';
-import { Zap, Sun, Wind, Battery, Fuel, Activity, ShieldCheck, Play, ArrowDownToLine, ArrowUpFromLine, Sparkles } from 'lucide-react';
+import { Zap, Sun, Wind, Battery, Fuel, Activity, ShieldCheck, Play, ArrowDownToLine, ArrowUpFromLine, Sparkles, Loader2 } from 'lucide-react';
 import { CommandPreviewModal } from '../components/operations/CommandPreviewModal';
 import EnergyFlowDiagram from '../components/energy/EnergyFlowDiagram';
 import GSAPLiveOscillator from '../components/energy/GSAPLiveOscillator';
@@ -10,9 +10,14 @@ import GSAPNumberTicker from '../components/dashboard/GSAPNumberTicker';
 import GSAPFlipDetailModal, { type DetailCardData } from '../components/dashboard/GSAPFlipDetailModal';
 import type { CommandRequest } from '../api/types';
 
+/** Cooldown (ms) after dispatching a generator start before re-prompting.
+ *  Covers the backend tick latency (up to ~10s) plus a safety margin. */
+const GEN_START_COOLDOWN_MS = 30_000;
+
 export const EnergySystems = ({ stationId }: { stationId: number }) => {
   const [activeRequest, setActiveRequest] = useState<CommandRequest | null>(null);
   const [detailItem, setDetailItem] = useState<DetailCardData | null>(null);
+  const [genStartPending, setGenStartPending] = useState<number | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const { data: dashboard, isLoading } = useQuery({
@@ -41,6 +46,23 @@ export const EnergySystems = ({ stationId }: { stationId: number }) => {
     return () => ctx.revert();
   }, [stationId]);
 
+  // Clear the pending-gen-start flag once the generator is actually producing
+  // power (the backend tick has caught up) or after the cooldown expires.
+  const liveDieselKw = dashboard?.energy?.diesel_generation_kw ?? 0;
+  useEffect(() => {
+    if (genStartPending == null) return;
+    if (liveDieselKw > 0) {
+      setGenStartPending(null);
+      return;
+    }
+    const t = setTimeout(() => setGenStartPending(null), GEN_START_COOLDOWN_MS);
+    return () => clearTimeout(t);
+  }, [genStartPending, liveDieselKw]);
+
+  const handleCommandSuccess = (commandType: string, targetId?: number) => {
+    if (commandType === 'START_GENERATOR') setGenStartPending(targetId ?? Date.now());
+  };
+
   if (isLoading || !dashboard) {
     return (
       <div className="flex h-full items-center justify-center">
@@ -65,6 +87,16 @@ export const EnergySystems = ({ stationId }: { stationId: number }) => {
   const batteryPower = energy?.battery_power_kw ?? 0;
 
   const isEmergency = gridStatus === 'EMERGENCY' || gridStatus === 'CRITICAL' || netKw < 0;
+
+  // Is the backup generator (gen 2) already online/running? If so, don't
+  // re-prompt the operator to start it — the deficit is from load, not a
+  // stopped generator, so shedding is the right action.
+  const backupGenAlreadyRunning = (() => {
+    const g = gen2;
+    if (!g) return false;
+    const s = (g.status ?? '').toUpperCase();
+    return s === 'RUNNING' || s === 'ONLINE' || s === 'STARTING';
+  })();
 
   const handleStartBackup = () => {
     const g2 = dashboard.equipment?.find((e: any) => e.equipment_type === 'GENERATOR' && e.name.includes('2'));
@@ -304,17 +336,29 @@ export const EnergySystems = ({ stationId }: { stationId: number }) => {
               MICROGRID DEFICIT DETECTED: <GSAPNumberTicker value={Math.abs(netKw)} decimals={1} suffix=" kW" /> SHORTAGE
             </div>
             <div className="text-xs text-red-700 mt-1">
-              Station generators are offline or overloaded. Battery bank is discharging to support baseline loads.
+              {backupGenAlreadyRunning
+                ? 'Backup generator is online but demand still exceeds generation. Shed non-critical loads to protect battery reserves.'
+                : 'Station generators are offline or overloaded. Battery bank is discharging to support baseline loads.'}
             </div>
           </div>
           <div className="flex gap-2 shrink-0">
-            <button 
-              onClick={handleStartBackup}
-              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded font-mono text-xs font-bold transition-all shadow-[0_0_15px_rgba(16,185,129,0.3)] flex items-center gap-1.5"
-            >
-              <Play className="w-3.5 h-3.5" /> START_BACKUP_GEN
-            </button>
-            <button 
+            {genStartPending != null ? (
+              <div className="px-4 py-2 bg-emerald-100 text-emerald-700 rounded font-mono text-xs font-bold flex items-center gap-2 border border-emerald-300">
+                <Loader2 className="w-3.5 h-3.5 animate-spin" /> BACKUP_GEN_STARTING...
+              </div>
+            ) : backupGenAlreadyRunning ? (
+              <div className="px-4 py-2 bg-sky-100 text-sky-700 rounded font-mono text-xs font-bold flex items-center gap-2 border border-sky-300">
+                <ShieldCheck className="w-3.5 h-3.5" /> BACKUP_GEN_ONLINE
+              </div>
+            ) : (
+              <button
+                onClick={handleStartBackup}
+                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded font-mono text-xs font-bold transition-all shadow-[0_0_15px_rgba(16,185,129,0.3)] flex items-center gap-1.5"
+              >
+                <Play className="w-3.5 h-3.5" /> START_BACKUP_GEN
+              </button>
+            )}
+            <button
               onClick={() => handleShedLoad('NON_CRITICAL')}
               className="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded font-mono text-xs font-bold transition-all flex items-center gap-1.5"
             >
@@ -478,6 +522,11 @@ export const EnergySystems = ({ stationId }: { stationId: number }) => {
           <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-mono text-slate-400">
             <span>Health: 92%</span>
             {dieselKw === 0 ? (
+            genStartPending != null ? (
+              <span className="flex items-center gap-1 font-bold text-emerald-600">
+                <Loader2 className="w-3 h-3 animate-spin" /> STARTING...
+              </span>
+            ) : (
             <span
               onClick={(e) => {
                 e.stopPropagation();
@@ -487,6 +536,7 @@ export const EnergySystems = ({ stationId }: { stationId: number }) => {
             >
               <Play className="w-3 h-3" /> START GENS
             </span>
+            )
           ) : (
             <span className="font-bold text-cyan-600 flex items-center gap-1 group-hover:translate-x-0.5 transition-transform">
               <Sparkles size={12} /> DETAILS ↗
@@ -542,11 +592,12 @@ export const EnergySystems = ({ stationId }: { stationId: number }) => {
         </div>
       </div>
 
-      <CommandPreviewModal 
+      <CommandPreviewModal
         isOpen={!!activeRequest}
         onClose={() => setActiveRequest(null)}
         stationId={stationId}
         request={activeRequest}
+        onCommandSuccess={handleCommandSuccess}
       />
 
       {/* GSAP 3D Flip Card Popup Modal */}

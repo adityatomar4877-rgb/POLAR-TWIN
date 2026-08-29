@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 import httpx
 from app.core.config import settings
+from app.core.station_profiles import get_station_profile
 
 logger = logging.getLogger(__name__)
 
@@ -60,17 +61,12 @@ class FallbackWeatherProvider(WeatherProvider):
         code_upper = station_code.upper()
         calib = self._load_calibration().get(code_upper, {})
 
-        # Station-specific baseline (calibrated constants take precedence)
-        if "MAITRI" in code_upper:
-            base_temp_const = calib.get("base_temp_constant", -8.0)
-            wind_base = calib.get("wind_base", 35.0)
-            pressure_base = calib.get("pressure_base", 985.0)
-            elev = calib.get("elevation_m", elevation)
-        else:
-            base_temp_const = calib.get("base_temp_constant", -5.0)
-            wind_base = calib.get("wind_base", 28.0)
-            pressure_base = calib.get("pressure_base", 992.0)
-            elev = calib.get("elevation_m", elevation)
+        # Station-specific baseline (calibrated constants take precedence, then profile defaults)
+        profile = get_station_profile(station_code)
+        base_temp_const = calib.get("base_temp_constant", profile.weather_base_temp)
+        wind_base = calib.get("wind_base", profile.weather_wind_base)
+        pressure_base = calib.get("pressure_base", profile.weather_pressure_base)
+        elev = calib.get("elevation_m", elevation)
 
         base_temp = base_temp_const + seasonal_temp_offset - (elev * 0.006)
 
@@ -136,7 +132,7 @@ class ExternalWeatherProvider(WeatherProvider):
             "current": "temperature_2m,relative_humidity_2m,surface_pressure,wind_speed_10m,wind_direction_10m,precipitation,visibility",
         }
 
-        async with httpx.AsyncClient(timeout=4.0) as client:
+        async with httpx.AsyncClient(timeout=settings.WEATHER_API_TIMEOUT_SECONDS) as client:
             resp = await client.get(url, params=params)
             resp.raise_for_status()
             data = resp.json()

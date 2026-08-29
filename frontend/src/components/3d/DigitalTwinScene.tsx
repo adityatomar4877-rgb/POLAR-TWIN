@@ -1,8 +1,8 @@
 import { useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { getStationEquipment } from '../../api/stations';
-import type { Equipment } from '../../api/types';
-import { useStationStore, type SystemStatus } from '../../lib/3d/stationStore';
+import { getStationEquipment, getActiveAlerts } from '../../api/stations';
+import type { Alert, Equipment } from '../../api/types';
+import { useStationStore, type StationAlert, type SystemStatus } from '../../lib/3d/stationStore';
 import { BharatiScene } from './bharati/BharatiScene';
 import { MaitriScene } from './maitri/MaitriScene';
 import { ModeToolbar } from './ModeToolbar';
@@ -38,6 +38,21 @@ const SEVERITY_RANK: Record<SystemStatus, number> = {
   critical: 3,
 };
 
+/** Map a single equipment record onto a 3D station-system id (null = no match). */
+function equipmentSystemId(eq: Equipment, activeStation: 'bharati' | 'maitri'): string | null {
+  const key = `${eq.name} ${eq.equipment_type ?? ''}`.toUpperCase();
+  const prefix = activeStation === 'bharati' ? 'Bharati' : 'Maitri';
+  if (/GENERATOR|GENSET|BATTERY|INVERTER|UPS|SWITCHGEAR|POWER/.test(key)) return `${prefix}UtilityArea`;
+  if (/FUEL/.test(key)) return `${prefix}FuelFarm`;
+  if (/WATER|PUMP|OSMOSIS|REVERSE/.test(key))
+    return activeStation === 'bharati' ? 'BharatiWaterPump' : 'MaitriLakeWaterPumpHouse';
+  if (/HVAC|HEATER|VENTILATION|THERMAL|AIR/.test(key)) return `${prefix}MainBuilding`;
+  if (/CONTAINER|STORAGE|WAREHOUSE|CRATE/.test(key))
+    return activeStation === 'bharati' ? 'BharatiContainerModules' : null;
+  if (/CAMP|SHELTER|SUMMER|HABITAT|LIVING|QUARTER/.test(key)) return `${prefix}SummerCamp`;
+  return null;
+}
+
 /** Translate live equipment into 3D station-system status overrides. */
 function buildStatusOverrides(
   equipment: Equipment[] | undefined,
@@ -45,23 +60,8 @@ function buildStatusOverrides(
 ): Record<string, SystemStatus> {
   const overrides: Record<string, SystemStatus> = {};
   if (!equipment) return overrides;
-  const prefix = activeStation === 'bharati' ? 'Bharati' : 'Maitri';
   for (const eq of equipment) {
-    const key = `${eq.name} ${eq.equipment_type ?? ''}`.toUpperCase();
-    let id: string | null = null;
-    if (/GENERATOR|GENSET|BATTERY|INVERTER|UPS|SWITCHGEAR|POWER/.test(key)) {
-      id = `${prefix}UtilityArea`;
-    } else if (/FUEL/.test(key)) {
-      id = `${prefix}FuelFarm`;
-    } else if (/WATER|PUMP|OSMOSIS|REVERSE/.test(key)) {
-      id = activeStation === 'bharati' ? 'BharatiWaterPump' : 'MaitriLakeWaterPumpHouse';
-    } else if (/HVAC|HEATER|VENTILATION|THERMAL|AIR/.test(key)) {
-      id = `${prefix}MainBuilding`;
-    } else if (/CONTAINER|STORAGE|WAREHOUSE|CRATE/.test(key)) {
-      id = activeStation === 'bharati' ? 'BharatiContainerModules' : null;
-    } else if (/CAMP|SHELTER|SUMMER|HABITAT|LIVING|QUARTER/.test(key)) {
-      id = `${prefix}SummerCamp`;
-    }
+    const id = equipmentSystemId(eq, activeStation);
     if (!id) continue;
     const st: SystemStatus = STATUS_TO_SYS[(eq.status ?? '').toUpperCase()] ?? 'nominal';
     if (!overrides[id] || SEVERITY_RANK[st] > SEVERITY_RANK[overrides[id]]) {
@@ -69,6 +69,55 @@ function buildStatusOverrides(
     }
   }
   return overrides;
+}
+
+/**
+ * Translate backend alerts into the lean 3D `StationAlert` shape so beacons,
+ * utility flows and the selection ring can escalate from real anomalies.
+ * Resolved alerts are dropped (they must not escalate a system).
+ */
+function buildStationAlerts(
+  alerts: Alert[] | undefined,
+  equipment: Equipment[] | undefined,
+  activeStation: 'bharati' | 'maitri',
+): StationAlert[] {
+  if (!alerts) return [];
+  const prefix = activeStation === 'bharati' ? 'Bharati' : 'Maitri';
+  const eqById = new Map<number, Equipment>();
+  equipment?.forEach((e) => eqById.set(e.id, e));
+
+  const out: StationAlert[] = [];
+  for (const a of alerts) {
+    if (a.resolved_at) continue;
+    const sev = (a.severity ?? '').toUpperCase();
+    const severity: StationAlert['severity'] =
+      sev === 'CRITICAL' ? 'CRITICAL' : sev === 'WARNING' ? 'WARNING' : 'INFO';
+
+    let systemId: string | null = null;
+    const type = (a.alert_type ?? '').toUpperCase();
+    // Prefer an explicit equipment link (EQUIPMENT alerts carry related_entity_id = equipment.id).
+    const rel = a.related_entity_id;
+    if (rel != null && eqById.has(rel)) {
+      systemId = equipmentSystemId(eqById.get(rel)!, activeStation);
+    }
+    // Fall back to a category-derived system so non-equipment alerts still light up the twin.
+    if (!systemId) {
+      const title = (a.title + ' ' + a.message).toUpperCase();
+      if (type === 'ENERGY') {
+        systemId = /FUEL|TANK|DIESEL/.test(title) ? `${prefix}FuelFarm` : `${prefix}UtilityArea`;
+      } else if (type === 'ENVIRONMENT') {
+        systemId = `${prefix}MainBuilding`;
+      } else if (type === 'LOGISTICS') {
+        systemId = activeStation === 'bharati' ? 'BharatiContainerModules' : null;
+      } else if (type === 'EQUIPMENT') {
+        // No entity link + generic equipment alert: leave to the equipment status overrides.
+        systemId = null;
+      }
+    }
+    if (!systemId) continue;
+    out.push({ id: String(a.id), systemId, severity });
+  }
+  return out;
 }
 
 /**
@@ -90,9 +139,18 @@ export const DigitalTwinScene = ({ stationId, interactive = true }: DigitalTwinS
     refetchInterval: 15000,
   });
 
+  const { data: alerts } = useQuery({
+    queryKey: ['alerts', stationId],
+    queryFn: () => getActiveAlerts(stationId),
+    enabled: stationId != null,
+    staleTime: 10000,
+    refetchInterval: 15000,
+  });
+
   const setActiveStation = useStationStore((s) => s.setActiveStation);
   const resetStatusOverrides = useStationStore((s) => s.resetStatusOverrides);
   const setStatusOverride = useStationStore((s) => s.setStatusOverride);
+  const setAlerts = useStationStore((s) => s.setAlerts);
 
   // Swap the 3D campus only when the station actually changes (avoids
   // clobbering an in-progress inspection on unrelated re-renders).
@@ -108,6 +166,12 @@ export const DigitalTwinScene = ({ stationId, interactive = true }: DigitalTwinS
     resetStatusOverrides();
     for (const [id, st] of Object.entries(overrides)) setStatusOverride(id, st);
   }, [equipment, activeStation, resetStatusOverrides, setStatusOverride]);
+
+  // Push live backend alerts into the 3D store so beacons / flows escalate from
+  // real anomalies (equipment status overrides still take precedence).
+  useEffect(() => {
+    setAlerts(buildStationAlerts(alerts, equipment, activeStation));
+  }, [alerts, equipment, activeStation, setAlerts]);
 
   return (
     <div className={`relative h-full w-full${interactive ? '' : ' pointer-events-none'}`}>

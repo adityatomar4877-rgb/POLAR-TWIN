@@ -1,5 +1,6 @@
 from datetime import datetime, timezone
 from typing import Dict, List, Optional, Tuple
+from app.core.station_profiles import get_station_profile
 
 
 def calculate_energy_balance(generation_kw: float, consumption_kw: float) -> float:
@@ -131,10 +132,10 @@ def calculate_building_thermal_load(
     7. Base electrical load (scientific instruments, water pumps, lighting, server comms):
        Bharati: 54.0 kW, Maitri: 62.0 kW.
     """
-    is_maitri = "MAITRI" in station_code.upper()
-    base_electrical = 62.0 if is_maitri else 54.0
-    u_envelope = 0.58 if is_maitri else 0.48
-    vent_coeff = 0.38 if is_maitri else 0.32
+    profile = get_station_profile(station_code)
+    base_electrical = profile.base_electrical_load_kw
+    u_envelope = profile.thermal_envelope_u
+    vent_coeff = profile.ventilation_coeff
 
     delta_t = max(0.0, indoor_setpoint_c - ambient_temperature)
     wind_clamped = max(0.0, wind_speed_kmh)
@@ -175,10 +176,10 @@ def calculate_microgrid_power_flow(
     """
     import math
 
-    is_maitri = "MAITRI" in station_code.upper()
-    solar_peak_capacity = 40.0 if is_maitri else 60.0
-    battery_capacity_kwh = 350.0 if is_maitri else 300.0
-    fuel_tank_capacity_liters = 75000.0 if is_maitri else 60000.0
+    profile = get_station_profile(station_code)
+    solar_peak_capacity = profile.solar_peak_capacity_kw
+    battery_capacity_kwh = profile.battery_capacity_kwh
+    fuel_tank_capacity_liters = profile.fuel_tank_capacity_liters
 
     # 1. Solar generation calculation
     if hour_of_day is not None:
@@ -189,7 +190,7 @@ def calculate_microgrid_power_flow(
 
     # 2. Generator dispatch & rating
     net_demand_for_diesel = max(0.0, consumption_kw - solar_kw)
-    gen_unit_capacity = 120.0  # kW per unit continuous
+    gen_unit_capacity = profile.generator_rated_kw
 
     if generator_1_online and generator_2_online:
         total_gen_cap = 240.0

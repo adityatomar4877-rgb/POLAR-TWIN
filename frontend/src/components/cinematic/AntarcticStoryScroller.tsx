@@ -25,6 +25,8 @@ import InteractiveHoverButton from '../motion/InteractiveHoverButton';
 
 gsap.registerPlugin(ScrollTrigger);
 
+const SUMMER_CREW = 24;
+
 interface Props {
   onEnterCommandCenter?: () => void;
 }
@@ -325,7 +327,7 @@ export default function AntarcticStoryScroller({ onEnterCommandCenter }: Props) 
                 { icon: Radio, label: 'GRID STATUS', value: (energy?.grid_status ?? 'NOMINAL').toUpperCase(), tone: energy && energy.grid_status === 'EMERGENCY' ? 'text-red-400' : 'text-emerald-300' },
                 { icon: Thermometer, label: 'SURFACE TEMP', value: `${env?.temperature != null ? env.temperature.toFixed(1) : '—'} °C`, tone: 'text-sky-300' },
                 { icon: Wind, label: 'WIND SPEED', value: `${env?.wind_speed != null ? env.wind_speed.toFixed(0) : '—'} km/h`, tone: 'text-sky-300' },
-                { icon: Users, label: 'POPULATION', value: `${dashboard?.station?.current_population ?? '—'}`, tone: 'text-slate-200' },
+                { icon: Users, label: 'POPULATION', value: `${dashboard?.station ? SUMMER_CREW : '—'}`, tone: 'text-slate-200' },
               ].map(({ icon: Icon, label, value, tone }) => (
                 <div key={label} className="glass-panel rounded-xl p-5 text-left">
                   <div className="flex items-center gap-2 font-mono text-[10px] tracking-[0.3em] text-slate-400">

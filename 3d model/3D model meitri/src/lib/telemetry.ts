@@ -8,6 +8,7 @@
 // leak / bearing-degradation signatures on top.
 
 import { STATION_SYSTEMS, PLANT, type TelemetryChannel } from './stationSystems'
+import { backendState, resolveLiveChannelValue } from './backend'
 
 export const HISTORY_SECONDS = 60
 
@@ -257,9 +258,31 @@ export class MissionEngine {
   }
 
   /** Advance the whole station by one 1 Hz tick. */
-  step(baseEnv: EnvironmentState, faults: FaultFlags, mitigations: Mitigations = NO_MITIGATIONS): EnvironmentState {
+  step(
+    baseEnv: EnvironmentState,
+    faults: FaultFlags,
+    mitigations: Mitigations = NO_MITIGATIONS,
+    activeStation: 'bharati' | 'maitri' = 'bharati',
+  ): EnvironmentState {
     this.tick++
-    // Slow deterministic wander on top of the preset environment.
+
+    // Backend authoritative: mapped channels take live values, unmapped
+    // channels hold their last value (no physics, no jitter) — they go dark.
+    if (backendState.connected) {
+      for (const system of STATION_SYSTEMS) {
+        const sysState = this.state[system.id]
+        for (const def of system.channels) {
+          const ch = sysState[def.key] as ChannelState & { rand: () => number }
+          const live = resolveLiveChannelValue(system.id, def.key, backendState, activeStation)
+          if (live != null) ch.value = clamp(live, def.min, def.max)
+          ch.history.push(ch.value)
+          if (ch.history.length > HISTORY_SECONDS) ch.history.shift()
+        }
+      }
+      return baseEnv
+    }
+
+    // Offline fallback: original coupled physics model.
     const env: EnvironmentState = {
       ...baseEnv,
       ambientTemp: baseEnv.ambientTemp + (this.envNoise() - 0.5) * 1.6,

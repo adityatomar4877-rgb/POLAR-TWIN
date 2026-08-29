@@ -1,3 +1,4 @@
+import warnings
 from typing import List, Union
 from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -17,15 +18,16 @@ class Settings(BaseSettings):
     WEATHER_API_KEY: str = ""
     WEATHER_API_URL: str = "https://api.open-meteo.com/v1/forecast"
     WEATHER_CACHE_TTL_SECONDS: int = 900  # 15 minutes
+    WEATHER_API_TIMEOUT_SECONDS: float = 4.0
     
     # Security
-    SECRET_KEY: str = "polar-digital-twin-hackathon-super-secret-key-2026"
+    SECRET_KEY: str = ""
     
     # Simulation Engine
     SIMULATION_ENABLED: bool = True
     SIMULATION_INTERVAL_SECONDS: int = 10
     
-    # Alert Thresholds (Configurable)
+    # Alert Thresholds — Energy & Fuel
     BATTERY_CRITICAL_THRESHOLD: float = 10.0
     BATTERY_WARNING_THRESHOLD: float = 20.0
     FUEL_CRITICAL_THRESHOLD: float = 10.0
@@ -35,6 +37,22 @@ class Settings(BaseSettings):
     LOGISTICS_CRITICAL_DAYS: float = 15.0
     LOGISTICS_WARNING_DAYS: float = 30.0
     
+    # Alert Thresholds — Weather & Environment
+    WIND_CRITICAL_THRESHOLD: float = 90.0
+    WIND_WARNING_THRESHOLD: float = 65.0
+    TEMP_EXTREME_THRESHOLD: float = -42.0
+    
+    # Alert Thresholds — Energy Deficit
+    ENERGY_DEFICIT_ALERT_KW: float = -20.0
+    ENERGY_DEFICIT_BATTERY_THRESHOLD: float = 30.0
+    
+    # Alert Deduplication
+    ALERT_DEDUP_WINDOW_MINUTES: int = 15
+    
+    # Default Operator Identity (used when no auth system is present)
+    DEFAULT_OPERATOR_ID: str = "Operator_Demo"
+    DEFAULT_OPERATOR_ROLE: str = "OPERATOR"
+    
     # CORS
     CORS_ORIGINS: Union[List[str], str] = [
         "http://localhost:5173",
@@ -42,6 +60,19 @@ class Settings(BaseSettings):
         "http://127.0.0.1:5173",
         "http://127.0.0.1:3000",
     ]
+
+    @field_validator("SECRET_KEY", mode="after")
+    @classmethod
+    def validate_secret_key(cls, v: str) -> str:
+        insecure_default = "polar-digital-twin-hackathon-super-secret-key-2026"
+        if not v or v == insecure_default:
+            warnings.warn(
+                "SECRET_KEY is using an insecure default. "
+                "Set a strong SECRET_KEY in .env for production.",
+                stacklevel=2,
+            )
+            return v or insecure_default
+        return v
 
     @field_validator("CORS_ORIGINS", mode="before")
     @classmethod

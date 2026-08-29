@@ -435,6 +435,14 @@ class CommandService:
 
             msg = f"{gen.name} startup sequence completed. Online generation synchronized."
 
+            # Bridge the command into the active scenario so the next tick
+            # doesn't force this generator back OFFLINE via custom_conditions.
+            try:
+                from app.services.simulation_service import simulation_service
+                simulation_service.update_generator_state(station.code, gen.name, True)
+            except Exception:
+                pass
+
         elif cmd_type == "STOP_GENERATOR":
             gen = db.query(Equipment).filter(Equipment.id == command_req.target_id, Equipment.station_id == station_id).first()
             if not gen or gen.equipment_type != "GENERATOR":
@@ -492,6 +500,14 @@ class CommandService:
                 }
 
             msg = f"{gen.name} shutdown initiated and safely transitioned to STANDBY."
+
+            # Bridge the command into the active scenario so the next tick
+            # doesn't force this generator back ONLINE via custom_conditions.
+            try:
+                from app.services.simulation_service import simulation_service
+                simulation_service.update_generator_state(station.code, gen.name, False)
+            except Exception:
+                pass
 
         elif cmd_type == "LOAD_SHED":
             params = command_req.parameters or {}

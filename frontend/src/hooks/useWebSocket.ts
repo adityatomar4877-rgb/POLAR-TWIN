@@ -58,6 +58,11 @@ export function useWebSocket(stationId: number | null) {
       lastTickHandled = now;
       queryClient.invalidateQueries({ queryKey: ['dashboard', stationId] });
       queryClient.invalidateQueries({ queryKey: ['predictions', stationId] });
+      queryClient.invalidateQueries({ queryKey: ['simulation-status'] });
+      // Equipment status is mutated by scenario ticks (e.g. GENERATOR_FAILURE →
+      // OFFLINE) but is NOT carried in the WS payload — only equipment_count is.
+      // Invalidate here so the 3D beacons/flows refresh from the latest state.
+      queryClient.invalidateQueries({ queryKey: ['equipment', stationId] });
     };
 
     const handleMessage = (message: WsMessage) => {

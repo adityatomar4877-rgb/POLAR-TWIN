@@ -1,4 +1,4 @@
-import { apiClient } from './client';
+import { apiClient, OPERATOR_ID, OPERATOR_ROLE, SUPERVISOR_ROLE } from './client';
 import type {
   CommandPreviewRequest,
   CommandPreviewResponse,
@@ -64,7 +64,7 @@ export const toggleEmergencyMode = async (
   const { data } = await apiClient.post<CommandResponse>(
     `/stations/${stationId}/commands/emergency-mode`,
     body,
-    { params: { requested_by: 'Operator_Demo', role: 'SUPERVISOR' } }
+    { params: { requested_by: OPERATOR_ID, role: SUPERVISOR_ROLE } }
   );
   return data;
 };
@@ -79,7 +79,7 @@ export const shedLoad = async (
   const { data } = await apiClient.post<CommandResponse>(
     `/stations/${stationId}/commands/load-shed`,
     { load_group: group, reason },
-    { params: { requested_by: 'Operator_Demo', role: 'OPERATOR' } }
+    { params: { requested_by: OPERATOR_ID, role: OPERATOR_ROLE } }
   );
   return data;
 };
@@ -92,7 +92,7 @@ export const restoreLoad = async (
   const { data } = await apiClient.post<CommandResponse>(
     `/stations/${stationId}/commands/load-restore`,
     { load_group: group, reason },
-    { params: { requested_by: 'Operator_Demo', role: 'OPERATOR' } }
+    { params: { requested_by: OPERATOR_ID, role: OPERATOR_ROLE } }
   );
   return data;
 };
@@ -106,7 +106,7 @@ export const restartEquipment = async (
   const { data } = await apiClient.post<CommandResponse>(
     `/stations/${stationId}/commands/equipment/${equipmentId}/restart`,
     null,
-    { params: { requested_by: 'Operator_Demo', role: 'OPERATOR' } }
+    { params: { requested_by: OPERATOR_ID, role: OPERATOR_ROLE } }
   );
   return data;
 };
@@ -119,7 +119,7 @@ export const shutdownEquipment = async (
   const { data } = await apiClient.post<CommandResponse>(
     `/stations/${stationId}/commands/equipment/${equipmentId}/shutdown`,
     null,
-    { params: { confirmed, requested_by: 'Operator_Demo', role: 'SUPERVISOR' } }
+    { params: { confirmed, requested_by: OPERATOR_ID, role: SUPERVISOR_ROLE } }
   );
   return data;
 };
@@ -131,7 +131,8 @@ export const isolateEquipment = async (
   const { data } = await apiClient.post<CommandResponse>(
     `/stations/${stationId}/commands/equipment/${equipmentId}/isolate`,
     null,
-    { params: { requested_by: 'Operator_Demo', role: 'SUPERVISOR' } }
+    { params: { requested_by: OPERATOR_ID, role: SUPERVISOR_ROLE } }
   );
   return data;
 };
+

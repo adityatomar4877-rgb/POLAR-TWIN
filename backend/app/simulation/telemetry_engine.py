@@ -15,6 +15,7 @@ from app.simulation.energy_simulator import EnergySimulator
 from app.simulation.equipment_simulator import EquipmentSimulator
 from app.simulation.logistics_simulator import LogisticsSimulator
 from app.utils.calculations import calculate_building_thermal_load
+from app.core.station_profiles import get_station_profile
 
 logger = logging.getLogger(__name__)
 
@@ -82,7 +83,8 @@ def compute_scenario_dynamics(
     # ── GENERATOR_FAILURE: compute load shift from actual Gen1 output ──
     dynamics["generator_failure_load_shift_kw"] = max(0.0, current_diesel_kw)
     # Backup gen stress proportional to load it must absorb
-    gen2_stress_factor = dynamics["generator_failure_load_shift_kw"] / 120.0  # 120kW rated
+    profile = get_station_profile(station.code)
+    gen2_stress_factor = dynamics["generator_failure_load_shift_kw"] / profile.generator_rated_kw
     dynamics["gen2_temp_rise"] = round(gen2_stress_factor * 8.0, 1)  # up to 8°C rise at full load
     dynamics["gen2_eff_drop"] = round(gen2_stress_factor * 3.0, 1)  # up to 3% efficiency drop
 
@@ -90,7 +92,7 @@ def compute_scenario_dynamics(
     fuel_item = db.query(LogisticsItem).filter(LogisticsItem.station_id == sid, LogisticsItem.category == "FUEL").first()
     if fuel_item and fuel_item.daily_consumption > 0:
         # Target = just below minimum threshold (forces conservation mode)
-        total_cap = 75000.0 if "MAITRI" in station.code.upper() else 60000.0
+        total_cap = profile.fuel_tank_capacity_liters
         dynamics["fuel_shortage_target_pct"] = round((fuel_item.minimum_threshold * 0.8 / total_cap) * 100.0, 1)
     else:
         dynamics["fuel_shortage_target_pct"] = 12.0

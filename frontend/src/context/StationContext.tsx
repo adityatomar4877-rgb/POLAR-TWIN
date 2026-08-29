@@ -3,6 +3,7 @@ import {
   useContext,
   useState,
   useCallback,
+  useEffect,
   useMemo,
   type ReactNode,
 } from 'react';
@@ -52,6 +53,7 @@ interface StationContextValue {
 const StationContext = createContext<StationContextValue | null>(null);
 
 export function StationProvider({ children }: { children: ReactNode }) {
+  // Default to 1 as a safe fallback; auto-corrected once stations load
   const [selectedStationId, setSelectedStationId] = useState<number>(1);
   const [selectedSubsystem, setSelectedSubsystem] = useState<SubsystemFocus>({
     equipmentId: null,
@@ -66,6 +68,16 @@ export function StationProvider({ children }: { children: ReactNode }) {
     queryFn: getStations,
     staleTime: 5 * 60 * 1000,
   });
+
+  // Auto-select the first station once the stations list loads
+  useEffect(() => {
+    if (stations && stations.length > 0) {
+      const ids = stations.map((s) => s.id);
+      if (!ids.includes(selectedStationId)) {
+        setSelectedStationId(stations[0].id);
+      }
+    }
+  }, [stations, selectedStationId]);
 
   const { data: dashboard, isLoading } = useQuery({
     queryKey: ['dashboard', selectedStationId],

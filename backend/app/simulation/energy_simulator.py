@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 from typing import Dict, Optional
 from app.utils.validators import clamp_percentage
 from app.utils.calculations import calculate_building_thermal_load
+from app.core.station_profiles import get_station_profile
 
 
 class EnergySimulator:
@@ -35,6 +36,7 @@ class EnergySimulator:
         sd = scenario_dynamics or {}
 
         # 1. Base station life support & living quarters load + Thermodynamic heat loss
+        profile = get_station_profile(station_code)
         is_maitri = "MAITRI" in station_code.upper()
         thermal_res = calculate_building_thermal_load(
             station_code=station_code,
@@ -57,7 +59,7 @@ class EnergySimulator:
         total_consumption = max(10.0, base_physics_consumption + hvac_cycling + lab_duty_cycle + electrical_jitter)
 
         # 3. Solar PV Generation Model with Diurnal Curve & Atmospheric Attenuation
-        solar_capacity = 60.0 if not is_maitri else 40.0
+        solar_capacity = profile.solar_peak_capacity_kw
         if 6.5 <= hour <= 17.5:
             # Solar zenith angle curve
             solar_elevation_factor = math.sin((hour - 6.5) / 11.0 * math.pi)
@@ -129,8 +131,8 @@ class EnergySimulator:
             prev_fuel_pct = float(conds["fuel_percentage"])
 
         # 5. Diesel Generator Dispatch & Governor Dynamic Regulation
-        gen1_max = 120.0 if g1_online else 0.0
-        gen2_max = 120.0 if g2_online else 0.0
+        gen1_max = profile.generator_rated_kw if g1_online else 0.0
+        gen2_max = profile.generator_rated_kw if g2_online else 0.0
 
         # Net load required from diesel microgrid
         net_load_required = max(0.0, total_consumption - solar_gen)
@@ -172,8 +174,7 @@ class EnergySimulator:
         energy_balance = round(total_generation - total_consumption, 2)
 
         # 6. Electrochemical Battery Dynamics (SoC Integration)
-        # Bharati: 300 kWh bank (~1000 Ah @ 300V), Maitri: 350 kWh bank
-        battery_capacity_kwh = 350.0 if is_maitri else 300.0
+        battery_capacity_kwh = profile.battery_capacity_kwh
 
         if energy_balance >= 0:
             # Battery charging (charge power limited by BMS C-rate, max 35 kW)
@@ -194,7 +195,7 @@ class EnergySimulator:
 
         # 7. Fuel Consumption Dynamics
         # Specific Fuel Consumption (BSFC) ~ 0.245 - 0.265 L/kWh depending on generator loading percentage
-        total_fuel_capacity_liters = 75000.0 if is_maitri else 60000.0
+        total_fuel_capacity_liters = profile.fuel_tank_capacity_liters
         load_factor = (diesel_gen / 120.0) if diesel_gen > 0 else 0.0
         bsfc = 0.255 + (0.02 * (1.0 - load_factor)) if load_factor > 0 else 0.255
         fuel_burn_mult = float(conds.get("fuel_burn_multiplier", 1.0))

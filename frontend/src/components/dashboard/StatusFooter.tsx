@@ -1,9 +1,11 @@
 import { Flag, Users, Package, Wifi, Ship } from 'lucide-react';
 import { useStation } from '../../context/StationContext';
 
+const SUMMER_CREW = 24;
+
 export default function StatusFooter() {
   const { dashboard, wsConnected } = useStation();
-  const population = dashboard?.station?.current_population ?? 18;
+  const population = dashboard?.station ? SUMMER_CREW : 0;
 
   return (
     <footer className="relative flex flex-wrap items-center justify-between gap-4 rounded-xl bg-white text-slate-700 px-6 py-3.5 shadow-xs border border-slate-200 overflow-hidden">

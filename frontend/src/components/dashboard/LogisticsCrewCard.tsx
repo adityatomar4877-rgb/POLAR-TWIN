@@ -5,6 +5,9 @@ import { ArrowUpRight, Truck, Users, Package } from 'lucide-react';
 import { getResupplyRequests } from '../../api/maintenance';
 import type { Station } from '../../api/types';
 
+const SUMMER_CREW = 24;
+const BERTH_CAPACITY = 40;
+
 const priorityChip = (priority: string) => {
   const p = priority?.toUpperCase();
   if (p === 'CRITICAL') return 'bg-red-50 text-red-600';
@@ -31,8 +34,8 @@ export default function LogisticsCrewCard({ station }: { station: Station }) {
     ? Math.max(0, Math.round((new Date(nextArrivalDate).getTime() - new Date().setHours(0, 0, 0, 0)) / 86400000))
     : null;
 
-  const population = station.current_population ?? 0;
-  const capacity = station.capacity ?? 0;
+  const population = SUMMER_CREW;
+  const capacity = BERTH_CAPACITY;
   const occupancy = capacity > 0 ? Math.min(100, Math.round((population / capacity) * 100)) : 0;
 
   return (

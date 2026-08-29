@@ -172,6 +172,7 @@ function buildRuntime(def: FlowDef, activeStation: string): ConduitRuntime {
 function FlowConduit({ runtime }: { runtime: ConduitRuntime }) {
   const { def, curve, length, particles } = runtime
   const statusOverrides = useStationStore((s) => s.statusOverrides)
+  const backendStatusOverrides = useStationStore((s) => s.backendStatusOverrides)
   const alerts = useStationStore((s) => s.alerts)
   const tubeRef = useRef<THREE.Mesh>(null)
   const instancedRef = useRef<THREE.InstancedMesh>(null)
@@ -181,7 +182,7 @@ function FlowConduit({ runtime }: { runtime: ConduitRuntime }) {
   // Effective health of the conduit from its upstream/downstream systems.
   let worst: 'ok' | 'warning' | 'critical' = 'ok'
   for (const id of def.systems) {
-    const st = effectiveStatusOf({ statusOverrides, alerts }, id)
+    const st = effectiveStatusOf({ statusOverrides, backendStatusOverrides, alerts }, id)
     if (st === 'critical') {
       worst = 'critical'
       break

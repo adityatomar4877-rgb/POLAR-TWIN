@@ -5,6 +5,38 @@ import type { EnvironmentState, FaultFlags, Mitigations } from './telemetry'
 import { NO_MITIGATIONS } from './telemetry'
 import type { PredictiveMetrics } from './predictiveEngine'
 import type { AiInsight } from './aiPredictiveEngine'
+import { backendState, runBackendScenario, resetBackendScenario } from './backend'
+
+/** Map local demo presets to backend scenario + custom conditions. */
+const PRESET_TO_BACKEND: Record<ScenarioId, { scenario: string; conditions: Record<string, any> | null }> = {
+  A: { scenario: 'NORMAL_OPERATION', conditions: null },
+  B: {
+    scenario: 'EXTREME_COLD',
+    conditions: { temperature_c: -52, wind_speed_kmh: 115, solar_factor: 0.1, blizzard_warning: true, load_modifier_kw: 35 },
+  },
+  C: {
+    scenario: 'FUEL_SHORTAGE',
+    conditions: { fuel_percentage: 12, fuel_burn_multiplier: 1.8 },
+  },
+  D: {
+    scenario: 'EQUIPMENT_DEGRADATION',
+    conditions: null,
+  },
+}
+
+/** Fire-and-forget: inject the preset into the live backend simulation. */
+function injectBackendScenario(id: ScenarioId): void {
+  const sid = backendState.stationId
+  if (sid == null || !backendState.connected) return
+  const { scenario, conditions } = PRESET_TO_BACKEND[id]
+  runBackendScenario(sid, scenario, conditions).catch(() => {})
+}
+
+function resetBackendScenarioIfConnected(): void {
+  const sid = backendState.stationId
+  if (sid == null || !backendState.connected) return
+  resetBackendScenario(sid).catch(() => {})
+}
 
 /** Overview = default campus framing, inspect = facility framed, free = user took manual control. */
 export type ViewMode = 'overview' | 'inspect' | 'free'
@@ -41,6 +73,8 @@ export interface StationState {
   visualMode: VisualMode
   weather: Weather
   statusOverrides: Record<string, SystemStatus>
+  /** Live backend equipment status (lower precedence than manual overrides). */
+  backendStatusOverrides: Record<string, SystemStatus>
   // Phase 5 mission state
   alerts: StationAlert[]
   alertLog: StationAlert[]
@@ -68,6 +102,7 @@ export interface StationState {
   setVisualMode: (mode: VisualMode) => void
   setWeather: (weather: Weather) => void
   setStatusOverride: (id: string, status: SystemStatus) => void
+  setBackendStatusOverrides: (overrides: Record<string, SystemStatus>) => void
   resetStatusOverrides: () => void
   setAlerts: (active: StationAlert[], resolved: StationAlert[]) => void
   acknowledgeAlert: (id: string) => void
@@ -97,6 +132,7 @@ export const useStationStore = create<StationState>((set) => ({
   visualMode: 'standard',
   weather: 'clear',
   statusOverrides: {},
+  backendStatusOverrides: {},
   alerts: [],
   alertLog: [],
   predictive: null,
@@ -123,6 +159,7 @@ export const useStationStore = create<StationState>((set) => ({
   setWeather: (weather) => set({ weather }),
   setStatusOverride: (id, status) =>
     set((state) => ({ statusOverrides: { ...state.statusOverrides, [id]: status } })),
+  setBackendStatusOverrides: (overrides) => set({ backendStatusOverrides: overrides }),
   resetStatusOverrides: () => set({ statusOverrides: {} }),
   setAlerts: (active, resolved) =>
     set((state) => ({
@@ -140,6 +177,7 @@ export const useStationStore = create<StationState>((set) => ({
     })),
   setPredictive: (m) => set({ predictive: m }),
   applyScenario: (id) => {
+    injectBackendScenario(id)
     switch (id) {
       case 'A':
         set({
@@ -179,8 +217,10 @@ export const useStationStore = create<StationState>((set) => ({
         break
     }
   },
-  clearScenario: () =>
-    set({ scenario: null, faults: { fuelLeak: false, genBearing: false }, statusOverrides: {} }),
+  clearScenario: () => {
+    resetBackendScenarioIfConnected()
+    set({ scenario: null, faults: { fuelLeak: false, genBearing: false }, statusOverrides: {} })
+  },
   toggleAlertsDrawer: (open) =>
     set((state) => ({ alertsOpen: open ?? !state.alertsOpen })),
   bumpTick: () => set((state) => ({ missionTick: state.missionTick + 1 })),
@@ -207,11 +247,13 @@ export const useStationStore = create<StationState>((set) => ({
  * catalog base. Drives rail badges, detail panel and the 3D beacons.
  */
 export function effectiveStatusOf(
-  s: Pick<StationState, 'statusOverrides' | 'alerts'>,
+  s: Pick<StationState, 'statusOverrides' | 'backendStatusOverrides' | 'alerts'>,
   id: string,
 ): SystemStatus {
   const override = s.statusOverrides[id]
   if (override) return override
+  const backend = s.backendStatusOverrides[id]
+  if (backend) return backend
   let warned = false
   for (const a of s.alerts) {
     if (a.systemId !== id || a.autoResolved) continue

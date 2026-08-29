@@ -6,6 +6,8 @@ from app.models.maintenance import MaintenanceTask, ResupplyRequest
 from app.models.equipment import Equipment
 from app.schemas.maintenance import MaintenanceTaskCreate, ResupplyRequestCreate
 from app.services.audit_service import audit_service
+from app.core.config import settings
+from app.core.station_profiles import get_station_profile
 from app.core.security import APIError
 
 logger = logging.getLogger(__name__)
@@ -65,7 +67,7 @@ class MaintenanceService:
 
     @staticmethod
     def complete_maintenance_task(
-        db: Session, task_id: int, completed_by: str = "Operator_Demo"
+        db: Session, task_id: int, completed_by: str = settings.DEFAULT_OPERATOR_ID
     ) -> MaintenanceTask:
         task = db.query(MaintenanceTask).filter(MaintenanceTask.id == task_id).first()
         if not task:
@@ -85,8 +87,9 @@ class MaintenanceService:
             if eq:
                 if eq.status == "OFFLINE":
                     eq.status = "STANDBY"
-                eq.health_score = 92.0
-                eq.efficiency = 94.0
+                profile = get_station_profile(eq.station.code if eq.station else "")
+                eq.health_score = profile.maintenance_health_score
+                eq.efficiency = profile.maintenance_efficiency
                 eq.last_maintenance = now
 
         audit_service.log_action(

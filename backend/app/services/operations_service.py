@@ -12,6 +12,7 @@ from app.models.station import Station
 from app.schemas.operations import OperationsStatusOut, LoadGroupOut, OperationalRecommendationOut
 from app.services.safety_service import safety_service
 from app.services.audit_service import audit_service
+from app.core.config import settings
 from app.core.security import APIError
 
 logger = logging.getLogger(__name__)
@@ -28,7 +29,7 @@ class OperationsService:
         station_id: int,
         group_identifier: str = "NON_CRITICAL",
         reason: Optional[str] = None,
-        actor: str = "Operator_Demo",
+        actor: str = settings.DEFAULT_OPERATOR_ID,
     ) -> Dict[str, Any]:
         """Sheds non-critical or specified load groups to immediately reduce station power deficit."""
         loads = db.query(LoadGroup).filter(LoadGroup.station_id == station_id).all()
@@ -98,7 +99,7 @@ class OperationsService:
         station_id: int,
         group_identifier: str = "ALL",
         reason: Optional[str] = None,
-        actor: str = "Operator_Demo",
+        actor: str = settings.DEFAULT_OPERATOR_ID,
     ) -> Dict[str, Any]:
         """Restores previously shed loads with generation headroom validation."""
         loads = db.query(LoadGroup).filter(LoadGroup.station_id == station_id).all()
@@ -170,9 +171,15 @@ class OperationsService:
         station_id: int,
         enabled: bool,
         reason: Optional[str] = None,
-        actor: str = "Operator_Demo",
+        actor: str = settings.DEFAULT_OPERATOR_ID,
     ) -> Dict[str, Any]:
         station = db.query(Station).filter(Station.id == station_id).first()
+        if not station:
+            raise APIError(
+                code="STATION_NOT_FOUND",
+                message=f"Station #{station_id} not found.",
+                status_code=404,
+            )
         prev_mode = station.status
         new_mode = "EMERGENCY" if enabled else "OPERATIONAL"
         station.status = new_mode

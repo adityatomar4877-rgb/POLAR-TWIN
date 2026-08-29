@@ -4,6 +4,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Callable, Dict, List, Optional, Union
 from sqlalchemy.orm import Session
 from app.core.config import settings
+from app.core.station_profiles import get_station_profile
 from app.models.station import Station
 from app.models.equipment import Equipment
 from app.services.station_service import station_service
@@ -29,6 +30,24 @@ class SimulationService:
     def set_broadcast_callback(self, callback: Callable):
         self.broadcast_callback = callback
 
+    def update_generator_state(self, station_code: str, gen_name: str, online: bool) -> None:
+        """Bridge a START/STOP_GENERATOR command into the active scenario conditions.
+
+        Without this, a scenario with ``generator_2_online: false`` would force
+        the generator back OFFLINE on the next tick, undoing the operator's
+        command. This updates the in-memory ``active_conditions`` so the
+        scenario engine respects the command's intent going forward.
+        """
+        code = station_code.upper()
+        conds = self.active_conditions.get(code)
+        if conds is None:
+            conds = {}
+            self.active_conditions[code] = conds
+        if "Generator 1" in gen_name:
+            conds["generator_1_online"] = online
+        elif "Generator 2" in gen_name:
+            conds["generator_2_online"] = online
+
     def start(self) -> bool:
         self.is_running = True
         logger.info("Digital Twin simulation engine started.")
@@ -50,8 +69,11 @@ class SimulationService:
         weather_service.clear_cache()
         now = datetime.now(timezone.utc)
         stations = db.query(Station).all()
+        if not stations:
+            logger.warning("reset() found zero stations in the database — nothing to reset.")
         for st in stations:
             code = st.code.upper()
+            profile = get_station_profile(code)
             self.active_scenarios[code] = "NORMAL_OPERATION"
             self.active_conditions[code] = None
             self.scenario_expiries[code] = None
@@ -60,26 +82,20 @@ class SimulationService:
             # 1. Reset equipment statuses
             for eq in st.equipment:
                 eq.status = "NORMAL"
-                eq.health_score = 95.0
-                eq.efficiency = 94.0
-                if eq.equipment_type == "GENERATOR":
-                    eq.temperature = 72.0
-                elif eq.equipment_type == "HVAC":
-                    eq.temperature = 42.0
-                else:
-                    eq.temperature = 22.0
+                eq.health_score = profile.reset_health_score
+                eq.efficiency = profile.reset_efficiency
+                eq.temperature = profile.get_reset_temperature(eq.equipment_type)
 
             # 2. Reset logistics inventory
             for item in st.logistics:
                 if item.category == "FUEL":
-                    total_cap = 75000.0 if "MAITRI" in code else 60000.0
-                    item.quantity = total_cap * 0.82
+                    item.quantity = profile.fuel_tank_capacity_liters * (profile.reset_fuel_pct / 100.0)
                 item.days_remaining = calculate_days_remaining(item.quantity, item.daily_consumption)
                 item.status = "NORMAL"
 
             # 3. Insert baseline nominal telemetry
-            base_gen = 150.0 if "MAITRI" in code else 135.0
-            base_con = 110.0 if "MAITRI" in code else 95.0
+            base_gen = profile.nominal_generation_kw
+            base_con = profile.nominal_consumption_kw
             db.add(
                 EnergyTelemetry(
                     station_id=st.id,
@@ -87,11 +103,11 @@ class SimulationService:
                     generation_kw=base_gen,
                     consumption_kw=base_con,
                     energy_balance=round(base_gen - base_con, 2),
-                    battery_percentage=85.0,
+                    battery_percentage=profile.reset_battery_pct,
                     battery_power_kw=15.0,
                     diesel_generation_kw=base_gen - 30.0,
                     solar_generation_kw=30.0,
-                    fuel_percentage=82.0,
+                    fuel_percentage=profile.reset_fuel_pct,
                     grid_status="ONLINE",
                     source="reset_baseline",
                     is_simulated=True,
@@ -102,11 +118,11 @@ class SimulationService:
                 SensorTelemetry(
                     station_id=st.id,
                     timestamp=now,
-                    temperature=-18.0 if "MAITRI" in code else -14.0,
-                    wind_speed=32.0,
-                    wind_direction=165.0,
-                    pressure=990.0,
-                    humidity=62.0,
+                    temperature=profile.reset_sensor_temperature,
+                    wind_speed=profile.reset_sensor_wind_speed,
+                    wind_direction=profile.reset_sensor_wind_direction,
+                    pressure=profile.reset_sensor_pressure,
+                    humidity=profile.reset_sensor_humidity,
                     precipitation=0.0,
                     visibility=10.0,
                     source="reset_baseline",
@@ -164,14 +180,18 @@ class SimulationService:
         now = datetime.now(timezone.utc)
         active_until = now + timedelta(minutes=duration_minutes)
 
+        # Determine station profile BEFORE first use (fixes NameError when latest_s is None)
+        is_maitri = "MAITRI" in station.code.upper()
+        profile = get_station_profile(station.code)
+
         # Compute dynamic scenario parameters from actual station state
         from app.simulation.telemetry_engine import compute_scenario_dynamics
         from app.models.energy import EnergyTelemetry
         from app.models.sensor import SensorTelemetry
         latest_e = db.query(EnergyTelemetry).filter(EnergyTelemetry.station_id == station.id).order_by(EnergyTelemetry.timestamp.desc()).first()
         latest_s = db.query(SensorTelemetry).filter(SensorTelemetry.station_id == station.id).order_by(SensorTelemetry.timestamp.desc()).first()
-        _cur_t = float(latest_s.temperature) if latest_s else (-18.0 if is_maitri else -14.0)
-        _cur_w = float(latest_s.wind_speed) if latest_s else 30.0
+        _cur_t = float(latest_s.temperature) if latest_s else profile.reset_sensor_temperature
+        _cur_w = float(latest_s.wind_speed) if latest_s else profile.weather_wind_base
         _cur_c = float(latest_e.consumption_kw) if latest_e else 100.0
         _cur_d = float(latest_e.diesel_generation_kw) if latest_e else 80.0
         _cur_f = float(latest_e.fuel_percentage) if latest_e else 75.0
@@ -186,7 +206,6 @@ class SimulationService:
         impact: Dict[str, Union[float, int, str, bool]] = {}
         affected_systems: List[str] = []
         recommendations: List[str] = []
-        is_maitri = "MAITRI" in station.code.upper()
 
         if scenario_upper == "CUSTOM" or custom_conditions:
             conds = custom_conditions or {}

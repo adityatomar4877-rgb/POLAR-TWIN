@@ -1,13 +1,65 @@
+/** Backend string-enum vocabularies (kept as permissive unions for safety). */
+export type StationStatus = 'OPERATIONAL' | 'EMERGENCY' | string;
+export type EquipmentType =
+  | 'GENERATOR'
+  | 'BATTERY_BANK'
+  | 'HVAC'
+  | 'WATER_TREATMENT'
+  | 'COMMUNICATIONS'
+  | 'SOLAR_ARRAY'
+  | string;
+export type EquipmentStatus =
+  | 'NORMAL'
+  | 'WARNING'
+  | 'CRITICAL'
+  | 'OFFLINE'
+  | 'MAINTENANCE'
+  | 'ONLINE'
+  | 'RUNNING'
+  | 'STANDBY'
+  | 'STARTING'
+  | 'CHARGING'
+  | 'DISCHARGING'
+  | 'DEGRADED'
+  | 'FAILED'
+  | 'ISOLATED'
+  | string;
+export type GridStatus = 'ONLINE' | 'ISLANDED' | 'DEGRADED' | 'EMERGENCY' | string;
+export type AlertType =
+  | 'ENERGY'
+  | 'EQUIPMENT'
+  | 'ENVIRONMENT'
+  | 'LOGISTICS'
+  | 'SYSTEM'
+  | 'PREDICTION'
+  | string;
+export type AlertSeverity = 'INFO' | 'WARNING' | 'CRITICAL' | string;
+export type CommandType =
+  | 'START_GENERATOR'
+  | 'STOP_GENERATOR'
+  | 'LOAD_SHED'
+  | 'LOAD_RESTORE'
+  | 'ENTER_EMERGENCY_MODE'
+  | 'EXIT_EMERGENCY_MODE'
+  | 'RESTART_EQUIPMENT'
+  | 'SHUTDOWN_EQUIPMENT'
+  | 'ISOLATE_EQUIPMENT'
+  | string;
+export type CommandTargetType = 'EQUIPMENT' | 'LOAD_GROUP' | 'STATION' | 'LOGISTICS' | string;
+export type CommandRole = 'VIEWER' | 'OPERATOR' | 'SUPERVISOR' | 'ADMIN' | string;
+export type LoadCategory = 'CRITICAL' | 'HIGH_PRIORITY' | 'NON_CRITICAL' | string;
+
 export interface Station {
   id: number;
   name: string;
   code: string;
   latitude: number;
   longitude: number;
-  established_year: number;
-  capacity: number;
-  current_population: number;
-  status: string;
+  elevation: number;
+  status: StationStatus;
+  description?: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface SensorTelemetry {
@@ -39,7 +91,7 @@ export interface EnergyTelemetry {
   solar_generation_kw: number;
   wind_generation_kw: number;
   fuel_percentage: number;
-  grid_status: string;
+  grid_status: GridStatus;
   source: string;
   is_simulated: boolean;
 }
@@ -48,37 +100,41 @@ export interface Equipment {
   id: number;
   station_id: number;
   name: string;
-  equipment_type: string;
-  status: string;
+  equipment_type: EquipmentType;
+  status: EquipmentStatus;
   health_score: number;
-  temperature?: number;
-  runtime_hours?: number;
-  efficiency?: number;
-  last_maintenance: string;
-  next_maintenance?: string;
+  temperature: number;
+  runtime_hours: number;
+  efficiency: number;
+  last_maintenance?: string | null;
+  next_maintenance?: string | null;
+  created_at: string;
+  updated_at: string;
+  /** Client-side criticality hint (not provided by the backend). */
   is_critical?: boolean;
 }
 
 export interface Alert {
   id: number;
   station_id: number;
-  severity: string;
-  alert_type?: string;
+  severity: AlertSeverity;
+  alert_type: AlertType;
   title: string;
   message: string;
   source: string;
   related_entity_id?: number | null;
+  /** Tolerated legacy field; the backend treats unresolved alerts as active. */
   is_active?: boolean;
   acknowledged: boolean;
   created_at: string;
-  resolved_at?: string;
+  resolved_at?: string | null;
 }
 
 export interface LoadGroup {
   id: number;
   station_id: number;
   name: string;
-  category: string;
+  category: LoadCategory;
   current_power_kw: number;
   priority: number;
   enabled: boolean;
@@ -102,18 +158,18 @@ export interface StationDashboardOut {
 }
 
 export interface CommandRequest {
-  command_type: string;
-  target_type?: string;
+  command_type: CommandType;
+  target_type?: CommandTargetType;
   target_id?: number;
   parameters?: Record<string, any>;
   reason?: string;
   requested_by?: string;
-  role?: string;
+  role?: CommandRole;
   confirmed?: boolean;
 }
 
 export interface CommandPreviewRequest {
-  command_type: string;
+  command_type: CommandType;
   target_id?: number;
   parameters?: Record<string, any>;
 }
@@ -304,12 +360,20 @@ export interface EnergyForecast {
   station_code: string;
   generated_at: string;
   model_name: string;
+  model_version?: string | null;
   is_fallback: boolean;
   current_consumption_kw: number;
   average_predicted_consumption_kw?: number;
   forecast: Record<string, MLForecastHorizon> | EnergyPredictionPoint[];
   feature_count?: number;
   history_records_used?: number;
+  model_metrics?: Record<string, any> | null;
+  trained_on_station?: string | null;
+  cached?: boolean | null;
+  cache_age_seconds?: number | null;
+  active_scenario?: string | null;
+  scenario_adjusted?: boolean | null;
+  scenario_adjustment?: Record<string, any> | null;
 }
 
 export interface FuelForecast {
@@ -329,7 +393,8 @@ export interface FuelForecast {
 
 export interface PredictionSummaryOut {
   station_id: number;
-  energy_forecast_24h: EnergyForecast;
+  energy_forecast: EnergyForecast;
+  energy_forecast_24h?: EnergyForecast;
   fuel_depletion_forecast: FuelForecast;
 }
 

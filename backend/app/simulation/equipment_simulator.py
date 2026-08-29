@@ -48,7 +48,12 @@ class EquipmentSimulator:
                 equipment.temperature += float(conds["equipment_temp_offset"])
 
         # Check generator states from custom conditions
-        if conds.get("generator_1_online") is False and "Generator 1" in equipment.name:
+        # NOTE: the ``is False`` branches only force OFFLINE when the generator
+        # isn't already ONLINE — this prevents a scenario condition from
+        # clobbering a START_GENERATOR command on the next tick. The
+        # SimulationService.update_generator_state bridge updates the
+        # condition itself, but this guard is a second line of defense.
+        if conds.get("generator_1_online") is False and "Generator 1" in equipment.name and equipment.status not in ["ONLINE", "RUNNING"]:
             equipment.status = "OFFLINE"
             equipment.efficiency = 0.0
             is_failed = True
@@ -59,7 +64,7 @@ class EquipmentSimulator:
         if conds.get("generator_2_online") is True and "Generator 2" in equipment.name and equipment.status == "OFFLINE":
             equipment.status = "ONLINE"
             equipment.efficiency = 94.0
-        elif conds.get("generator_2_online") is False and "Generator 2" in equipment.name:
+        elif conds.get("generator_2_online") is False and "Generator 2" in equipment.name and equipment.status not in ["ONLINE", "RUNNING"]:
             equipment.status = "OFFLINE"
             equipment.efficiency = 0.0
 
