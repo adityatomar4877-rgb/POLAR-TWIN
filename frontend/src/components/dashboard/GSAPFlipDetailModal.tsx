@@ -60,7 +60,7 @@ export default function GSAPFlipDetailModal({
     }
   }, [isOpen, data?.title]);
 
-  // Handle compact 3D pop-out entrance animation
+  // Handle docked side-panel entrance animation
   useEffect(() => {
     if (!isOpen || !data) return;
 
@@ -72,8 +72,8 @@ export default function GSAPFlipDetailModal({
       );
       gsap.fromTo(
         cardRef.current,
-        { scale: 0.75, rotateX: 18, y: 20, opacity: 0 },
-        { scale: 1, rotateX: 0, y: 0, opacity: 1, duration: 0.38, ease: 'back.out(1.5)' }
+        { x: 60, opacity: 0 },
+        { x: 0, opacity: 1, duration: 0.4, ease: 'power3.out' }
       );
     }
   }, [isOpen, data]);
@@ -109,18 +109,17 @@ export default function GSAPFlipDetailModal({
   const modalContent = (
     <div
       ref={modalBackdropRef}
-      className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-900/45 backdrop-blur-[2px]"
+      className="fixed inset-0 z-[9999] flex items-stretch justify-end bg-slate-900/35 backdrop-blur-[2px]"
       onClick={onClose}
     >
-      {/* Compact floating HUD card (not taking full screen) */}
+      {/* Docked side panel — slides in from the right, never blocking the center screen */}
       <div
         ref={cardRef}
         onClick={(e) => e.stopPropagation()}
-        className="relative w-full max-w-[440px] rounded-2xl border border-slate-200 bg-white/98 p-5 text-slate-800 shadow-2xl select-none"
-        style={{ perspective: 1000 }}
+        className="relative h-full w-full max-w-[440px] overflow-y-auto border-l border-slate-200 bg-white/98 p-5 text-slate-800 shadow-2xl select-none"
       >
         {/* Top cyan accent line */}
-        <div className="absolute inset-x-0 top-0 h-1 rounded-t-2xl bg-gradient-to-r from-cyan-500 via-sky-500 to-indigo-500" />
+        <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-cyan-500 via-sky-500 to-indigo-500" />
 
         {/* Header */}
         <div className="flex items-start justify-between gap-2.5 border-b border-slate-100 pb-3 pt-0.5">

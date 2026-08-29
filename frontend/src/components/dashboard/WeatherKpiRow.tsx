@@ -19,6 +19,7 @@ const KpiCard = memo(function KpiCard({
   unit,
   sub,
   onClick,
+  hoverClass = '',
 }: {
   icon: typeof Thermometer;
   iconClass: string;
@@ -28,11 +29,15 @@ const KpiCard = memo(function KpiCard({
   unit: string;
   sub: string;
   onClick?: () => void;
+  hoverClass?: string;
 }) {
   return (
     <div
       onClick={onClick}
-      className="group flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3.5 shadow-xs transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md cursor-pointer"
+      className={clsx(
+        'group flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3.5 shadow-xs transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md cursor-pointer',
+        hoverClass,
+      )}
     >
       <span className={clsx('flex h-9 w-9 shrink-0 items-center justify-center rounded-lg', iconClass)}>
         <Icon size={17} />
@@ -108,6 +113,7 @@ export default function WeatherKpiRow({ dashboard }: { dashboard: StationDashboa
         unit="°C"
         sub={`Feels like ${feelsLike.toFixed(1)}°C`}
         onClick={() => navigate('/environment')}
+        hoverClass="hover:border-amber-400 hover:ring-2 hover:ring-amber-400/20"
       />
       <KpiCard
         icon={Wind}
@@ -118,6 +124,7 @@ export default function WeatherKpiRow({ dashboard }: { dashboard: StationDashboa
         unit="km/h"
         sub={`${compass(env?.wind_direction ?? 231)} ${Math.round(env?.wind_direction ?? 231)}°`}
         onClick={() => navigate('/environment')}
+        hoverClass="hover:border-cyan-400 hover:ring-2 hover:ring-cyan-400/20"
       />
       <KpiCard
         icon={Droplets}
@@ -128,6 +135,7 @@ export default function WeatherKpiRow({ dashboard }: { dashboard: StationDashboa
         unit="%"
         sub="Normal"
         onClick={() => navigate('/environment')}
+        hoverClass="hover:border-emerald-400 hover:ring-2 hover:ring-emerald-400/20"
       />
       <KpiCard
         icon={Gauge}
@@ -138,12 +146,13 @@ export default function WeatherKpiRow({ dashboard }: { dashboard: StationDashboa
         unit="hPa"
         sub="Stable"
         onClick={() => navigate('/environment')}
+        hoverClass="hover:border-purple-400 hover:ring-2 hover:ring-purple-400/20"
       />
 
       {/* Station Status */}
       <div
         onClick={() => navigate('/infrastructure')}
-        className="group col-span-2 lg:col-span-1 flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3.5 shadow-xs transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md cursor-pointer"
+        className="group col-span-2 lg:col-span-1 flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3.5 shadow-xs transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md cursor-pointer hover:border-emerald-500 hover:ring-2 hover:ring-emerald-500/20"
       >
         <StationStatusRing health={avgHealth} critical={critical} />
         <div className="min-w-0">
