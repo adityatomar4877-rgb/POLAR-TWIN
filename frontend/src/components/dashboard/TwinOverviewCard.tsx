@@ -12,15 +12,24 @@ import {
   Droplets,
   RadioTower,
   Mouse,
+  RotateCcw,
 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { DigitalTwinScene } from '../3d/DigitalTwinScene';
+import { useStationStore, type VisualMode } from '../../lib/3d/stationStore';
 import { getFuelPrediction } from '../../api/predictions';
 import type { StationDashboardOut } from '../../api/types';
 import { useStation } from '../../context/StationContext';
 import GSAPNumberTicker from './GSAPNumberTicker';
 
 type Health = 'ok' | 'bad';
+
+const VISUAL_MODES: { id: VisualMode; label: string }[] = [
+  { id: 'standard', label: 'Std' },
+  { id: 'thermal', label: 'Thermal' },
+  { id: 'utilities', label: 'Utilities' },
+  { id: 'night', label: 'Night' },
+];
 
 function FloatingPinCard({
   icon: Icon,
@@ -72,6 +81,9 @@ function FloatingPinCard({
 
 export default function TwinOverviewCard({ dashboard }: { dashboard: StationDashboardOut }) {
   const { selectedStationId } = useStation();
+  const visualMode = useStationStore((s) => s.visualMode);
+  const setVisualMode = useStationStore((s) => s.setVisualMode);
+  const clearSelection = useStationStore((s) => s.clearSelection);
   const [expanded, setExpanded] = useState(false);
   const [view, setView] = useState<'all' | 'power' | 'habitat'>('all');
   const viewportRef = useRef<HTMLDivElement>(null);
@@ -161,18 +173,35 @@ export default function TwinOverviewCard({ dashboard }: { dashboard: StationDash
           expanded ? 'h-[720px]' : 'h-[500px] lg:h-[540px]'
         )}
       >
-        {/* Realistic Polar Station Canvas Backdrop */}
-        <div
-          className="absolute inset-0 bg-cover bg-center bg-no-repeat transition-transform duration-700 group-hover:scale-[1.01]"
-          style={{ backgroundImage: "url('/polar-bg.jpg')" }}
-        >
-          {/* Subtle cyan wireframe overlay effect */}
-          <div className="absolute inset-0 bg-gradient-to-t from-slate-950/20 via-transparent to-transparent" />
+        {/* Interactive 3D digital twin */}
+        <div className="absolute inset-0 pointer-events-auto">
+          <DigitalTwinScene stationId={selectedStationId} />
         </div>
 
-        {/* Interactive 3D layer on top */}
-        <div className="absolute inset-0 opacity-80 pointer-events-auto">
-          <DigitalTwinScene stationId={selectedStationId} lightMode compact />
+        {/* Visual mode switcher + camera reset */}
+        <div className="absolute left-1/2 top-3 z-20 flex -translate-x-1/2 items-center gap-1 rounded-full border border-slate-200/80 bg-white/90 p-1 shadow-md backdrop-blur">
+          {VISUAL_MODES.map((m) => (
+            <button
+              key={m.id}
+              onClick={() => setVisualMode(m.id)}
+              className={clsx(
+                'cursor-pointer rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider transition-colors',
+                visualMode === m.id
+                  ? 'bg-slate-900 text-white'
+                  : 'text-slate-500 hover:text-slate-800'
+              )}
+            >
+              {m.label}
+            </button>
+          ))}
+          <span className="mx-0.5 h-4 w-px bg-slate-200" />
+          <button
+            onClick={clearSelection}
+            title="Reset camera"
+            className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-full text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800"
+          >
+            <RotateCcw size={13} />
+          </button>
         </div>
 
         {/* Pinned Subsystem HUD Badges matching reference design */}
