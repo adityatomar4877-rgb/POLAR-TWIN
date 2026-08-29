@@ -9,7 +9,6 @@ import { StationCamera } from '../common/StationCamera'
 import { CameraFocus } from '../common/CameraFocus'
 import { SelectionRing } from '../common/SelectionRing'
 import { IsolationDimmer } from '../common/IsolationDimmer'
-import { StatusBeacons } from '../common/StatusBeacons'
 import { UtilityFlows } from '../common/UtilityFlows'
 import { ThermalOverlay } from '../common/ThermalOverlay'
 import { BlizzardParticles } from '../common/BlizzardParticles'
@@ -131,7 +130,6 @@ export function BharatiScene() {
           <CameraFocus />
           <SelectionRing />
           <IsolationDimmer />
-          <StatusBeacons />
           <UtilityFlows />
           <ThermalOverlay />
           <BlizzardParticles />
