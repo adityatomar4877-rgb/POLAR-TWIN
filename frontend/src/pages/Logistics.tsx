@@ -422,6 +422,50 @@ function ResupplyLedger({
 
 /* ---------------- Create resupply modal ---------------- */
 
+const STOCK_PRESETS: Record<string, { name: string; unit: string }[]> = {
+  Rations: [
+    { name: 'Basmati Rice', unit: 'kg' },
+    { name: 'Wheat Flour', unit: 'kg' },
+    { name: 'Pulses/Dal', unit: 'kg' },
+    { name: 'Freeze-Dried Meals', unit: 'packs' },
+    { name: 'Dairy Powder', unit: 'kg' },
+    { name: 'Cooking Oil', unit: 'L' },
+  ],
+  Fuel: [
+    { name: 'Arctic Low-Pour Diesel', unit: 'Liters' },
+    { name: 'Jet A-1 Aviation Fuel', unit: 'Liters' },
+    { name: 'Synthetic Engine Oil', unit: 'Liters' },
+  ],
+  'Potable Water': [
+    { name: 'Bottled Emergency Water', unit: 'Liters' },
+    { name: 'RO Membrane Cartridges', unit: 'Units' },
+  ],
+  'Spare Parts': [
+    { name: 'Fuel Injectors', unit: 'Units' },
+    { name: 'HVAC Filters', unit: 'Units' },
+    { name: 'Alternator Belts', unit: 'Pieces' },
+  ],
+  Medical: [
+    { name: 'Polar Trauma Kits', unit: 'Kits' },
+    { name: 'Medical Oxygen', unit: 'Cylinders' },
+    { name: 'IV Fluids', unit: 'Units' },
+  ],
+  Science: [
+    { name: 'Liquid Nitrogen', unit: 'Liters' },
+    { name: 'Aerosol Filters', unit: 'Packs' },
+    { name: 'Sample Vials', unit: 'Boxes' },
+  ],
+};
+
+const STOCK_ICON: Record<string, typeof Fuel> = {
+  Rations: Utensils,
+  Fuel: Fuel,
+  'Potable Water': Droplets,
+  'Spare Parts': Wrench,
+  Medical: HeartPulse,
+  Science: FlaskConical,
+};
+
 function ResupplyModal({
   stationId,
   onClose,
@@ -432,12 +476,13 @@ function ResupplyModal({
   onCreated: () => void;
 }) {
   const [form, setForm] = useState<ResupplyRequestCreate>({
-    item: 'FUEL',
+    item: 'Arctic Low-Pour Diesel',
     quantity: 1000,
-    unit: 'liters',
+    unit: 'Liters',
     priority: 'HIGH',
     reason: '',
   });
+  const [category, setCategory] = useState<string>('Fuel');
 
   const mutation = useMutation({
     mutationFn: () => createResupplyRequest(stationId, form),
@@ -449,24 +494,65 @@ function ResupplyModal({
 
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm">
-      <div className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl text-slate-800">
+      <div className="w-full max-w-lg rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl text-slate-800">
         <h3 className="text-lg font-extrabold text-slate-900">File New Resupply Requisition</h3>
         <p className="text-xs text-slate-500 mt-0.5">
           Direct satellite transmission to NCPOR Logistics Cell, Goa.
         </p>
 
         <div className="mt-5 space-y-4">
+          {/* Categorized quick-select stock examples */}
+          <div>
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Stock Category</span>
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {Object.keys(STOCK_PRESETS).map((cat) => {
+                const Icon = STOCK_ICON[cat];
+                const active = category === cat;
+                return (
+                  <button
+                    key={cat}
+                    type="button"
+                    onClick={() => setCategory(cat)}
+                    className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[11px] font-bold transition-colors cursor-pointer ${
+                      active
+                        ? 'border-purple-400 bg-purple-50 text-purple-700'
+                        : 'border-slate-200 bg-slate-50 text-slate-500 hover:border-slate-300'
+                    }`}
+                  >
+                    <Icon size={12} /> {cat}
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="mt-2.5 grid grid-cols-2 gap-1.5 sm:grid-cols-3">
+              {STOCK_PRESETS[category].map((p) => {
+                const selected = form.item === p.name;
+                return (
+                  <button
+                    key={p.name}
+                    type="button"
+                    onClick={() => setForm({ ...form, item: p.name, unit: p.unit })}
+                    className={`flex flex-col items-start rounded-lg border px-2.5 py-1.5 text-left transition-colors cursor-pointer ${
+                      selected
+                        ? 'border-purple-500 bg-purple-50 shadow-sm'
+                        : 'border-slate-200 bg-white hover:border-purple-300 hover:bg-purple-50/40'
+                    }`}
+                  >
+                    <span className="text-[11px] font-bold text-slate-700">{p.name}</span>
+                    <span className="text-[9px] font-mono text-slate-400">unit: {p.unit}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Selected item readout */}
           <label className="block">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Consumable Item</span>
-            <select
-              value={form.item}
-              onChange={(e) => setForm({ ...form, item: e.target.value })}
-              className="mt-1.5 w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-800 outline-none focus:border-purple-500"
-            >
-              {['FUEL', 'RATIONS', 'SPARE_PARTS', 'POTABLE_WATER', 'MEDICAL', 'SCIENCE_CONSUMABLES'].map((i) => (
-                <option key={i} value={i}>{i.replace(/_/g, ' ')}</option>
-              ))}
-            </select>
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Selected Consumable</span>
+            <div className="mt-1.5 w-full rounded-xl border border-purple-200 bg-purple-50/50 px-3 py-2.5 text-sm font-bold text-slate-800">
+              {form.item} <span className="ml-1 text-xs font-semibold text-slate-500">({form.unit})</span>
+            </div>
           </label>
 
           <div className="grid grid-cols-2 gap-3">

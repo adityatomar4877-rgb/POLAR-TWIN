@@ -53,12 +53,12 @@ export function CameraFocus() {
   const hasFramed = useRef(false)
 
   useEffect(() => {
-    const defaultPos = activeStation === 'maitri' ? MAITRI_DEFAULT_CAMERA_POSITION : DEFAULT_CAMERA_POSITION
+    // No snap-back on clear: when a system is deselected we leave the camera
+    // exactly where the operator left it, preserving heading and orbit angle.
+    // The cinematic glide only runs when framing a newly-selected facility.
     if (!selectedSystemId) {
-      if (hasFramed.current) {
-        glide.current = { pos: defaultPos.clone(), target: DEFAULT_TARGET.clone() }
-        hasFramed.current = false
-      }
+      hasFramed.current = false
+      glide.current = null
       return
     }
 

@@ -52,7 +52,7 @@ export default function EnergyFlowDiagram({ energy, loads }: Props) {
             <Fuel size={13} /> DIESEL
             <span className="ml-auto font-bold">{dieselKw.toFixed(1)} kW</span>
           </div>
-          <div className={clsx(nodeLabel, solarKw > 0 ? 'border-amber-300 bg-amber-50 text-amber-200' : 'border-slate-200 bg-white/60 text-slate-500')}>
+          <div className={clsx(nodeLabel, solarKw > 0 ? 'border-amber-300 bg-amber-50 text-amber-800' : 'border-slate-200 bg-white/60 text-slate-500')}>
             <Sun size={13} /> SOLAR PV
             <span className="ml-auto font-bold">{solarKw.toFixed(1)} kW</span>
           </div>
@@ -96,7 +96,7 @@ export default function EnergyFlowDiagram({ energy, loads }: Props) {
               )}
             >
               <BatteryCharging size={14} className={charging ? 'text-emerald-600' : 'text-amber-600'} />
-              <span className="mt-1 font-mono text-sm font-bold text-white">{batteryPct.toFixed(0)}%</span>
+              <span className="mt-1 font-mono text-sm font-bold text-slate-800">{batteryPct.toFixed(0)}%</span>
               <span className={clsx('font-mono text-[9px] tracking-widest', charging ? 'text-emerald-600' : 'text-amber-600')}>
                 {charging ? `CHARGING +${batteryFlow.toFixed(1)} kW` : `DISCHARGING ${Math.abs(batteryFlow).toFixed(1)} kW`}
               </span>
@@ -140,7 +140,7 @@ export default function EnergyFlowDiagram({ energy, loads }: Props) {
                 className={clsx(
                   nodeLabel,
                   load.enabled
-                    ? 'border-sky-300 bg-sky-50 text-sky-100'
+                    ? 'border-sky-300 bg-sky-50 text-sky-800'
                     : 'border-red-300 bg-red-500/5 text-red-600 line-through opacity-70'
                 )}
               >

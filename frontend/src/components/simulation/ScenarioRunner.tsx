@@ -238,12 +238,19 @@ export const ScenarioRunner = ({ stationId }: { stationId: number }) => {
     (activeConditionData?.active_scenario && activeConditionData.active_scenario !== 'NORMAL_OPERATION');
 
   return (
-    <div className="bg-slate-900 border border-slate-800 rounded-lg p-5 flex flex-col gap-5 w-full shadow-2xl transition-all">
+    <div
+      className="bg-slate-950 border border-indigo-900/40 rounded-lg p-5 flex flex-col gap-5 w-full shadow-2xl transition-all relative overflow-hidden"
+      style={{
+        backgroundImage:
+          'linear-gradient(rgba(99,102,241,0.06) 1px, transparent 1px), linear-gradient(90deg, rgba(99,102,241,0.06) 1px, transparent 1px)',
+        backgroundSize: '24px 24px',
+      }}
+    >
       {/* Top Header with Module Title and Active Status Badge */}
-      <div className="flex items-center justify-between border-b border-slate-800 pb-3.5">
+      <div className="flex items-center justify-between border-b border-indigo-900/40 pb-3.5 relative">
         <div className="flex items-center gap-2.5">
-          <div className="p-2 bg-cyan-950/60 border border-cyan-800/60 rounded-md">
-            <Sliders className="w-5 h-5 text-cyan-400" />
+          <div className="p-2 bg-indigo-950/70 border border-indigo-700/60 rounded-md shadow-[0_0_14px_rgba(99,102,241,0.3)]">
+            <Sliders className="w-5 h-5 text-indigo-300" />
           </div>
           <div>
             <h2 className="text-sm font-bold text-slate-100 tracking-wider flex items-center gap-2 font-mono">
@@ -257,12 +264,12 @@ export const ScenarioRunner = ({ stationId }: { stationId: number }) => {
 
         <div className="flex items-center gap-2">
           {isCustomActive ? (
-            <div className="flex items-center gap-1.5 px-2.5 py-1 bg-amber-950/60 border border-amber-800/80 rounded text-[11px] font-mono text-amber-300 animate-pulse">
+            <div className="flex items-center gap-1.5 px-2.5 py-1 bg-amber-950/70 border border-amber-600/80 rounded text-[11px] font-mono text-amber-300 animate-pulse shadow-[0_0_12px_rgba(245,158,11,0.35)]">
               <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping" />
               CONDITIONS_INJECTED
             </div>
           ) : (
-            <div className="px-2.5 py-1 bg-slate-950 border border-slate-800 rounded text-[11px] font-mono text-emerald-400 flex items-center gap-1.5">
+            <div className="px-2.5 py-1 bg-slate-950 border border-indigo-900/50 rounded text-[11px] font-mono text-emerald-400 flex items-center gap-1.5">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
               NOMINAL_BASELINE
             </div>
@@ -272,7 +279,7 @@ export const ScenarioRunner = ({ stationId }: { stationId: number }) => {
             onClick={() => resetMutation.mutate()}
             disabled={resetMutation.isPending}
             title="Reset to Normal Nominal Operation"
-            className="p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded border border-slate-700 transition-colors"
+            className="p-1.5 bg-indigo-950/70 hover:bg-indigo-900/70 text-indigo-200 hover:text-white rounded border border-indigo-700/60 transition-colors"
           >
             <RotateCcw className={`w-3.5 h-3.5 ${resetMutation.isPending ? 'animate-spin' : ''}`} />
           </button>

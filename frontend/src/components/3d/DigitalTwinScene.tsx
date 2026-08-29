@@ -1,10 +1,11 @@
 import { useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { getStationEquipment, getStationDashboard } from '../../api/stations';
+import { getStationEquipment } from '../../api/stations';
 import type { Equipment } from '../../api/types';
 import { useStationStore, type SystemStatus } from '../../lib/3d/stationStore';
 import { BharatiScene } from './bharati/BharatiScene';
 import { MaitriScene } from './maitri/MaitriScene';
+import { ModeToolbar } from './ModeToolbar';
 
 interface DigitalTwinSceneProps {
   stationId: number;
@@ -73,9 +74,10 @@ function buildStatusOverrides(
 /**
  * Phase 4 digital twin. Renders the rich procedural Bharati / Maitri 3D model
  * for the selected station and binds live telemetry into the shared 3D store:
- *  - station id  -> active campus (Bharati vs Maitri architecture + terrain)
- *  - wind speed  -> blizzard / whiteout atmosphere
+ *  - station id      -> active campus (Bharati vs Maitri architecture + terrain)
  *  - equipment status -> beacons, utility flows and the thermal overlay
+ * Blizzard is NOT auto-triggered: the operator toggles it manually via the
+ * floating ModeToolbar so high winds never override a deliberate view choice.
  */
 export const DigitalTwinScene = ({ stationId, interactive = true }: DigitalTwinSceneProps) => {
   const activeStation: 'bharati' | 'maitri' = stationId === 1 ? 'maitri' : 'bharati';
@@ -88,17 +90,7 @@ export const DigitalTwinScene = ({ stationId, interactive = true }: DigitalTwinS
     refetchInterval: 15000,
   });
 
-  // Shares the StationContext dashboard cache (same query key), so no extra
-  // network cost; keeps wind/atmosphere in sync with the polled dashboard.
-  const { data: dashboard } = useQuery({
-    queryKey: ['dashboard', stationId],
-    queryFn: () => getStationDashboard(stationId),
-    enabled: stationId != null,
-    staleTime: 10000,
-  });
-
   const setActiveStation = useStationStore((s) => s.setActiveStation);
-  const setWeather = useStationStore((s) => s.setWeather);
   const resetStatusOverrides = useStationStore((s) => s.resetStatusOverrides);
   const setStatusOverride = useStationStore((s) => s.setStatusOverride);
 
@@ -110,12 +102,6 @@ export const DigitalTwinScene = ({ stationId, interactive = true }: DigitalTwinS
     }
   }, [activeStation, setActiveStation]);
 
-  // High winds drive the blizzard particle system + whiteout lighting.
-  const windSpeed = dashboard?.environment?.wind_speed ?? 0;
-  useEffect(() => {
-    setWeather(windSpeed > 55 ? 'blizzard' : 'clear');
-  }, [windSpeed, setWeather]);
-
   // Push live equipment status into the 3D beacons / utility flows / thermal map.
   useEffect(() => {
     const overrides = buildStatusOverrides(equipment, activeStation);
@@ -126,6 +112,7 @@ export const DigitalTwinScene = ({ stationId, interactive = true }: DigitalTwinS
   return (
     <div className={`relative h-full w-full${interactive ? '' : ' pointer-events-none'}`}>
       {activeStation === 'maitri' ? <MaitriScene /> : <BharatiScene />}
+      {interactive && <ModeToolbar />}
     </div>
   );
 };

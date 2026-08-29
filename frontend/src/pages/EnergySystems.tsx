@@ -477,9 +477,21 @@ export const EnergySystems = ({ stationId }: { stationId: number }) => {
           </div>
           <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-mono text-slate-400">
             <span>Health: 92%</span>
+            {dieselKw === 0 ? (
+            <span
+              onClick={(e) => {
+                e.stopPropagation();
+                handleStartBackup();
+              }}
+              className="flex items-center gap-1 rounded-md bg-emerald-500 px-2 py-1 font-bold text-white shadow-[0_0_12px_rgba(16,185,129,0.35)] transition-colors hover:bg-emerald-400 cursor-pointer"
+            >
+              <Play className="w-3 h-3" /> START GENS
+            </span>
+          ) : (
             <span className="font-bold text-cyan-600 flex items-center gap-1 group-hover:translate-x-0.5 transition-transform">
               <Sparkles size={12} /> DETAILS ↗
             </span>
+          )}
           </div>
         </button>
       </div>
