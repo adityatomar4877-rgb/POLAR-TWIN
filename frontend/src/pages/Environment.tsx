@@ -143,7 +143,7 @@ export const Environment = ({ stationId }: { stationId: number }) => {
   const barograph = Array(12).fill(pressure);
 
   return (
-    <div ref={containerRef} className="flex flex-col gap-6 max-w-6xl mx-auto h-full overflow-auto pr-2 custom-scrollbar pb-12">
+    <div ref={containerRef} data-lenis-prevent className="flex flex-col gap-6 max-w-6xl mx-auto h-full overflow-auto pr-2 custom-scrollbar pb-12">
       {/* Page Header */}
       <div className="gsap-env-item flex flex-wrap items-center justify-between gap-4">
         <div>

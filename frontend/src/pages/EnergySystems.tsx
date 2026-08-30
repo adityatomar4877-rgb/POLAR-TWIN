@@ -306,7 +306,7 @@ export const EnergySystems = ({ stationId }: { stationId: number }) => {
   const highPriorityLoad = dashboard.loads?.filter(l => l.category === 'HIGH_PRIORITY' && l.enabled).reduce((acc, l) => acc + l.current_power_kw, 0) || 0;
 
   return (
-    <div ref={containerRef} className="flex flex-col gap-6 max-w-6xl mx-auto h-full overflow-auto pr-2 custom-scrollbar pb-10">
+    <div ref={containerRef} data-lenis-prevent className="flex flex-col gap-6 max-w-6xl mx-auto h-full overflow-auto pr-2 custom-scrollbar pb-10">
       <div className="gsap-energy-item flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-widest text-slate-800 flex items-center gap-3">

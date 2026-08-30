@@ -7,6 +7,8 @@ interface Props {
   stationId: number | string;
   limit?: number;
   className?: string;
+  tableScrollClassName?: string;
+  fullHeight?: boolean;
 }
 
 const resultTone = (result: string) =>
@@ -24,7 +26,13 @@ const resultTone = (result: string) =>
  * Streams from GET /stations/{id}/operations/history; refreshed by the
  * WebSocket COMMAND_COMPLETED event invalidation.
  */
-export default function CommandHistoryTable({ stationId, limit = 50, className }: Props) {
+export default function CommandHistoryTable({
+  stationId,
+  limit = 50,
+  className,
+  tableScrollClassName,
+  fullHeight = false,
+}: Props) {
   const { data: history, isLoading } = useQuery({
     queryKey: ['operations-history', stationId],
     queryFn: () => getOperationsHistory(stationId, limit),
@@ -43,7 +51,14 @@ export default function CommandHistoryTable({ stationId, limit = 50, className }
         </span>
       </div>
 
-      <div className="custom-scrollbar max-h-[420px] overflow-auto">
+      <div
+        data-lenis-prevent
+        className={clsx(
+          'custom-scrollbar overflow-auto',
+          fullHeight ? 'max-h-none' : 'max-h-[520px]',
+          tableScrollClassName
+        )}
+      >
         {isLoading && (
           <p className="p-6 text-center font-mono text-[10px] tracking-widest text-slate-500">
             LOADING_AUDIT_LEDGER...
