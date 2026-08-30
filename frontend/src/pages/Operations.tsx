@@ -195,7 +195,7 @@ export const Operations = ({ stationId }: { stationId: number }) => {
   };
 
   return (
-    <div ref={containerRef} className="flex flex-col gap-6 max-w-6xl mx-auto h-full overflow-auto pr-2 custom-scrollbar pb-10">
+    <div ref={containerRef} data-lenis-prevent className="flex flex-col gap-6 max-w-6xl mx-auto h-full overflow-auto pr-2 custom-scrollbar pb-10">
       
       {/* Header & Quick Action Bar */}
       <div className="gsap-ops-item flex flex-col md:flex-row md:items-center justify-between gap-4">

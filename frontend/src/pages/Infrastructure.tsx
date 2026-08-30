@@ -126,7 +126,7 @@ export const Infrastructure = ({ stationId }: { stationId: number }) => {
   };
 
   return (
-    <div ref={containerRef} className="custom-scrollbar mx-auto flex h-full max-w-6xl flex-col gap-6 overflow-auto pb-10 pr-2">
+    <div ref={containerRef} data-lenis-prevent className="custom-scrollbar mx-auto flex h-full max-w-6xl flex-col gap-6 overflow-auto pb-10 pr-2">
       <div className="gsap-infra-item flex items-center justify-between">
         <div>
           <h1 className="flex items-center gap-3 text-2xl font-bold tracking-widest text-slate-800">

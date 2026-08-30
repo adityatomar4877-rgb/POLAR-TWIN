@@ -38,7 +38,7 @@ export const AuditPage = ({ stationId }: { stationId: number }) => {
         </div>
       </div>
       <div className="gsap-audit-item">
-        <CommandHistoryTable stationId={stationId} className="max-h-none" />
+        <CommandHistoryTable stationId={stationId} fullHeight limit={100} />
       </div>
     </div>
   );

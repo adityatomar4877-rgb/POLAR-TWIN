@@ -65,7 +65,18 @@ export function useLenisScroll(options?: {
     gsap.ticker.add(raf);
     gsap.ticker.lagSmoothing(0);
 
+    // Watch for DOM size changes (e.g. data fetching, table expansion, animations) to keep Lenis dimensions updated
+    let observer: ResizeObserver | null = null;
+    if (typeof ResizeObserver !== 'undefined') {
+      observer = new ResizeObserver(() => {
+        lenis.resize();
+      });
+      if (contentRef?.current) observer.observe(contentRef.current);
+      if (wrapperRef?.current) observer.observe(wrapperRef.current);
+    }
+
     return () => {
+      if (observer) observer.disconnect();
       gsap.ticker.remove(raf);
       lenis.destroy();
       lenisRef.current = null;

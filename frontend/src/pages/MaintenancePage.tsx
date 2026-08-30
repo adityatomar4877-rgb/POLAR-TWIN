@@ -178,7 +178,7 @@ export const MaintenancePage = ({ stationId }: { stationId: number }) => {
   };
 
   return (
-    <div ref={containerRef} className="custom-scrollbar mx-auto flex h-full max-w-6xl flex-col gap-6 overflow-auto pb-12 pr-2">
+    <div ref={containerRef} data-lenis-prevent className="custom-scrollbar mx-auto flex h-full max-w-6xl flex-col gap-6 overflow-auto pb-12 pr-2">
       {/* Header */}
       <div className="gsap-maint-item flex flex-wrap items-center justify-between gap-4">
         <div>
