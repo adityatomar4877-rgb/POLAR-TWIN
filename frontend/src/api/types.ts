@@ -414,3 +414,92 @@ export interface SimulationStatusOut {
   active_scenario_expiry: Record<string, string | null>;
   total_cycles_executed: number;
 }
+
+/* ---------- AI Operations Copilot & LLM Risk Assessment ---------- */
+
+export interface ChatMessage {
+  role: 'user' | 'assistant' | 'system';
+  content: string;
+  timestamp?: string;
+}
+
+export interface SuggestedCommand {
+  title: string;
+  command_type: string;
+  target_type: string;
+  target_id?: number | null;
+  parameters?: Record<string, any>;
+  severity: string;
+  rationale: string;
+}
+
+export interface CopilotChatRequest {
+  message: string;
+  history?: ChatMessage[];
+  station_id?: string;
+  provider?: string;
+  model?: string;
+  temperature?: number;
+}
+
+export interface CopilotChatResponse {
+  answer: string;
+  risk_level: 'NOMINAL' | 'GUARDED' | 'ELEVATED' | 'HIGH' | 'CRITICAL' | string;
+  risk_score: number;
+  cited_telemetry: Record<string, any>;
+  suggested_actions: SuggestedCommand[];
+  model_used: string;
+  provider: string;
+  timestamp: string;
+}
+
+export interface DomainRiskScore {
+  score: number;
+  status: 'NOMINAL' | 'GUARDED' | 'ELEVATED' | 'HIGH' | 'CRITICAL' | string;
+  key_factors: string[];
+}
+
+export interface RiskAssessmentResponse {
+  station_id: number;
+  station_code: string;
+  station_name: string;
+  overall_score: number;
+  risk_level: 'NOMINAL' | 'GUARDED' | 'ELEVATED' | 'HIGH' | 'CRITICAL' | string;
+  summary: string;
+  energy_risk: DomainRiskScore;
+  weather_risk: DomainRiskScore;
+  equipment_risk: DomainRiskScore;
+  logistics_risk: DomainRiskScore;
+  vulnerabilities: string[];
+  immediate_mitigations: string[];
+  suggested_commands: SuggestedCommand[];
+  telemetry_snapshot: Record<string, any>;
+  model_used: string;
+  provider: string;
+  generated_at: string;
+}
+
+export interface DiagnosticResponse {
+  station_id: number;
+  station_name: string;
+  diagnostic_summary: string;
+  subsystems_status: Record<string, string>;
+  active_anomalies_count: number;
+  recommendations: OperationalRecommendation[];
+  model_used: string;
+  provider: string;
+  generated_at: string;
+}
+
+export interface CopilotStatusOut {
+  active_provider: string;
+  configured_model: string;
+  ollama_available: boolean;
+  ollama_models: string[];
+  openai_available: boolean;
+  gemini_available: boolean;
+  groq_available: boolean;
+  fallback_active: boolean;
+  ollama_base_url: string;
+}
+

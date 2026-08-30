@@ -24,6 +24,7 @@ from app.api.dashboard import router as dashboard_router
 from app.api.commands import router as commands_router
 from app.api.maintenance import router as maintenance_router
 from app.api.operations import router as operations_router
+from app.api.copilot import router as copilot_router
 
 # Configure logging
 logging.basicConfig(
@@ -182,6 +183,7 @@ app.include_router(dashboard_router, prefix=settings.API_V1_STR)
 app.include_router(commands_router, prefix=settings.API_V1_STR)
 app.include_router(maintenance_router, prefix=settings.API_V1_STR)
 app.include_router(operations_router, prefix=settings.API_V1_STR)
+app.include_router(copilot_router, prefix=settings.API_V1_STR)
 
 
 # Root and Health Endpoints

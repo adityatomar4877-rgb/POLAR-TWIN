@@ -49,6 +49,21 @@ class Settings(BaseSettings):
     # Alert Deduplication
     ALERT_DEDUP_WINDOW_MINUTES: int = 15
     
+    # LLM & AI Operations Copilot Configuration
+    # Supported providers: 'ollama', 'openai', 'gemini', 'groq', 'auto'
+    LLM_PROVIDER: str = "auto"
+    OLLAMA_BASE_URL: str = "http://localhost:11434"
+    OLLAMA_MODEL: str = "llama3.2"
+    OPENAI_API_KEY: str = ""
+    OPENAI_MODEL: str = "gpt-4o-mini"
+    OPENAI_BASE_URL: str = "https://api.openai.com/v1"
+    GEMINI_API_KEY: str = ""
+    GEMINI_MODEL: str = "gemini-1.5-flash"
+    GROQ_API_KEY: str = ""
+    GROQ_MODEL: str = "llama-3.1-8b-instant"
+    LLM_TEMPERATURE: float = 0.2
+    LLM_TIMEOUT_SECONDS: float = 30.0
+    
     # Default Operator Identity (used when no auth system is present)
     DEFAULT_OPERATOR_ID: str = "Operator_Demo"
     DEFAULT_OPERATOR_ROLE: str = "OPERATOR"

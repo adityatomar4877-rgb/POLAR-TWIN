@@ -23,6 +23,11 @@ from app.schemas.energy_decision import (
     EnergyDecisionRisk, EnergyDecisionResponse
 )
 
+from app.schemas.copilot import (
+    ChatMessage, SuggestedCommand, CopilotChatRequest, CopilotChatResponse,
+    DomainRiskScore, RiskAssessmentResponse, DiagnosticResponse, CopilotStatusOut
+)
+
 __all__ = [
     "StationBase", "StationCreate", "StationUpdate", "StationOut",
     "SensorTelemetryBase", "SensorTelemetryCreate", "SensorTelemetryOut", "HistoricalEnvironmentOut",
@@ -38,4 +43,6 @@ __all__ = [
     "MaintenanceTaskCreate", "MaintenanceTaskOut", "ResupplyRequestCreate", "ResupplyRequestOut",
     "LoadGroupOut", "LoadShedRequest", "LoadRestoreRequest", "EmergencyModeRequest",
     "OperationalRecommendationOut", "AuditLogOut", "OperationsStatusOut",
+    "ChatMessage", "SuggestedCommand", "CopilotChatRequest", "CopilotChatResponse",
+    "DomainRiskScore", "RiskAssessmentResponse", "DiagnosticResponse", "CopilotStatusOut",
 ]
