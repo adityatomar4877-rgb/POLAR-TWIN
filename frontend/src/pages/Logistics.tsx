@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import gsap from 'gsap';
 import {
@@ -39,9 +40,23 @@ interface StationStockItem {
 
 export const Logistics = ({ stationId }: { stationId: number }) => {
   const qc = useQueryClient();
+  const location = useLocation();
   const [modalOpen, setModalOpen] = useState<boolean>(false);
   const [detailItem, setDetailItem] = useState<DetailCardData | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const vesselRouteRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll to Vessel Route when targeted from navigation (e.g. ship button in footer)
+  useEffect(() => {
+    if (location.hash === '#vessel-route' || (location.state as any)?.scrollTo === 'vessel-route') {
+      const timer = setTimeout(() => {
+        if (vesselRouteRef.current) {
+          vesselRouteRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 350);
+      return () => clearTimeout(timer);
+    }
+  }, [location.hash, location.state]);
 
   const { data: dashboard, isLoading } = useQuery({
     queryKey: ['dashboard', stationId],
@@ -330,7 +345,7 @@ export const Logistics = ({ stationId }: { stationId: number }) => {
       </div>
 
       {/* Maritime Resupply Supply Chain Vessel Tracker */}
-      <div className="gsap-logistics-item">
+      <div id="vessel-route-section" ref={vesselRouteRef} className="gsap-logistics-item scroll-mt-6">
         <h2 className="text-xs font-extrabold uppercase tracking-widest text-slate-400 mb-2">
           Active Resupply Pipeline & Vessel Route
         </h2>

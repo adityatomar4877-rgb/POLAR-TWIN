@@ -1,9 +1,11 @@
+import { useNavigate } from 'react-router-dom';
 import { Flag, Users, Package, Wifi, Ship } from 'lucide-react';
 import { useStation } from '../../context/StationContext';
 
 const SUMMER_CREW = 24;
 
 export default function StatusFooter() {
+  const navigate = useNavigate();
   const { dashboard, wsConnected } = useStation();
   const population = dashboard?.station ? SUMMER_CREW : 0;
 
@@ -58,18 +60,28 @@ export default function StatusFooter() {
         </div>
       </div>
 
-      {/* Polar Research Vessel (Ship) on the right */}
-      <div className="flex items-center gap-3 z-10 pr-2">
+      {/* Polar Research Vessel (Ship) on the right - Interactive button */}
+      <button
+        type="button"
+        onClick={() => navigate('/resupply#vessel-route', { state: { scrollTo: 'vessel-route' } })}
+        title="Open Logistics & View Active Resupply Pipeline & Vessel Route"
+        className="group flex items-center gap-3 z-10 pr-2 rounded-xl p-1.5 transition-all hover:bg-blue-50/80 border border-transparent hover:border-blue-200 cursor-pointer text-left focus:outline-none focus:ring-2 focus:ring-blue-400"
+      >
         <div className="relative flex items-center">
-          <div className="p-2 rounded-xl bg-blue-50 border border-blue-100 text-blue-600 shadow-sm">
-            <Ship size={22} className="animate-pulse" />
+          <div className="p-2 rounded-xl bg-blue-50 border border-blue-100 text-blue-600 shadow-xs transition-transform group-hover:scale-105 group-hover:bg-blue-100 group-hover:text-blue-700">
+            <Ship size={22} className="animate-pulse group-hover:animate-none" />
           </div>
         </div>
         <div className="hidden sm:block text-right">
-          <p className="text-[11px] font-extrabold tracking-wider text-slate-800">R/V BHARATI</p>
-          <p className="text-[9px] font-semibold text-blue-600">Polar Supply Icebreaker</p>
+          <p className="text-[11px] font-extrabold tracking-wider text-slate-800 group-hover:text-blue-900 transition-colors">
+            R/V BHARATI
+          </p>
+          <p className="text-[9px] font-semibold text-blue-600 group-hover:text-blue-700 transition-colors flex items-center justify-end gap-1">
+            <span>Polar Supply Icebreaker</span>
+            <span className="text-[10px] transition-transform group-hover:translate-x-0.5">→</span>
+          </p>
         </div>
-      </div>
+      </button>
     </footer>
   );
 }
