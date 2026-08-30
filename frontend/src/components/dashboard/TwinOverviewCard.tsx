@@ -47,13 +47,15 @@ export default function TwinOverviewCard({ dashboard: _dashboard }: { dashboard:
 
       {/* 3D Visual Viewport with station backdrop */}
       <div
+        data-lenis-prevent
         className={clsx(
           'twin-viewport relative overflow-hidden rounded-xl border border-slate-200 bg-slate-100 transition-all duration-500 group',
           expanded ? 'h-[720px]' : 'h-[500px] lg:h-[540px]'
         )}
+        style={{ overscrollBehavior: 'contain' }}
       >
         {/* Interactive 3D digital twin */}
-        <div className="absolute inset-0 pointer-events-auto">
+        <div className="absolute inset-0 pointer-events-auto" data-lenis-prevent>
           {mounted ? (
             <DigitalTwinScene stationId={selectedStationId} />
           ) : (

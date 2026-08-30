@@ -1,0 +1,12 @@
+{
+  "name": "polar-twin-workspace",
+  "version": "1.0.0",
+  "description": "Antarctic Digital Twin & Remote Operations Platform",
+  "scripts": {
+    "dev": "npm --prefix frontend run dev",
+    "dev:frontend": "npm --prefix frontend run dev",
+    "dev:backend": "cd backend && .venv\\Scripts\\uvicorn app.main:app --reload --port 8000",
+    "build": "npm --prefix frontend run build",
+    "test:backend": "cd backend && .venv\\Scripts\\python -m pytest"
+  }
+}

@@ -63,17 +63,22 @@ export function ModeToolbar() {
       </div>
 
       {visualMode === 'thermal' && (
-        <div className="w-[300px] rounded-xl border border-white/60 bg-white/85 p-2.5 shadow-md backdrop-blur-md">
-          <div className="h-2.5 rounded-full bg-gradient-to-r from-[#0a1128] via-[#312e81] via-50% via-[#22d3ee] via-65% via-[#4ade80] via-82% to-[#ef4444]" />
-          <div className="mt-1 flex justify-between font-mono text-[8px] font-semibold tracking-wide text-slate-500">
-            <span>-25°C</span>
-            <span>-5°C</span>
-            <span>15°C</span>
-            <span>45°C</span>
-            <span>80°C</span>
+        <div className="w-[320px] rounded-xl border border-white/60 bg-white/90 p-2.5 shadow-lg backdrop-blur-md">
+          <div
+            className="h-3 rounded-full shadow-inner border border-black/10"
+            style={{
+              background: 'linear-gradient(to right, #1e3a8a 0%, #312e81 16%, #22d3ee 36%, #4ade80 52%, #fbbf24 70%, #f59e0b 86%, #ef4444 100%)',
+            }}
+          />
+          <div className="mt-1.5 flex justify-between font-mono text-[9px] font-bold tracking-tight text-slate-600">
+            <span className="flex items-center gap-0.5"><span className="inline-block w-1.5 h-1.5 rounded-full bg-[#1e3a8a]" />-25°C</span>
+            <span className="flex items-center gap-0.5"><span className="inline-block w-1.5 h-1.5 rounded-full bg-[#312e81]" />-5°C</span>
+            <span className="flex items-center gap-0.5"><span className="inline-block w-1.5 h-1.5 rounded-full bg-[#22d3ee]" />15°C</span>
+            <span className="flex items-center gap-0.5"><span className="inline-block w-1.5 h-1.5 rounded-full bg-[#fbbf24]" />45°C</span>
+            <span className="flex items-center gap-0.5"><span className="inline-block w-1.5 h-1.5 rounded-full bg-[#ef4444]" />80°C</span>
           </div>
           <div className="mt-1 text-center font-mono text-[8px] font-bold uppercase tracking-[0.24em] text-slate-400">
-            IR False-Colour Scale
+            IR False-Colour Thermal Scale
           </div>
         </div>
       )}

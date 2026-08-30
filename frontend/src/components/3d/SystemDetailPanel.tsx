@@ -279,7 +279,10 @@ export function SystemDetailPanel() {
   const sops = SOP_BY_CATEGORY[system.category] ?? [];
 
   return (
-    <aside className="pointer-events-auto absolute right-3 top-16 z-20 flex max-h-[calc(100%-5rem)] w-[19rem] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white/95 shadow-2xl backdrop-blur-md">
+    <aside
+      data-lenis-prevent
+      className="pointer-events-auto absolute right-3 top-16 z-20 flex max-h-[calc(100%-5rem)] w-[19rem] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white/95 shadow-2xl backdrop-blur-md"
+    >
       {/* header */}
       <div className="flex items-start justify-between gap-2 border-b border-slate-100 p-3.5">
         <div className="flex min-w-0 items-center gap-2.5">
