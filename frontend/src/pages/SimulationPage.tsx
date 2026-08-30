@@ -60,21 +60,16 @@ export const SimulationPage = ({ stationId }: { stationId: number }) => {
   return (
     <div
       ref={containerRef}
-      className="flex flex-col gap-5 rounded-3xl border border-indigo-900/30 bg-slate-950/40 p-4 shadow-inner"
-      style={{
-        backgroundImage:
-          'linear-gradient(rgba(99,102,241,0.07) 1px, transparent 1px), linear-gradient(90deg, rgba(99,102,241,0.07) 1px, transparent 1px)',
-        backgroundSize: '28px 28px',
-      }}
+      className="mx-auto flex max-w-[1560px] flex-col gap-6 pb-8"
     >
       <div className="gsap-sim-item flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <span className="rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 p-2.5 text-white shadow-[0_0_18px_rgba(99,102,241,0.45)]">
-            <FlaskConical size={20} />
+          <span className="rounded-xl bg-violet-100 p-2.5 text-violet-600 shadow-xs ring-1 ring-violet-200">
+            <FlaskConical size={22} />
           </span>
           <div>
-            <h1 className="text-xl font-extrabold tracking-tight text-slate-100">What-If Scenario Simulation</h1>
-            <p className="text-sm text-slate-400">
+            <h1 className="text-xl font-extrabold tracking-tight text-slate-900">What-If Scenario Simulation</h1>
+            <p className="text-sm text-slate-500">
               Inject operational stress tests, polar storm conditions, and generator faults in real time.
             </p>
           </div>
@@ -83,7 +78,7 @@ export const SimulationPage = ({ stationId }: { stationId: number }) => {
           {activeScenarios.map(([name, until]) => (
             <span
               key={name}
-              className="rounded-full bg-amber-500/15 px-3 py-1.5 text-[11px] font-bold text-amber-300 animate-pulse border border-amber-500/40 shadow-[0_0_12px_rgba(245,158,11,0.25)]"
+              className="rounded-full bg-amber-50 px-3 py-1.5 text-xs font-bold text-amber-700 animate-pulse border border-amber-200 shadow-xs"
               title={until ? `Active until ${new Date(until).toLocaleTimeString()}` : undefined}
             >
               {name.replaceAll('_', ' ')}
@@ -92,7 +87,7 @@ export const SimulationPage = ({ stationId }: { stationId: number }) => {
           <button
             onClick={() => reset.mutate()}
             disabled={reset.isPending}
-            className="flex items-center gap-1.5 rounded-xl border border-indigo-800/60 bg-indigo-950/50 px-3.5 py-2 text-xs font-semibold text-indigo-200 shadow-sm transition-all hover:border-indigo-600 hover:shadow-md disabled:opacity-50"
+            className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 shadow-xs transition-all hover:bg-slate-50 hover:border-slate-300 hover:text-slate-900 disabled:opacity-50"
           >
             <RefreshCw size={13} className={reset.isPending ? 'animate-spin' : ''} /> Reset Engine
           </button>
@@ -104,34 +99,34 @@ export const SimulationPage = ({ stationId }: { stationId: number }) => {
           <ScenarioRunner stationId={stationId} />
         </div>
 
-        <div className="gsap-sim-item rounded-2xl border border-indigo-900/40 bg-slate-950/60 p-5 shadow-sm backdrop-blur-sm transition-all duration-300 hover:border-indigo-700/60 hover:shadow-md">
+        <div className="gsap-sim-item rounded-2xl border border-slate-200/80 bg-white/90 p-5 shadow-sm backdrop-blur-sm transition-all duration-300 hover:border-slate-300 hover:shadow-md">
           <div className="flex items-center justify-between">
-            <h2 className="text-[13px] font-extrabold uppercase tracking-wider text-slate-100">Telemetry Engine</h2>
-            <div ref={gearRef} className="text-violet-400">
+            <h2 className="text-[13px] font-extrabold uppercase tracking-wider text-slate-900">Telemetry Engine</h2>
+            <div ref={gearRef} className="text-violet-600">
               <Cpu size={16} />
             </div>
           </div>
           <div className="mt-4 space-y-3.5 text-sm">
-            <div className="flex items-center justify-between border-b border-indigo-900/30 pb-2.5">
-              <span className="text-slate-400">Telemetry Engine</span>
-              <span className="flex items-center gap-1.5 font-semibold text-emerald-400 font-mono">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
+              <span className="text-slate-500 font-medium">Telemetry Engine</span>
+              <span className="flex items-center gap-1.5 font-semibold text-emerald-600 font-mono">
                 <span className="h-2 w-2 rounded-full bg-emerald-500 animate-ping" />
                 {status?.is_running ? 'RUNNING' : 'STANDBY'}
               </span>
             </div>
-            <div className="flex items-center justify-between border-b border-indigo-900/30 pb-2.5">
-              <span className="text-slate-400">Tick Interval</span>
-              <span className="font-semibold text-slate-200 font-mono">{status?.interval_seconds ?? 10}s</span>
+            <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
+              <span className="text-slate-500 font-medium">Tick Interval</span>
+              <span className="font-semibold text-slate-800 font-mono">{status?.interval_seconds ?? 10}s</span>
             </div>
-            <div className="flex items-center justify-between border-b border-indigo-900/30 pb-2.5">
-              <span className="text-slate-400">Cycles Executed</span>
-              <span className="font-bold text-violet-300 font-mono">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
+              <span className="text-slate-500 font-medium">Cycles Executed</span>
+              <span className="font-bold text-violet-600 font-mono">
                 <GSAPNumberTicker value={status?.total_cycles_executed ?? 0} decimals={0} />
               </span>
             </div>
             <div className="flex items-center justify-between pb-1">
-              <span className="text-slate-400">Last Tick</span>
-              <span className="font-mono text-xs text-slate-300">
+              <span className="text-slate-500 font-medium">Last Tick</span>
+              <span className="font-mono text-xs text-slate-600 font-medium">
                 {status?.last_tick_at
                   ? new Date(status.last_tick_at).toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour12: false })
                   : '—'} IST
