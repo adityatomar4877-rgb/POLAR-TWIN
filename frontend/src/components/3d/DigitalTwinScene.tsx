@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { getStationEquipment, getActiveAlerts } from '../../api/stations';
 import type { Alert, Equipment } from '../../api/types';
@@ -129,6 +129,7 @@ function buildStationAlerts(
  * floating ModeToolbar so high winds never override a deliberate view choice.
  */
 export const DigitalTwinScene = ({ stationId, interactive = true }: DigitalTwinSceneProps) => {
+  const containerRef = useRef<HTMLDivElement>(null);
   const activeStation: 'bharati' | 'maitri' = stationId === 1 ? 'maitri' : 'bharati';
 
   const { data: equipment } = useQuery({
@@ -152,6 +153,22 @@ export const DigitalTwinScene = ({ stationId, interactive = true }: DigitalTwinS
   const setStatusOverride = useStationStore((s) => s.setStatusOverride);
   const setAlerts = useStationStore((s) => s.setAlerts);
 
+  // Stop page scroll when scrolling wheel over the 3D model, allowing only model zoom
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el || !interactive) return;
+
+    const handleWheel = (e: WheelEvent) => {
+      e.stopPropagation();
+      e.preventDefault();
+    };
+
+    el.addEventListener('wheel', handleWheel, { passive: false });
+    return () => {
+      el.removeEventListener('wheel', handleWheel);
+    };
+  }, [interactive]);
+
   // Swap the 3D campus only when the station actually changes (avoids
   // clobbering an in-progress inspection on unrelated re-renders).
   useEffect(() => {
@@ -174,7 +191,12 @@ export const DigitalTwinScene = ({ stationId, interactive = true }: DigitalTwinS
   }, [alerts, equipment, activeStation, setAlerts]);
 
   return (
-    <div className={`relative h-full w-full${interactive ? '' : ' pointer-events-none'}`}>
+    <div
+      ref={containerRef}
+      data-lenis-prevent
+      className={`relative h-full w-full${interactive ? '' : ' pointer-events-none'}`}
+      style={{ overscrollBehavior: 'contain' }}
+    >
       {activeStation === 'maitri' ? <MaitriScene /> : <BharatiScene />}
       {interactive && <ModeToolbar />}
     </div>

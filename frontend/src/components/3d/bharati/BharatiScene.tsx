@@ -90,6 +90,7 @@ export function BharatiScene() {
 
   return (
     <div
+      data-lenis-prevent
       className="absolute inset-0"
       onPointerDownCapture={(e) => {
         pressPos.current = { x: e.clientX, y: e.clientY }
