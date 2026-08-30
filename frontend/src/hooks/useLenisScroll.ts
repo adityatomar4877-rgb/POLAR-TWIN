@@ -63,7 +63,7 @@ export function useLenisScroll(options?: {
       lenis.raf(time * 1000);
     };
     gsap.ticker.add(raf);
-    gsap.ticker.lagSmoothing(0);
+    gsap.ticker.lagSmoothing(500, 33);
 
     // Watch for DOM size changes (e.g. data fetching, table expansion, animations) to keep Lenis dimensions updated
     let observer: ResizeObserver | null = null;

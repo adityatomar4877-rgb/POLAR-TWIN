@@ -95,8 +95,9 @@ export function MaitriScene() {
     >
       <Canvas
         shadows
-        dpr={[1, 2]}
-        gl={{ antialias: true }}
+        dpr={[1, 1.5]}
+        gl={{ antialias: true, powerPreference: 'high-performance' }}
+        performance={{ min: 0.5 }}
         // Set initial camera view to best show off the long Maitri building with its stilts
         camera={{ position: [110, 30, 130], fov: 45, near: 0.5, far: 2600 }}
         onPointerMissed={(e) => {
