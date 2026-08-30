@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import gsap from 'gsap';
 import {
@@ -12,9 +12,48 @@ import {
   AlertCircle,
   Wrench,
   Sparkles,
+  TrendingUp,
 } from 'lucide-react';
 import GSAPGaugeMeter from './GSAPGaugeMeter';
 import GSAPNumberTicker from './GSAPNumberTicker';
+
+function buildModalSparklinePath(points: number[], width = 360, height = 48): { linePath: string; areaPath: string } {
+  if (points.length < 2) return { linePath: '', areaPath: '' };
+
+  const min = Math.min(...points);
+  const max = Math.max(...points);
+  const range = max - min || 1;
+  const padding = 6;
+  const usableHeight = height - padding * 2;
+
+  const coords = points.map((p, i) => {
+    const x = Number(((i / (points.length - 1)) * width).toFixed(2));
+    const y = Number((height - padding - ((p - min) / range) * usableHeight).toFixed(2));
+    return [x, y];
+  });
+
+  let d = `M ${coords[0][0]},${coords[0][1]}`;
+  const tension = 0.25;
+
+  for (let i = 0; i < coords.length - 1; i++) {
+    const p0 = coords[i === 0 ? 0 : i - 1];
+    const p1 = coords[i];
+    const p2 = coords[i + 1];
+    const p3 = coords[i + 2 >= coords.length ? coords.length - 1 : i + 2];
+
+    const cp1x = Number((p1[0] + (p2[0] - p0[0]) * tension).toFixed(2));
+    const cp1y = Number((p1[1] + (p2[1] - p0[1]) * tension).toFixed(2));
+    const cp2x = Number((p2[0] - (p3[0] - p1[0]) * tension).toFixed(2));
+    const cp2y = Number((p2[1] - (p3[1] - p1[1]) * tension).toFixed(2));
+
+    d += ` C ${cp1x},${cp1y} ${cp2x},${cp2y} ${p2[0]},${p2[1]}`;
+  }
+
+  const linePath = d;
+  const areaPath = `${d} L ${width},${height} L 0,${height} Z`;
+
+  return { linePath, areaPath };
+}
 
 export interface DetailCardData {
   type: 'generator' | 'supply' | 'equipment' | 'sensor' | 'custom';
@@ -53,6 +92,19 @@ export default function GSAPFlipDetailModal({
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
   const modalBackdropRef = useRef<HTMLDivElement>(null);
   const cardRef = useRef<HTMLDivElement>(null);
+  const sparkId = useId();
+
+  const sparkPoints = useMemo(() => {
+    const base = Number(data?.primaryValue) || 50;
+    return [-1.6, -1.2, 0.4, 1.2, 0.8, -0.6, 0.2, 1.4, 0.9, 0.0].map((delta) =>
+      Number((base + delta * (Math.abs(base) > 10 ? 1.5 : 0.4)).toFixed(1))
+    );
+  }, [data?.primaryValue]);
+
+  const { linePath, areaPath } = useMemo(
+    () => buildModalSparklinePath(sparkPoints, 360, 44),
+    [sparkPoints]
+  );
 
   useEffect(() => {
     if (isOpen) {
@@ -241,6 +293,65 @@ export default function GSAPFlipDetailModal({
               </span>
             </div>
           ))}
+        </div>
+
+        {/* 24-Hour Telemetry Profile Sparkline */}
+        <div className="my-2.5 rounded-xl border border-slate-200/80 bg-slate-50/60 p-3">
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="flex items-center gap-1.5 text-[9px] font-mono font-bold tracking-wider text-slate-500 uppercase">
+              <TrendingUp size={12} className="text-cyan-600" />
+              24H TELEMETRY PROFILE
+            </span>
+            <span className="flex items-center gap-1 text-[9px] font-mono font-bold text-cyan-700 bg-cyan-50 px-1.5 py-0.5 rounded border border-cyan-200">
+              <span className="h-1.5 w-1.5 rounded-full bg-cyan-500 animate-pulse" />
+              LIVE · 1 Hz
+            </span>
+          </div>
+          <div className="h-11 w-full mt-1">
+            <svg viewBox="0 0 360 44" preserveAspectRatio="none" className="w-full h-full overflow-visible">
+              <defs>
+                <linearGradient id={sparkId} x1="0" y1="0" x2="0" y2="1">
+                  <stop
+                    offset="0%"
+                    stopColor={
+                      data.type === 'supply'
+                        ? '#9333ea'
+                        : data.type === 'generator'
+                        ? '#d97706'
+                        : '#0284c7'
+                    }
+                    stopOpacity={0.25}
+                  />
+                  <stop
+                    offset="100%"
+                    stopColor={
+                      data.type === 'supply'
+                        ? '#9333ea'
+                        : data.type === 'generator'
+                        ? '#d97706'
+                        : '#0284c7'
+                    }
+                    stopOpacity={0.0}
+                  />
+                </linearGradient>
+              </defs>
+              <path d={areaPath} fill={`url(#${sparkId})`} />
+              <path
+                d={linePath}
+                fill="none"
+                stroke={
+                  data.type === 'supply'
+                    ? '#9333ea'
+                    : data.type === 'generator'
+                    ? '#d97706'
+                    : '#0284c7'
+                }
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </div>
         </div>
 
         {/* Technical Specs & Diagnostics with inner border */}
