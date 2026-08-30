@@ -239,7 +239,7 @@ export default function WeatherKpiRow({
         sub={`Feels like · ${feelsLike.toFixed(1)}°C`}
         points={tempSeries}
         strokeColor="#0284c7"
-        onClick={() => navigate('/environment')}
+        onClick={() => navigate('/environment?metric=temperature', { state: { selectedMetric: 'temperature' } })}
         hoverClass="hover:border-sky-300 hover:ring-2 hover:ring-sky-300/20"
       />
       <KpiCard
@@ -252,7 +252,7 @@ export default function WeatherKpiRow({
         sub={`${compass(env?.wind_direction ?? 231)} ${Math.round(env?.wind_direction ?? 231)}°`}
         points={windSeries}
         strokeColor="#6366f1"
-        onClick={() => navigate('/environment')}
+        onClick={() => navigate('/environment?metric=wind', { state: { selectedMetric: 'wind' } })}
         hoverClass="hover:border-indigo-300 hover:ring-2 hover:ring-indigo-300/20"
       />
       <KpiCard
@@ -265,7 +265,7 @@ export default function WeatherKpiRow({
         sub="Normal"
         points={humiditySeries}
         strokeColor="#06b6d4"
-        onClick={() => navigate('/environment')}
+        onClick={() => navigate('/environment?metric=humidity', { state: { selectedMetric: 'humidity' } })}
         hoverClass="hover:border-cyan-300 hover:ring-2 hover:ring-cyan-300/20"
       />
       <KpiCard
@@ -278,7 +278,7 @@ export default function WeatherKpiRow({
         sub="Stable"
         points={pressureSeries}
         strokeColor="#a855f7"
-        onClick={() => navigate('/environment')}
+        onClick={() => navigate('/environment?metric=pressure', { state: { selectedMetric: 'pressure' } })}
         hoverClass="hover:border-purple-300 hover:ring-2 hover:ring-purple-300/20"
       />
 
