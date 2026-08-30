@@ -23,12 +23,6 @@ const LIFT_AMOUNT = 2
 /** Exponential damping rate for the lift / settle animation. */
 const LIFT_RATE = 7
 
-/** Truncate a string to ~90 chars with ellipsis for the tooltip subtitle. */
-function shortInfo(text: string): string {
-  if (text.length <= 90) return text
-  return text.slice(0, 87).trimEnd() + '…'
-}
-
 /**
  * Named wrapper for every major station system.
  * - keeps each system a separate group in the scene graph
@@ -51,7 +45,6 @@ export function StationGroup({ id, label, position = [0, 0, 0], rotation, childr
 
   const system = getStationSystem(id)
   const displayLabel = label ?? system?.label ?? id
-  const info = system ? shortInfo(system.summary) : ''
 
   useEffect(() => {
     const g = ref.current
@@ -127,7 +120,7 @@ export function StationGroup({ id, label, position = [0, 0, 0], rotation, childr
     >
       <group ref={liftRef}>
         {children}
-        {/* Floating popup tooltip — name + short info, animates in/out on hover */}
+        {/* Floating popup badge — just the part name, animates on hover */}
         <Html
           position={[0, 9, 0]}
           center
@@ -137,27 +130,15 @@ export function StationGroup({ id, label, position = [0, 0, 0], rotation, childr
           <AnimatePresence>
             {hovered && (
               <motion.div
-                initial={{ opacity: 0, y: 12, scale: 0.88 }}
+                initial={{ opacity: 0, y: 8, scale: 0.9 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: 8, scale: 0.92 }}
-                transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
-                className="flex max-w-[220px] flex-col gap-0.5 rounded-xl border border-slate-200 bg-white/95 px-3 py-2 shadow-xl backdrop-blur-md"
+                exit={{ opacity: 0, y: 4, scale: 0.92 }}
+                transition={{ duration: 0.15, ease: 'easeOut' }}
+                className="flex items-center gap-1.5 whitespace-nowrap rounded-lg border border-slate-200/90 bg-white/95 px-2.5 py-1.5 shadow-lg backdrop-blur-md"
               >
-                <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-800">
+                <span className="h-1.5 w-1.5 rounded-full bg-cyan-500 animate-pulse" />
+                <span className="text-[11px] font-bold tracking-tight text-slate-800 font-mono">
                   {displayLabel}
-                </span>
-                {system && (
-                  <span className="text-[8px] font-bold uppercase tracking-widest text-cyan-600">
-                    {system.category}
-                  </span>
-                )}
-                {info && (
-                  <span className="text-[10px] leading-snug text-slate-500">
-                    {info}
-                  </span>
-                )}
-                <span className="mt-0.5 text-[8px] font-bold uppercase tracking-wider text-slate-300">
-                  Click to inspect ↗
                 </span>
               </motion.div>
             )}
