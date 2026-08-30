@@ -78,6 +78,12 @@ export interface SensorTelemetry {
   is_simulated: boolean;
 }
 
+export interface HistoricalEnvironmentOut {
+  station_id: number;
+  count: number;
+  data: SensorTelemetry[];
+}
+
 export interface EnergyTelemetry {
   id: number;
   station_id: number;

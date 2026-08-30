@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import clsx from 'clsx';
 import {
   Maximize2,
@@ -16,6 +16,12 @@ export default function TwinOverviewCard({ dashboard: _dashboard }: { dashboard:
   const { selectedStationId } = useStation();
   const clearSelection = useStationStore((s) => s.clearSelection);
   const [expanded, setExpanded] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setMounted(true), 20);
+    return () => clearTimeout(timer);
+  }, []);
 
   return (
     <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-xs">
@@ -42,13 +48,22 @@ export default function TwinOverviewCard({ dashboard: _dashboard }: { dashboard:
       {/* 3D Visual Viewport with station backdrop */}
       <div
         className={clsx(
-          'twin-viewport relative overflow-hidden rounded-xl border border-slate-200 transition-all duration-500 group',
+          'twin-viewport relative overflow-hidden rounded-xl border border-slate-200 bg-slate-100 transition-all duration-500 group',
           expanded ? 'h-[720px]' : 'h-[500px] lg:h-[540px]'
         )}
       >
-        {/* Interactive 3D digital twin (renders its own floating ModeToolbar) */}
+        {/* Interactive 3D digital twin */}
         <div className="absolute inset-0 pointer-events-auto">
-          <DigitalTwinScene stationId={selectedStationId} />
+          {mounted ? (
+            <DigitalTwinScene stationId={selectedStationId} />
+          ) : (
+            <div className="flex h-full w-full items-center justify-center bg-slate-100/90">
+              <div className="flex items-center gap-2 text-xs font-mono font-bold text-slate-400">
+                <span className="h-2 w-2 rounded-full bg-blue-500 animate-ping" />
+                <span>INITIALIZING DIGITAL TWIN...</span>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Camera reset (docked top-right, clear of the mode toolbar) */}

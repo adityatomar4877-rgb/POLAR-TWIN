@@ -135,7 +135,7 @@ export const DigitalTwinScene = ({ stationId, interactive = true }: DigitalTwinS
     queryKey: ['equipment', stationId],
     queryFn: () => getStationEquipment(stationId),
     enabled: stationId != null,
-    staleTime: 10000,
+    staleTime: 30000,
     refetchInterval: 15000,
   });
 
@@ -143,7 +143,7 @@ export const DigitalTwinScene = ({ stationId, interactive = true }: DigitalTwinS
     queryKey: ['alerts', stationId],
     queryFn: () => getActiveAlerts(stationId),
     enabled: stationId != null,
-    staleTime: 10000,
+    staleTime: 30000,
     refetchInterval: 15000,
   });
 

@@ -97,8 +97,9 @@ export function BharatiScene() {
     >
       <Canvas
         shadows
-        dpr={[1, 2]}
-        gl={{ antialias: true }}
+        dpr={[1, 1.5]}
+        gl={{ antialias: true, powerPreference: 'high-performance' }}
+        performance={{ min: 0.5 }}
         camera={{ position: [108, 64, 132], fov: 45, near: 0.5, far: 2600 }}
         onPointerMissed={(e) => {
           // Only treat near-stationary clicks on empty terrain/sky as deselects,

@@ -1,5 +1,5 @@
 import { apiClient } from './client';
-import type { Station, StationDashboardOut, Equipment, Alert, OperationalRecommendation, CommandResponse } from './types';
+import type { Station, StationDashboardOut, Equipment, Alert, OperationalRecommendation, CommandResponse, HistoricalEnvironmentOut } from './types';
 
 export const getStations = async (): Promise<Station[]> => {
   const { data } = await apiClient.get<Station[]>('/stations');
@@ -8,6 +8,17 @@ export const getStations = async (): Promise<Station[]> => {
 
 export const getStationDashboard = async (stationId: number | string): Promise<StationDashboardOut> => {
   const { data } = await apiClient.get<StationDashboardOut>(`/stations/${stationId}/dashboard`);
+  return data;
+};
+
+export const getStationEnvironmentHistory = async (
+  stationId: number | string,
+  limit: number = 24
+): Promise<HistoricalEnvironmentOut> => {
+  const { data } = await apiClient.get<HistoricalEnvironmentOut>(
+    `/stations/${stationId}/environment/history`,
+    { params: { limit } }
+  );
   return data;
 };
 
