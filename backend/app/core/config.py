@@ -60,7 +60,7 @@ class Settings(BaseSettings):
     GEMINI_API_KEY: str = ""
     GEMINI_MODEL: str = "gemini-1.5-flash"
     GROQ_API_KEY: str = ""
-    GROQ_MODEL: str = "llama-3.1-8b-instant"
+    GROQ_MODEL: str = "groq/compound-mini"
     LLM_TEMPERATURE: float = 0.2
     LLM_TIMEOUT_SECONDS: float = 30.0
     

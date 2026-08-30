@@ -451,7 +451,9 @@ export default function OperationsCopilot({ compact = false }: Props) {
         {/* Conversation Stream */}
         <div
           ref={chatScrollRef}
-          className="flex flex-col gap-3 p-4 max-h-80 min-h-[160px] overflow-y-auto custom-scrollbar bg-white/40"
+          data-lenis-prevent
+          onWheel={(e) => e.stopPropagation()}
+          className="flex flex-col gap-3 p-4 max-h-96 min-h-[180px] overflow-y-auto overscroll-contain custom-scrollbar bg-white/40"
         >
           {messages.length === 0 && (
             <div className="flex flex-col items-center justify-center py-6 text-center text-slate-400">
@@ -549,7 +551,11 @@ export default function OperationsCopilot({ compact = false }: Props) {
             </div>
           )}
 
-          <div className="space-y-2.5 max-h-72 overflow-y-auto custom-scrollbar">
+          <div
+            data-lenis-prevent
+            onWheel={(e) => e.stopPropagation()}
+            className="space-y-2.5 max-h-80 overflow-y-auto overscroll-contain custom-scrollbar"
+          >
             {activeRecs.map((rec) => {
               const executing =
                 executeRec.isPending && executeRec.variables === rec.id;
@@ -631,7 +637,11 @@ export default function OperationsCopilot({ compact = false }: Props) {
 
       {/* 6. Settings Modal for LLM Provider / Ollama Model */}
       {showConfigModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-xs p-4">
+        <div
+          data-lenis-prevent
+          onWheel={(e) => e.stopPropagation()}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-xs p-4"
+        >
           <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-5 shadow-xl animate-in fade-in zoom-in-95 duration-150">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-4">
               <div className="flex items-center gap-2">
