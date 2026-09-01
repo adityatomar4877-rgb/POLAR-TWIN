@@ -510,6 +510,7 @@ export default function AntarcticStoryScroller({ onEnterCommandCenter }: Props) 
   const [scrollProgress, setScrollProgress] = useState(0);
   const [cursorPos, setCursorPos] = useState({ x: -100, y: -100 });
   const [cursorHovered, setCursorHovered] = useState(false);
+  const [cursorVisible, setCursorVisible] = useState(false);
   const [isInsideHorizontal, setIsInsideHorizontal] = useState(false);
 
   // Custom lagging cursor interpolation
@@ -570,6 +571,7 @@ export default function AntarcticStoryScroller({ onEnterCommandCenter }: Props) 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       mousePosRef.current = { x: e.clientX, y: e.clientY };
+      setCursorVisible(true);
     };
 
     let animationFrameId: number;
@@ -764,7 +766,7 @@ export default function AntarcticStoryScroller({ onEnterCommandCenter }: Props) 
         </defs>
       </svg>
 
-      {isInsideHorizontal && (
+      {cursorVisible && (
         <div
           ref={cursorRef}
           className="pointer-events-none fixed z-50 hidden md:block rounded-full will-change-transform"
