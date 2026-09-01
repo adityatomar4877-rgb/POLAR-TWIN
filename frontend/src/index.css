@@ -479,6 +479,30 @@ html.lenis body {
   animation: jerryShiver 0.12s infinite;
 }
 
+/* ---------- Cat Paw Click Fade (1s duration, 50% max opacity) ---------- */
+@keyframes catPawFade {
+  0% {
+    opacity: 0;
+    transform: scale(0.6) translateZ(0);
+  }
+  15% {
+    opacity: 0.5;
+    transform: scale(1.08) translateZ(0);
+  }
+  30% {
+    opacity: 0.5;
+    transform: scale(1.0) translateZ(0);
+  }
+  70% {
+    opacity: 0.35;
+    transform: scale(0.98) translateZ(0);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.9) translateZ(0);
+  }
+}
+
 /* ---------- Reduced motion respect ---------- */
 @media (prefers-reduced-motion: reduce) {
   .animate-shimmer,

@@ -16,6 +16,7 @@ import AuditPage from './pages/AuditPage';
 import CommsPage from './pages/CommsPage';
 import TasksPage from './pages/TasksPage';
 import MaintenancePage from './pages/MaintenancePage';
+import { CatPawClickEffect } from './components/cinematic/CatPawClickEffect';
 
 /** Injects the globally selected station id into a workspace page. */
 function Stationed({ render }: { render: (stationId: number) => ReactNode }) {
@@ -26,6 +27,7 @@ function Stationed({ render }: { render: (stationId: number) => ReactNode }) {
 function App() {
   return (
     <StationProvider>
+      <CatPawClickEffect />
       <BrowserRouter>
         <Routes>
           {/* Optional cinematic landing narrative */}
