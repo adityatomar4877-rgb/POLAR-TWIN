@@ -17,11 +17,11 @@ import {
   Wrench,
   Package,
   History,
-  Mountain,
   ChevronLeft,
 } from 'lucide-react';
 import clsx from 'clsx';
 import { useStation } from '../../context/StationContext';
+import PolarTwinBrandLogo from '../brand/PolarTwinBrandLogo';
 
 interface NavItem {
   name: string;
@@ -95,36 +95,14 @@ export const Sidebar = () => {
         collapsed ? 'w-[72px]' : 'w-[220px]'
       )}
     >
-      {/* Logo */}
-      <div className={clsx('flex items-center gap-3 border-b border-slate-100 px-4 py-4', collapsed && 'justify-center px-0')}>
-        <motion.div
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 ring-1 ring-blue-100"
-          whileHover={{ scale: 1.08, rotate: 3 }}
-          whileTap={{ scale: 0.95 }}
-          transition={{ type: 'spring', stiffness: 400, damping: 17 }}
-        >
-          <Mountain size={20} className="text-blue-600" />
-        </motion.div>
-        <AnimatePresence>
-          {!collapsed && (
-            <motion.div
-              className="leading-tight overflow-hidden"
-              initial={{ opacity: 0, width: 0 }}
-              animate={{ opacity: 1, width: 'auto' }}
-              exit={{ opacity: 0, width: 0 }}
-              transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
-            >
-              <p className="text-[12px] font-extrabold tracking-wider text-slate-900 leading-[1.15] whitespace-nowrap">
-                ANTARCTIC
-                <br />
-                DIGITAL TWIN
-              </p>
-              <p className="mt-0.5 text-[7px] font-bold tracking-[0.18em] text-blue-500/80 whitespace-nowrap">
-                REMOTE OPERATIONS CENTER
-              </p>
-            </motion.div>
-          )}
-        </AnimatePresence>
+      {/* Brand Logo Header */}
+      <div
+        className={clsx(
+          'flex h-16 items-center border-b border-slate-100 transition-all duration-300',
+          collapsed ? 'justify-center px-0' : 'px-4'
+        )}
+      >
+        <PolarTwinBrandLogo collapsed={collapsed} />
       </div>
 
       {/* Nav groups */}

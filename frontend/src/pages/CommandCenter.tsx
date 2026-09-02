@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
-import { getStationDashboard, getStationRecommendations } from '../api/stations';
+import { getStationDashboard, getStationRecommendations, getDefaultDashboard } from '../api/stations';
 import { getEnergyPrediction, getFuelPrediction } from '../api/predictions';
 import WeatherKpiRow from '../components/dashboard/WeatherKpiRow';
 import TwinOverviewCard from '../components/dashboard/TwinOverviewCard';
@@ -24,6 +24,7 @@ export const CommandCenter = ({ stationId }: { stationId: number }) => {
   const { data: dashboard } = useQuery({
     queryKey: ['dashboard', stationId],
     queryFn: () => getStationDashboard(stationId),
+    placeholderData: () => getDefaultDashboard(stationId),
     refetchInterval: 15000,
     staleTime: 30000,
   });

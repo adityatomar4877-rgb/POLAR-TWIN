@@ -19,8 +19,19 @@ export default function TwinOverviewCard({ dashboard: _dashboard }: { dashboard:
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    const timer = setTimeout(() => setMounted(true), 20);
-    return () => clearTimeout(timer);
+    // Defer heavy 3D canvas initialization until after initial route paint
+    const handle =
+      typeof requestIdleCallback !== 'undefined'
+        ? requestIdleCallback(() => setMounted(true), { timeout: 200 })
+        : setTimeout(() => setMounted(true), 100);
+
+    return () => {
+      if (typeof cancelIdleCallback !== 'undefined' && typeof handle === 'number') {
+        cancelIdleCallback(handle);
+      } else {
+        clearTimeout(handle as number);
+      }
+    };
   }, []);
 
   return (

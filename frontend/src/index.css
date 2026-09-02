@@ -503,6 +503,86 @@ html.lenis body {
   }
 }
 
+/* ---------- Mission Card Animations & Micro-Interactions (GPU-Optimized) ---------- */
+@keyframes missionGlowDrift {
+  0% {
+    transform: translate3d(0px, 0px, 0) scale(1);
+  }
+  25% {
+    transform: translate3d(-24px, 16px, 0) scale(1.05);
+  }
+  50% {
+    transform: translate3d(-36px, -12px, 0) scale(0.96);
+  }
+  75% {
+    transform: translate3d(-12px, 20px, 0) scale(1.04);
+  }
+  100% {
+    transform: translate3d(0px, 0px, 0) scale(1);
+  }
+}
+
+.animate-mission-glow {
+  animation: missionGlowDrift 10s ease-in-out infinite;
+  transform: translate3d(0, 0, 0);
+  will-change: transform;
+  pointer-events: none;
+}
+
+@keyframes missionTilePulse {
+  0%, 100% {
+    border-color: rgba(226, 232, 240, 0.95);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
+  }
+  50% {
+    border-color: rgba(56, 189, 248, 0.55);
+    box-shadow: 0 8px 24px rgba(56, 189, 248, 0.22);
+  }
+}
+
+.mission-stat-tile {
+  background-color: #ffffff;
+  border: 1px solid rgba(226, 232, 240, 0.95);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+              border-color 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+              box-shadow 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  animation: missionTilePulse 4.8s ease-in-out infinite;
+  transform: translate3d(0, 0, 0);
+  will-change: transform, box-shadow;
+}
+
+.mission-stat-tile:hover {
+  transform: translate3d(0, -3px, 0);
+  border-color: #0284C7 !important;
+  box-shadow: 0 14px 30px -4px rgba(2, 132, 199, 0.32), 0 0 15px rgba(56, 189, 248, 0.2) !important;
+}
+
+/* Stagger tile idle pulses so they are out of phase */
+.mission-stat-tile-0 { animation-delay: 0s; }
+.mission-stat-tile-1 { animation-delay: 1.2s; }
+.mission-stat-tile-2 { animation-delay: 2.4s; }
+.mission-stat-tile-3 { animation-delay: 3.6s; }
+
+/* ---------- Interactive Parallax & Card Lift Utilities ---------- */
+.smooth-hover-lift {
+  transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1),
+              box-shadow 0.28s cubic-bezier(0.16, 1, 0.3, 1),
+              border-color 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: transform, box-shadow;
+  transform: translate3d(0, 0, 0);
+}
+
+.smooth-hover-lift:hover {
+  transform: translate3d(0, -3px, 0);
+  box-shadow: 0 12px 28px -6px rgba(15, 23, 42, 0.12), 0 4px 10px rgba(15, 23, 42, 0.04);
+}
+
+.gsap-card-reveal {
+  opacity: 0;
+  transform: translate3d(0, 16px, 0);
+}
+
 /* ---------- Reduced motion respect ---------- */
 @media (prefers-reduced-motion: reduce) {
   .animate-shimmer,
@@ -519,7 +599,9 @@ html.lenis body {
   .animate-status-ring,
   .animate-emergency-strobe,
   .animate-ticker,
-  .animate-packet {
+  .animate-packet,
+  .animate-mission-glow,
+  .mission-stat-tile {
     animation: none !important;
   }
   .animate-contour-draw,
@@ -532,4 +614,5 @@ html.lenis body {
     animation-fill-mode: forwards !important;
   }
 }
+
 

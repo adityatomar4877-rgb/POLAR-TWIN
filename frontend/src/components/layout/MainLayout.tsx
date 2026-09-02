@@ -23,6 +23,7 @@ export const MainLayout = () => {
 
   /* Instant scroll-to-top on route change */
   useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
     if (lenisRef.current) {
       lenisRef.current.scrollTo(0, { immediate: true });
     } else if (mainRef.current) {

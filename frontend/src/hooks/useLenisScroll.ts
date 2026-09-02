@@ -20,9 +20,9 @@ export function useLenisScroll(options?: {
 }) {
   const lenisRef = useRef<Lenis | null>(null);
   const {
-    lerp = 0.045,
-    duration = 1.2,
-    wheelMultiplier = 0.95,
+    lerp = 0.08,
+    duration = 1.05,
+    wheelMultiplier = 1.0,
     touchMultiplier = 1.5,
     enabled = true,
     wrapperRef,
@@ -44,6 +44,7 @@ export function useLenisScroll(options?: {
       touchMultiplier,
       smoothWheel: true,
       syncTouch: true,
+      autoResize: true,
       prevent: (node) => {
         return (
           node.hasAttribute('data-lenis-prevent') ||
@@ -56,7 +57,7 @@ export function useLenisScroll(options?: {
     });
     lenisRef.current = lenis;
 
-    // Drive Lenis from GSAP's ticker so ScrollTrigger stays synchronized
+    // Drive Lenis from GSAP's ticker so ScrollTrigger stays perfectly synchronized
     lenis.on('scroll', ScrollTrigger.update);
 
     const raf = (time: number) => {
@@ -65,11 +66,12 @@ export function useLenisScroll(options?: {
     gsap.ticker.add(raf);
     gsap.ticker.lagSmoothing(500, 33);
 
-    // Watch for DOM size changes (e.g. data fetching, table expansion, animations) to keep Lenis dimensions updated
+    // Watch for dynamic DOM size changes (e.g. data fetching, card reveals, charts) to keep Lenis dimensions updated
     let observer: ResizeObserver | null = null;
     if (typeof ResizeObserver !== 'undefined') {
       observer = new ResizeObserver(() => {
         lenis.resize();
+        ScrollTrigger.refresh();
       });
       if (contentRef?.current) observer.observe(contentRef.current);
       if (wrapperRef?.current) observer.observe(wrapperRef.current);

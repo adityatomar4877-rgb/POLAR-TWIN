@@ -9,7 +9,7 @@ import {
 } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useWebSocket } from '../hooks/useWebSocket';
-import { getStations, getStationDashboard } from '../api/stations';
+import { getStations, getStationDashboard, DEFAULT_STATIONS, getDefaultDashboard } from '../api/stations';
 import type { Station, StationDashboardOut } from '../api/types';
 
 export type CommandProcessingState =
@@ -66,6 +66,7 @@ export function StationProvider({ children }: { children: ReactNode }) {
   const { data: stations } = useQuery({
     queryKey: ['stations'],
     queryFn: getStations,
+    placeholderData: DEFAULT_STATIONS,
     staleTime: 5 * 60 * 1000,
   });
 
@@ -82,6 +83,7 @@ export function StationProvider({ children }: { children: ReactNode }) {
   const { data: dashboard, isLoading } = useQuery({
     queryKey: ['dashboard', selectedStationId],
     queryFn: () => getStationDashboard(selectedStationId),
+    placeholderData: () => getDefaultDashboard(selectedStationId),
     enabled: !!selectedStationId,
     refetchInterval: 15000,
   });

@@ -22,6 +22,7 @@ import { useStation } from '../../context/StationContext';
 import PolarTwinTypographicHero from './PolarTwinTypographicHero';
 import SolidWhite3DClusterCanvas from './SolidWhite3DClusterCanvas';
 import { JerryRunner } from './JerryRunner';
+import MissionStatementCard from './MissionStatementCard';
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -526,6 +527,9 @@ export default function AntarcticStoryScroller({ onEnterCommandCenter }: Props) 
   );
 
   const handleNavigateCommand = useCallback(() => {
+    ScrollTrigger.getAll().forEach((t) => t.kill());
+    document.documentElement.classList.remove('lenis', 'lenis-smooth', 'lenis-stopped');
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
     if (onEnterCommandCenter) {
       onEnterCommandCenter();
     } else {
@@ -719,6 +723,45 @@ export default function AntarcticStoryScroller({ onEnterCommandCenter }: Props) 
           '-=0.1'
         );
 
+      // ─── STAGGERED ENTRANCE ANIMATION FOR SLIDE 06 (DIGITAL TWIN CARDS) ───
+      gsap.fromTo(
+        '.slide-06-kpi-card',
+        { scale: 0.65, opacity: 0, y: 45 },
+        {
+          scale: 1,
+          opacity: 1,
+          y: 0,
+          duration: 0.65,
+          stagger: 0.1,
+          ease: 'back.out(2.0)',
+          scrollTrigger: {
+            trigger: '#panel-06-twin',
+            containerAnimation: horizontalTween,
+            start: 'left 85%',
+            toggleActions: 'play none none reverse',
+          },
+        }
+      );
+
+      // ─── STAGGERED ROW REVEAL FOR SLIDE 07 (INFRASTRUCTURE MATRIX) ───
+      gsap.fromTo(
+        '.slide-07-row',
+        { opacity: 0, x: -18 },
+        {
+          opacity: 1,
+          x: 0,
+          duration: 0.45,
+          stagger: 0.06,
+          ease: 'power2.out',
+          scrollTrigger: {
+            trigger: '#panel-07-matrix',
+            containerAnimation: horizontalTween,
+            start: 'left 85%',
+            toggleActions: 'play none none reverse',
+          },
+        }
+      );
+
       // Background color shift trigger as user leaves horizontal track into footer
       ScrollTrigger.create({
         trigger: '.finale-section',
@@ -856,59 +899,11 @@ export default function AntarcticStoryScroller({ onEnterCommandCenter }: Props) 
           {/* ═══════════════════════════════════════════════════════════
              PANEL 01: THE MISSION STATEMENT & POLAR STATS
              ═══════════════════════════════════════════════════════════ */}
-          <div className="relative flex h-screen w-screen shrink-0 items-center justify-center p-6 sm:p-12 md:p-20">
-            <div className="slide-story-card w-full max-w-6xl rounded-3xl border border-white/10 bg-[#0E121E]/80 backdrop-blur-2xl p-8 sm:p-14 shadow-2xl">
-              {/* Kicker Row */}
-              <div className="flex items-center gap-3 text-xs font-mono font-bold tracking-widest text-slate-400">
-                <span className="text-rose-400">01</span>
-                <span className="h-[2px] w-8 bg-rose-500/60" />
-                <span>THE MISSION</span>
-              </div>
-
-              {/* Huge Headline */}
-              <h2 className="mt-6 font-sans text-3xl sm:text-5xl lg:text-6xl font-black uppercase tracking-tight text-white leading-[1.05]">
-                INDIA AT THE BOTTOM<br />OF THE WORLD.
-              </h2>
-              <div className="mt-4 h-[2px] w-24 bg-[#38BDF8]" />
-
-              <div className="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
-                {/* Supporting Body & Struck-through Checklist */}
-                <div>
-                  <p className="text-sm sm:text-base leading-relaxed text-slate-300 font-medium">
-                    Four decades of Indian scientific expeditions have crossed the Southern Ocean to build permanent research habitats on Antarctica — decoding climate, glaciology, and polar biology through winters no human was meant to endure.
-                  </p>
-                  <div className="mt-6 space-y-2 font-mono text-xs">
-                    <div className="flex items-center gap-2 text-slate-500 line-through">
-                      <span>✕</span> NOT A TEMPORARY FIELD CAMP
-                    </div>
-                    <div className="flex items-center gap-2 text-slate-500 line-through">
-                      <span>✕</span> NOT ISOLATED FROM MAINLAND
-                    </div>
-                    <div className="flex items-center gap-2 text-emerald-400 font-bold">
-                      <span>✓</span> 365-DAY AUTONOMOUS DIGITAL TWIN OPERATIONS
-                    </div>
-                  </div>
-                </div>
-
-                {/* 4 Core Polar Stats Grid */}
-                <div className="grid grid-cols-2 gap-4">
-                  {[
-                    { val: '−89.2°C', label: 'RECORD MIN TEMP' },
-                    { val: '~90%', label: 'GLOBAL GLACIAL ICE' },
-                    { val: '300+ KM/H', label: 'KATABATIC WINDS' },
-                    { val: '43 YEARS', label: 'CONTINUOUS SCIENCE' },
-                  ].map(({ val, label }) => (
-                    <div
-                      key={label}
-                      className="rounded-2xl border border-white/10 bg-white/5 p-5 text-center transition-colors hover:border-[#38BDF8]/40"
-                    >
-                      <p className="font-mono text-2xl sm:text-3xl font-black text-[#38BDF8]">{val}</p>
-                      <p className="mt-1 font-mono text-[9px] font-bold tracking-wider text-slate-400">{label}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
+          <div
+            id="panel-01-mission"
+            className="relative flex h-screen w-screen shrink-0 items-center justify-center p-6 sm:p-12 md:p-20"
+          >
+            <MissionStatementCard />
           </div>
 
           {/* ═══════════════════════════════════════════════════════════
@@ -1440,7 +1435,10 @@ export default function AntarcticStoryScroller({ onEnterCommandCenter }: Props) 
           {/* ═══════════════════════════════════════════════════════════
              PANEL 06: DIGITAL TWIN LIVE SUBSYSTEM HUD (LIGHT THEME GRAPH CARDS)
              ═══════════════════════════════════════════════════════════ */}
-          <div className="relative flex h-screen w-screen shrink-0 items-center justify-center p-6 sm:p-12 md:p-20">
+          <div
+            id="panel-06-twin"
+            className="relative flex h-screen w-screen shrink-0 items-center justify-center p-6 sm:p-12 md:p-20"
+          >
             <div className="slide-story-card w-full max-w-6xl rounded-3xl border border-white/10 bg-[#0E121E]/85 backdrop-blur-2xl p-6 sm:p-10 shadow-2xl">
               {/* Kicker Row */}
               <div className="flex items-center gap-3 text-xs font-mono font-bold tracking-widest text-slate-400">
@@ -1502,7 +1500,7 @@ export default function AntarcticStoryScroller({ onEnterCommandCenter }: Props) 
                       key={`${selectedStationId}-${id}`}
                       onMouseEnter={() => setCursorHovered(true)}
                       onMouseLeave={() => setCursorHovered(false)}
-                      className="group relative flex flex-col justify-between overflow-hidden rounded-3xl border border-slate-100 bg-white p-5 shadow-[0_10px_30px_rgba(0,0,0,0.15)] text-slate-900 transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_20px_45px_rgba(0,0,0,0.25)]"
+                      className="slide-06-kpi-card group relative flex flex-col justify-between overflow-hidden rounded-3xl border border-slate-100 bg-white p-5 shadow-[0_10px_30px_rgba(0,0,0,0.15)] text-slate-900 transition-all duration-300 hover:-translate-y-1.5 hover:shadow-[0_20px_45px_rgba(0,0,0,0.25)] will-change-transform"
                     >
                       {/* Top Header Row */}
                       <div>
@@ -1567,7 +1565,10 @@ export default function AntarcticStoryScroller({ onEnterCommandCenter }: Props) 
           {/* ═══════════════════════════════════════════════════════════
              PANEL 07: INFRASTRUCTURE COMPARISON MATRIX
              ═══════════════════════════════════════════════════════════ */}
-          <div className="relative flex h-screen w-screen shrink-0 items-center justify-center p-6 sm:p-12 md:p-20">
+          <div
+            id="panel-07-matrix"
+            className="relative flex h-screen w-screen shrink-0 items-center justify-center p-6 sm:p-12 md:p-20"
+          >
             <div className="slide-story-card w-full max-w-6xl rounded-3xl border border-white/10 bg-[#0E121E]/80 backdrop-blur-2xl p-8 sm:p-14 shadow-2xl">
               {/* Kicker Row */}
               <div className="flex items-center gap-3 text-xs font-mono font-bold tracking-widest text-slate-400">
@@ -1599,7 +1600,7 @@ export default function AntarcticStoryScroller({ onEnterCommandCenter }: Props) 
                     ['OVERWINTER CREW', '15 Scientists & Engineers', '18 Scientists & Engineers'],
                     ['DIGITAL TWIN', 'ONLINE (100% Nominal)', 'ONLINE (100% Nominal)'],
                   ].map(([label, bVal, mVal]) => (
-                    <div key={label} className="grid grid-cols-3 p-3 hover:bg-white/5 transition-colors">
+                    <div key={label} className="slide-07-row grid grid-cols-3 p-3 hover:bg-white/5 transition-colors will-change-transform">
                       <span className="font-bold text-slate-400">{label}</span>
                       <span className="text-white font-semibold">{bVal}</span>
                       <span className="text-white font-semibold">{mVal}</span>
