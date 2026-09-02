@@ -97,6 +97,21 @@ async def lifespan(app: FastAPI):
     # Startup
     logger.info("Initializing Polar Twin Antarctic Backend...")
     init_db()
+
+    # Auto-seed database if fresh deployment
+    try:
+        from app.models.station import Station
+        db = SessionLocal()
+        try:
+            if db.query(Station).count() == 0:
+                logger.info("Fresh database detected. Auto-seeding initial station and telemetry data...")
+                from seed import seed_database
+                seed_database()
+        finally:
+            db.close()
+    except Exception as e:
+        logger.warning(f"Auto-seed check notice: {e}")
+
     simulation_service.set_broadcast_callback(ws_manager.broadcast_station_update)
     command_service.set_broadcast_callback(ws_manager.broadcast_station_update)
     sim_task = asyncio.create_task(simulation_background_worker())
@@ -121,13 +136,29 @@ app = FastAPI(
 )
 
 # CORS Configuration
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=settings.CORS_ORIGINS if isinstance(settings.CORS_ORIGINS, list) else [settings.CORS_ORIGINS],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+configured_origins = (
+    settings.CORS_ORIGINS
+    if isinstance(settings.CORS_ORIGINS, list)
+    else [settings.CORS_ORIGINS]
 )
+
+if "*" in configured_origins:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origin_regex=r"^https?://.*",
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+else:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=configured_origins,
+        allow_origin_regex=r"^https://.*\.vercel\.app$",
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
 
 # Exception Handlers

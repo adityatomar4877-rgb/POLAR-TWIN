@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: polar-twin-backend
+    runtime: python
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    plan: free
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
+      - key: ENVIRONMENT
+        value: production
+      - key: SIMULATION_ENABLED
+        value: "true"
+      - key: SIMULATION_INTERVAL_SECONDS
+        value: "10"
+      - key: CORS_ORIGINS
+        value: '["*"]'
+      - key: GROQ_API_KEY
+        sync: false
+      - key: SECRET_KEY
+        generateValue: true
