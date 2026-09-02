@@ -230,6 +230,9 @@ def root():
 
 
 @app.get("/health", tags=["System"])
+@app.get("/api/health", tags=["System"])
+@app.head("/health", tags=["System"])
+@app.head("/api/health", tags=["System"])
 def health_check():
     db = SessionLocal()
     db_ok = True
@@ -252,6 +255,15 @@ def health_check():
         "active_scenarios": sim_status.active_scenarios,
         "version": settings.VERSION,
     }
+
+
+@app.get("/ping", tags=["System"])
+@app.get("/api/ping", tags=["System"])
+@app.head("/ping", tags=["System"])
+@app.head("/api/ping", tags=["System"])
+def ping():
+    """Ultra-lightweight keep-alive ping endpoint for uptime monitors (UptimeRobot, BetterStack, Cron-job.org)."""
+    return {"pong": True, "status": "ok"}
 
 
 # WebSocket Endpoint for Live Telemetry Streaming
